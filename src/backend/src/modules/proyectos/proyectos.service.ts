@@ -18,18 +18,25 @@ export class ProyectosService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Proyectos del trabajador de la sesion (propios, miembros o donde tiene tareas asignadas; o todos para admin). */
+  /** Proyectos del trabajador de la sesion (propios, miembros o donde tiene tareas asignadas; o todos para admin). */
   async mios(u: UsuarioActual) {
-    const esAdmin = u.rol === 'ADMINISTRADOR';
+    const esAdmin = u.rol === 'ADMINISTRADOR' || u.rol === 'SUPER_ADMIN';
+    const whereOrg = u.organizacionId ? { organizacionId: u.organizacionId } : {};
+
     const proyectos = await this.prisma.proyecto.findMany({
-      where: esAdmin
-        ? {}
-        : {
-            OR: [
-              { propietarioId: u.id },
-              { miembros: { some: { usuarioId: u.id } } },
-              { actividades: { some: { responsableId: u.id, eliminadoEn: null } } },
-            ],
-          },
+      where: {
+        eliminadoEn: null,
+        ...whereOrg,
+        ...(esAdmin
+          ? {}
+          : {
+              OR: [
+                { propietarioId: u.id },
+                { miembros: { some: { usuarioId: u.id } } },
+                { actividades: { some: { responsableId: u.id, eliminadoEn: null } } },
+              ],
+            }),
+      },
       orderBy: { creadoEn: 'asc' },
       select: {
         id: true,
@@ -57,14 +64,37 @@ export class ProyectosService {
     }));
   }
 
-  async crear(usuarioId: string, dto: CrearProyectoDto) {
+  async crear(u: UsuarioActual, dto: CrearProyectoDto) {
+    if (!u.organizacionId && u.rol !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Debes pertenecer a una organización para crear proyectos.');
+    }
+
+    let orgId = u.organizacionId;
+    if (!orgId) {
+      const primeraOrg = await this.prisma.organizacion.findFirst();
+      if (!primeraOrg) throw new BadRequestException('No hay organizaciones registradas.');
+      orgId = primeraOrg.id;
+    }
+
+    const org = await this.prisma.organizacion.findUnique({
+      where: { id: orgId },
+      include: { _count: { select: { proyectos: true } } },
+    });
+
+    if (org && org._count.proyectos >= org.maxProyectos) {
+      throw new BadRequestException(
+        `Has alcanzado el límite máximo de ${org.maxProyectos} proyectos permitidos en tu plan. Contacta al administrador para aumentar tu capacidad.`,
+      );
+    }
+
     const proyecto = await this.prisma.proyecto.create({
       data: {
         nombre: dto.nombre,
         descripcion: dto.descripcion,
-        propietarioId: usuarioId,
+        propietarioId: u.id,
+        organizacionId: orgId,
         miembros: {
-          create: { usuarioId, rolEnProyecto: 'LIDER' },
+          create: { usuarioId: u.id, rolEnProyecto: 'LIDER' },
         },
       },
       select: {
@@ -86,11 +116,12 @@ export class ProyectosService {
     if (u.rol === 'TRABAJADOR') {
       throw new ForbiddenException('Solo un administrador o supervisor puede modificar proyectos.');
     }
+    const whereOrg = u.rol === 'SUPER_ADMIN' || !u.organizacionId ? {} : { organizacionId: u.organizacionId };
     const proyecto = await this.prisma.proyecto.findFirst({
-      where: { id },
+      where: { id, eliminadoEn: null, ...whereOrg },
       select: { id: true },
     });
-    if (!proyecto) throw new NotFoundException('El proyecto no existe.');
+    if (!proyecto) throw new NotFoundException('El proyecto no existe o no pertenece a tu organización.');
 
     const actualizado = await this.prisma.proyecto.update({
       where: { id },
@@ -131,9 +162,12 @@ export class ProyectosService {
    */
   async miembros(id: string, u: UsuarioActual) {
     const puedeVerTodo = u.rol !== 'TRABAJADOR';
+    const whereOrg = u.rol === 'SUPER_ADMIN' || !u.organizacionId ? {} : { organizacionId: u.organizacionId };
     const proyecto = await this.prisma.proyecto.findFirst({
       where: {
         id,
+        eliminadoEn: null,
+        ...whereOrg,
         ...(puedeVerTodo
           ? {}
           : {
@@ -231,5 +265,86 @@ export class ProyectosService {
     ]);
 
     return this.listarMiembros(id);
+  }
+
+  /** Elimina un proyecto y todos sus nodos. Exclusivo para Administrador y Super Admin. */
+  async eliminar(id: string, u: UsuarioActual) {
+    if (u.rol !== 'ADMINISTRADOR' && u.rol !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Solo un administrador puede eliminar proyectos.');
+    }
+
+    const whereOrg = u.rol === 'SUPER_ADMIN' || !u.organizacionId ? {} : { organizacionId: u.organizacionId };
+    const proyecto = await this.prisma.proyecto.findFirst({
+      where: { id, eliminadoEn: null, ...whereOrg },
+      include: {
+        actividades: {
+          where: { eliminadoEn: null },
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!proyecto) {
+      throw new NotFoundException('El proyecto no existe o ya fue eliminado.');
+    }
+
+    const ahora = new Date();
+    const actividadIds = proyecto.actividades.map((a) => a.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      if (actividadIds.length > 0) {
+        // Cerrar sesiones abiertas en las tareas del proyecto
+        await tx.sesionTrabajo.updateMany({
+          where: {
+            actividadId: { in: actividadIds },
+            estado: { in: ['ACTIVA', 'PAUSADA'] },
+          },
+          data: {
+            estado: 'AUTOCERRADA',
+            desenlace: 'INCONCLUSA',
+            notaCierre: 'Sesión cerrada automáticamente por eliminación del proyecto.',
+            terminoEn: ahora,
+            actualizadoEn: ahora,
+          },
+        });
+
+        await tx.tramoSesion.updateMany({
+          where: {
+            sesion: { actividadId: { in: actividadIds } },
+            terminoEn: null,
+          },
+          data: { terminoEn: ahora },
+        });
+
+        // Soft-delete de todas las actividades del proyecto
+        await tx.actividad.updateMany({
+          where: { proyectoId: id, eliminadoEn: null },
+          data: { eliminadoEn: ahora },
+        });
+      }
+
+      // Marcar proyecto como eliminado
+      await tx.proyecto.update({
+        where: { id },
+        data: {
+          eliminadoEn: ahora,
+          estado: 'CERRADO',
+        },
+      });
+
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: u.id,
+          organizacionId: proyecto.organizacionId,
+          accion: 'PROYECTO_ELIMINADO',
+          tipoEntidad: 'Proyecto',
+          entidadId: id,
+          valorAnterior: { nombre: proyecto.nombre },
+          valorNuevo: { eliminadoEn: ahora, tareasAfectadas: actividadIds.length },
+        },
+      });
+    });
+
+    return { ok: true, id, mensaje: 'Proyecto y sus nodos eliminados exitosamente.' };
   }
 }

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './infra/prisma/prisma.module';
-import { SaludController } from './common/salud.controller';
+import { ApiRaizController, SaludController } from './common/salud.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { JornadaModule } from './modules/jornada/jornada.module';
 import { ActividadesModule } from './modules/actividades/actividades.module';
@@ -15,6 +15,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { ProyectosModule } from './modules/proyectos/proyectos.module';
 import { EvidenciasModule } from './modules/evidencias/evidencias.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { OrganizacionesModule } from './modules/organizaciones/organizaciones.module';
 
 /**
  * Raiz de la capa de negocio.
@@ -40,8 +41,9 @@ import { ChatModule } from './modules/chat/chat.module';
     ProyectosModule,
     EvidenciasModule,
     ChatModule,
+    OrganizacionesModule,
     // HistorialModule, NotificacionesModule,
   ],
-  controllers: [SaludController],
+  controllers: [SaludController, ApiRaizController],
 })
 export class AppModule {}

@@ -25,7 +25,7 @@ function ContenidoUsuarios() {
   const sesionActual = useSesion();
 
   // Al estar dentro de Marco, sesionActual ya viene resuelto desde ContextoSesion.Provider
-  const esAdmin = sesionActual?.rol === 'ADMINISTRADOR';
+  const esAdmin = sesionActual?.rol === 'ADMINISTRADOR' || sesionActual?.rol === 'SUPER_ADMIN';
   const puedeVer =
     esAdmin || (sesionActual?.permisos?.includes(PERMISOS.USUARIOS_VER) ?? false);
   const puedeGestionar =
@@ -122,7 +122,7 @@ function ContenidoUsuarios() {
     activos: usuarios.filter((u) => u.activo).length,
   };
 
-  async function handleDesactivar(u: UsuarioItem) {
+  async function handleToggleActivo(u: UsuarioItem) {
     if (!puedeGestionar) return;
     const accionTexto = u.activo ? 'desactivar' : 'reactivar';
     const confirmacion = window.confirm(
@@ -131,20 +131,38 @@ function ContenidoUsuarios() {
     if (!confirmacion) return;
 
     try {
-      if (u.activo) {
-        await api.delete(`/usuarios/${u.id}`);
-      } else {
-        await api.patch(`/usuarios/${u.id}`, { activo: true });
-      }
+      await api.patch(`/usuarios/${u.id}`, { activo: !u.activo });
       setMensaje({
         tipo: 'exito',
-        texto: `Usuario ${u.nombreCompleto} ${u.activo ? 'desactivado' : 'reactivado'} exitosamente.`,
+        texto: `Usuario ${u.nombreCompleto} ${!u.activo ? 'reactivado' : 'desactivado'} exitosamente.`,
       });
       await cargarDatos();
     } catch (err) {
       setMensaje({
         tipo: 'error',
         texto: err instanceof ErrorApi ? err.message : 'No se pudo actualizar el estado del usuario.',
+      });
+    }
+  }
+
+  async function handleEliminar(u: UsuarioItem) {
+    if (!esAdmin) return;
+    const confirmacion = window.confirm(
+      `¿Estás seguro de que deseas eliminar al usuario "${u.nombreCompleto}"?\n\nSi posee historial de registros o sesiones, sus accesos serán revocados de forma segura; si no posee registros previos, será eliminado permanentemente.`,
+    );
+    if (!confirmacion) return;
+
+    try {
+      const res = await api.delete<{ ok: boolean; mensaje?: string }>(`/usuarios/${u.id}`);
+      setMensaje({
+        tipo: 'exito',
+        texto: res?.mensaje || `Usuario ${u.nombreCompleto} procesado exitosamente.`,
+      });
+      await cargarDatos();
+    } catch (err) {
+      setMensaje({
+        tipo: 'error',
+        texto: err instanceof ErrorApi ? err.message : 'No se pudo eliminar al usuario.',
       });
     }
   }
@@ -354,16 +372,28 @@ function ContenidoUsuarios() {
                                 </button>
 
                                 {!esPropiaCuenta && (
-                                  <button
-                                    onClick={() => handleDesactivar(u)}
-                                    className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                                      u.activo
-                                        ? 'border-rose-500/30 text-rose-400 hover:bg-rose-500/10'
-                                        : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                                    }`}
-                                  >
-                                    {u.activo ? 'Desactivar' : 'Activar'}
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => handleToggleActivo(u)}
+                                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                                        u.activo
+                                          ? 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10'
+                                          : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                                      }`}
+                                    >
+                                      {u.activo ? 'Desactivar' : 'Activar'}
+                                    </button>
+
+                                    {esAdmin && (
+                                      <button
+                                        onClick={() => handleEliminar(u)}
+                                        title="Eliminar usuario (Exclusivo Administrador)"
+                                        className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400 transition hover:bg-rose-500/20"
+                                      >
+                                        Eliminar
+                                      </button>
+                                    )}
+                                  </>
                                 )}
                               </>
                             ) : (

@@ -30,6 +30,11 @@ interface SeccionNav {
 
 const SECCIONES: SeccionNav[] = [
   {
+    href: '/saas-admin',
+    texto: 'Consola SaaS',
+    permisoRequerido: PERMISOS.ORGANIZACIONES_GESTIONAR,
+  },
+  {
     href: '/panel',
     texto: 'Proyectos',
     permisoRequerido: PERMISOS.ACTIVIDADES_VER_PROPIAS,
@@ -204,13 +209,22 @@ export default function Marco({
               <p className="truncate text-xs font-medium text-slate-300">
                 {usuario?.nombreCompleto}
               </p>
-              <span className="mt-0.5 inline-block text-[10px] font-semibold text-sky-400">
-                {usuario?.rol === 'TRABAJADOR'
-                  ? 'Trabajador'
-                  : usuario?.rol === 'SUPERVISOR'
-                  ? 'Supervisor'
-                  : 'Administrador'}
-              </span>
+              <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span className="inline-block text-[10px] font-semibold text-sky-400">
+                  {usuario?.rol === 'SUPER_ADMIN'
+                    ? 'Super Admin SaaS'
+                    : usuario?.rol === 'TRABAJADOR'
+                    ? 'Trabajador'
+                    : usuario?.rol === 'SUPERVISOR'
+                    ? 'Supervisor'
+                    : 'Administrador'}
+                </span>
+                {usuario?.organizacionNombre && (
+                  <span className="truncate text-[10px] text-slate-400" title={usuario.organizacionNombre}>
+                    · {usuario.organizacionNombre}
+                  </span>
+                )}
+              </div>
             </div>
             <button
               onClick={salir}
@@ -233,19 +247,21 @@ export default function Marco({
                   {avisoJornada}
                 </span>
               )}
-              <button
-                onClick={alternarJornada}
-                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                  jornada
-                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15'
-                    : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${jornada ? 'animate-pulse bg-emerald-400' : 'bg-slate-500'}`}
-                />
-                {jornada ? 'En jornada · marcar salida' : 'Marcar entrada'}
-              </button>
+              {usuario?.rol !== 'SUPER_ADMIN' && (
+                <button
+                  onClick={alternarJornada}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    jornada
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15'
+                      : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${jornada ? 'animate-pulse bg-emerald-400' : 'bg-slate-500'}`}
+                  />
+                  {jornada ? 'En jornada · marcar salida' : 'Marcar entrada'}
+                </button>
+              )}
               {acciones}
               <div
                 className="grid h-9 w-9 place-items-center rounded-full bg-sky-500/15 text-xs font-bold text-sky-300"

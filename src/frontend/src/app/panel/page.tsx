@@ -26,13 +26,30 @@ export default function Panel() {
 
   const esTrabajador = usuario?.rol === 'TRABAJADOR';
   const esSupervisor = usuario?.rol === 'SUPERVISOR';
-  const esAdmin = usuario?.rol === 'ADMINISTRADOR';
+  const esAdmin = usuario?.rol === 'ADMINISTRADOR' || usuario?.rol === 'SUPER_ADMIN';
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   const [pestana, setPestana] = useState<'proyectos' | 'bolsas'>('proyectos');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<ProyectoItem | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+
+  async function handleEliminarProyecto(p: ProyectoItem) {
+    if (!esAdmin) return;
+    const confirmacion = window.confirm(
+      `¿Estás seguro de que deseas eliminar el proyecto "${p.nombre}" y todos sus nodos asociados?\n\nEsta acción es irreversible y finalizará las tareas activas de este proyecto.`,
+    );
+    if (!confirmacion) return;
+
+    try {
+      await api.delete(`/proyectos/${p.id}`);
+      setSeleccionado(null);
+      setEditando(null);
+      await cargar();
+    } catch (err) {
+      setAviso(err instanceof ErrorApi ? err.message : 'No se pudo eliminar el proyecto.');
+    }
+  }
 
   // Métricas personales del trabajador
   const [progreso, setProgreso] = useState<ProgresoPersonalItem | null>(null);
@@ -96,23 +113,46 @@ export default function Panel() {
       {/* -------------------- Banner de sesión activa para trabajador -------------------- */}
       {esTrabajador && sesionActiva && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 backdrop-blur">
-          <div className="flex items-center gap-3">
+          <div
+            onClick={() => {
+              if (sesionActiva.actividad.proyectoId) {
+                const nombre = sesionActiva.actividad.proyecto?.nombre || 'Proyecto';
+                router.push(
+                  `/nodos?proyectoId=${sesionActiva.actividad.proyectoId}&nombre=${encodeURIComponent(
+                    nombre,
+                  )}&tarea=${sesionActiva.actividad.id}`,
+                );
+              }
+            }}
+            className="flex cursor-pointer items-center gap-3 group"
+          >
             <span className="relative flex h-3 w-3">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
             </span>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-                Sesión de trabajo en marcha
+                Sesión de trabajo en marcha {sesionActiva.actividad.proyecto?.nombre ? `· ${sesionActiva.actividad.proyecto.nombre}` : ''}
               </p>
-              <p className="text-sm font-bold text-white">{sesionActiva.actividad.titulo}</p>
+              <p className="text-sm font-bold text-white group-hover:underline">{sesionActiva.actividad.titulo}</p>
             </div>
           </div>
           <button
-            onClick={() => router.push('/nodos')}
-            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-emerald-400"
+            onClick={() => {
+              if (sesionActiva.actividad.proyectoId) {
+                const nombre = sesionActiva.actividad.proyecto?.nombre || 'Proyecto';
+                router.push(
+                  `/nodos?proyectoId=${sesionActiva.actividad.proyectoId}&nombre=${encodeURIComponent(
+                    nombre,
+                  )}&tarea=${sesionActiva.actividad.id}`,
+                );
+              } else {
+                router.push('/nodos');
+              }
+            }}
+            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-emerald-500/20 transition hover:bg-emerald-400"
           >
-            Ir al cronómetro y tareas
+            Ir al cronómetro y tarea →
           </button>
         </div>
       )}
@@ -412,6 +452,15 @@ export default function Panel() {
                     Editar
                   </button>
                 )}
+                {esAdmin && (
+                  <button
+                    onClick={() => handleEliminarProyecto(proyecto)}
+                    title="Eliminar proyecto (Exclusivo Administrador)"
+                    className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-400 transition hover:bg-rose-500/20"
+                  >
+                    Eliminar
+                  </button>
+                )}
                 <button
                   onClick={() => setSeleccionado(null)}
                   aria-label="Cerrar detalle"
@@ -483,7 +532,11 @@ export default function Panel() {
       {editando && (
         <ModalEditarProyecto
           proyecto={editando}
+          esAdmin={esAdmin}
           onCerrar={() => setEditando(null)}
+          onEliminar={async () => {
+            await handleEliminarProyecto(editando);
+          }}
           onGuardado={async () => {
             setEditando(null);
             await cargar();
@@ -624,11 +677,15 @@ function ModalCrearProyecto({
 
 function ModalEditarProyecto({
   proyecto,
+  esAdmin,
   onCerrar,
+  onEliminar,
   onGuardado,
 }: {
   proyecto: ProyectoItem;
+  esAdmin?: boolean;
   onCerrar: () => void;
+  onEliminar?: () => Promise<void>;
   onGuardado: () => Promise<void>;
 }) {
   const [nombre, setNombre] = useState(proyecto.nombre);
@@ -693,22 +750,37 @@ function ModalEditarProyecto({
             />
           </div>
 
-          <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={enviando}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={enviando}
-              className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:opacity-50"
-            >
-              {enviando ? 'Guardando…' : 'Guardar cambios'}
-            </button>
+          <div className="mt-6 flex items-center justify-between gap-2 border-t border-white/10 pt-4">
+            {esAdmin && onEliminar ? (
+              <button
+                type="button"
+                onClick={onEliminar}
+                disabled={enviando}
+                className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
+              >
+                Eliminar Proyecto
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onCerrar}
+                disabled={enviando}
+                className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={enviando}
+                className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:opacity-50"
+              >
+                {enviando ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

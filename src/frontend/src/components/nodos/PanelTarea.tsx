@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Actividad, api, Evidencia, ErrorApi, Sesion, URL_API } from '@/lib/api';
 import { cronometro, duracion, ESTADOS, PRIORIDADES } from '@/lib/formato';
 import { PERMISOS } from '@/lib/rbac';
-import { useTienePermiso } from '@/lib/sesion';
+import { useSesion, useTienePermiso } from '@/lib/sesion';
 import ResponsableTarea from './ResponsableTarea';
 import BolsaOro from '@/components/tesoro/BolsaOro';
 import { useTesoro } from '@/lib/tesoro';
@@ -34,7 +34,25 @@ export default function PanelTarea({
   const [aviso, setAviso] = useState<string | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
   const puedeGestionar = useTienePermiso(PERMISOS.ACTIVIDADES_GESTIONAR);
+  const usuarioActual = useSesion();
+  const esAdmin = usuarioActual?.rol === 'ADMINISTRADOR' || usuarioActual?.rol === 'SUPER_ADMIN';
   const { abrirBolsa, version } = useTesoro();
+
+  async function handleEliminarNodo() {
+    if (!esAdmin || !actividad) return;
+    const confirmar = window.confirm(
+      `¿Estás seguro de que deseas eliminar el nodo "${actividad.titulo}" y todas sus subtareas/ramas hijas?\n\nEsta acción es irreversible y finalizará cualquier cronómetro activo.`,
+    );
+    if (!confirmar) return;
+
+    try {
+      await api.delete(`/actividades/${actividadId}`);
+      onCerrar();
+      onCambio?.();
+    } catch (err) {
+      setAviso(err instanceof ErrorApi ? err.message : 'No se pudo eliminar el nodo.');
+    }
+  }
 
   async function cargar() {
     const [a, s, ev] = await Promise.all([
@@ -124,20 +142,31 @@ export default function PanelTarea({
     <div>
       <div className="mb-3 flex items-start justify-between gap-3">
         <h2 className="font-bold leading-snug text-white">{actividad.titulo}</h2>
-        <button
-          onClick={() => abrirBolsa({ id: actividadId, titulo: actividad.titulo })}
-          title="Abrir en una ventana flotante que puedes mover y minimizar"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-amber-500/40 text-amber-300 transition hover:bg-amber-500/10"
-        >
-          ⤢
-        </button>
-        <button
-          onClick={onCerrar}
-          aria-label="Cerrar detalle"
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5"
-        >
-          ×
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {esAdmin && (
+            <button
+              onClick={handleEliminarNodo}
+              title="Eliminar nodo y subnodos (Solo Administrador)"
+              className="grid h-7 w-7 place-items-center rounded-full border border-rose-500/40 text-rose-400 transition hover:bg-rose-500/10"
+            >
+              🗑️
+            </button>
+          )}
+          <button
+            onClick={() => abrirBolsa({ id: actividadId, titulo: actividad.titulo })}
+            title="Abrir en una ventana flotante que puedes mover y minimizar"
+            className="grid h-7 w-7 place-items-center rounded-full border border-amber-500/40 text-amber-300 transition hover:bg-amber-500/10"
+          >
+            ⤢
+          </button>
+          <button
+            onClick={onCerrar}
+            aria-label="Cerrar detalle"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
@@ -214,13 +243,24 @@ export default function PanelTarea({
       </div>
 
       {!sesion ? (
-        <button
-          onClick={() => accion(() => api.post('/sesiones/iniciar', { actividadId }))}
-          disabled={terminada}
-          className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Comenzar
-        </button>
+        (actividad.responsable?.id === usuarioActual?.id || puedeGestionar) ? (
+          <button
+            onClick={() => accion(() => api.post('/sesiones/iniciar', { actividadId }))}
+            disabled={terminada}
+            className="w-full rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Comenzar
+          </button>
+        ) : (
+          <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-3.5 text-center text-xs text-sky-200">
+            <div className="font-semibold text-white mb-1">
+              👤 Tarea asignada a: {actividad.responsable?.nombreCompleto}
+            </div>
+            <p className="text-slate-300 text-[11px] leading-relaxed">
+              Como integrante del proyecto puedes visualizar los requerimientos, avances y archivos adjuntos. El inicio del cronómetro está reservado para el responsable asignado.
+            </p>
+          </div>
+        )
       ) : !enEstaTarea ? (
         <p className="rounded-xl border border-dashed border-white/15 p-3 text-center text-xs text-slate-500">
           Tienes otra sesion abierta en &quot;{sesion.actividad.titulo}&quot;. Ciérrala para
@@ -356,6 +396,19 @@ export default function PanelTarea({
           </ul>
         )}
       </div>
+
+      {/* ------------------------------ Eliminación de nodo (Solo Administrador) */}
+      {esAdmin && (
+        <div className="mt-8 border-t border-white/10 pt-4">
+          <button
+            onClick={handleEliminarNodo}
+            title="Eliminar este nodo y todas sus ramas hijas"
+            className="w-full rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/20 hover:text-white"
+          >
+            🗑️ Eliminar nodo y subnodos
+          </button>
+        </div>
+      )}
     </div>
   );
 }

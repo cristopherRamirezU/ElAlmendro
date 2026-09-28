@@ -11,7 +11,7 @@ import Marco from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
 import PanelTarea from '@/components/nodos/PanelTarea';
-import { api, ErrorApi } from '@/lib/api';
+import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
 import { calcularArbol, Orientacion } from '@/lib/mapaMental';
 import { useSesion } from '@/lib/sesion';
@@ -64,17 +64,51 @@ function Nodos() {
   const parametros = useSearchParams();
   const proyectoId = parametros.get('proyectoId');
   const nombreProyecto = parametros.get('nombre');
+  const tareaParam = parametros.get('tarea');
 
   const [actividades, setActividades] = useState<NodoActividad[]>([]);
   const [derivaciones, setDerivaciones] = useState<Derivacion[]>([]);
   const [aviso, setAviso] = useState<string | null>(null);
   const [cargas, setCargas] = useState(0);
+  const [buscandoProyecto, setBuscandoProyecto] = useState(!proyectoId);
 
-  // El arbol parte siempre colapsado desde el proyecto: nada se despliega
-  // hasta que el usuario lo pide.
-  const [expandidoRaiz, setExpandidoRaiz] = useState(false);
+  // El arbol parte colapsado o expande la raiz si ya se solicita una tarea
+  const [expandidoRaiz, setExpandidoRaiz] = useState(Boolean(tareaParam));
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
-  const [tareaSeleccionada, setTareaSeleccionada] = useState<string | null>(null);
+  const [tareaSeleccionada, setTareaSeleccionada] = useState<string | null>(tareaParam);
+
+  // Si entra a /nodos sin proyectoId, redirigir automáticamente a la tarea activa o su primer proyecto
+  useEffect(() => {
+    if (!proyectoId) {
+      setBuscandoProyecto(true);
+      api
+        .get<Sesion | null>('/sesiones/activa')
+        .then((s) => {
+          if (s?.actividad?.proyectoId) {
+            const nom = s.actividad.proyecto?.nombre || 'Proyecto';
+            router.replace(
+              `/nodos?proyectoId=${s.actividad.proyectoId}&nombre=${encodeURIComponent(
+                nom,
+              )}&tarea=${s.actividad.id}`,
+            );
+          } else {
+            api
+              .get<ProyectoItem[]>('/proyectos/mios')
+              .then((projs) => {
+                if (projs && projs.length > 0) {
+                  router.replace(
+                    `/nodos?proyectoId=${projs[0].id}&nombre=${encodeURIComponent(projs[0].nombre)}`,
+                  );
+                } else {
+                  setBuscandoProyecto(false);
+                }
+              })
+              .catch(() => setBuscandoProyecto(false));
+          }
+        })
+        .catch(() => setBuscandoProyecto(false));
+    }
+  }, [proyectoId, router]);
 
   // Sentido del arbol. Se recuerda en el navegador para no tener que elegirlo
   // en cada visita; parte horizontal, que es como estaba antes.
@@ -109,7 +143,26 @@ function Nodos() {
     setActividades(d.actividades);
     setDerivaciones(d.derivaciones);
     setCargas((c) => c + 1);
-  }, [proyectoId]);
+
+    // Si hay una tarea en el parametro de la URL, seleccionarla y expandir su linaje
+    if (tareaParam) {
+      const encontrada = d.actividades.find((a) => a.id === tareaParam);
+      if (encontrada) {
+        setTareaSeleccionada(encontrada.id);
+        setExpandidoRaiz(true);
+        const ancestros = new Set<string>();
+        let padreId = encontrada.actividadPadreId;
+        while (padreId) {
+          ancestros.add(padreId);
+          const p = d.actividades.find((a) => a.id === padreId);
+          padreId = p?.actividadPadreId ?? null;
+        }
+        if (ancestros.size > 0) {
+          setExpandido((prev) => new Set([...prev, ...ancestros]));
+        }
+      }
+    }
+  }, [proyectoId, tareaParam]);
 
   useEffect(() => {
     cargar().catch((err) => {
@@ -202,6 +255,8 @@ function Nodos() {
         tieneHijos: pos.tieneHijos,
         expandido: expandido.has(a.id),
         orientacion,
+        responsableNombre: a.responsable?.nombreCompleto,
+        esMiTarea: a.responsableId === sesionActual?.id,
         onAlternar: () => alternarNodo(a.id),
         onAgregarHija: (titulo: string) => agregarTarea(titulo, a.id),
       };
@@ -228,15 +283,31 @@ function Nodos() {
     }
 
     return { nodos, aristas };
-  }, [actividades, nombreProyecto, expandidoRaiz, expandido, orientacion, agregarTarea]);
+  }, [actividades, nombreProyecto, expandidoRaiz, expandido, orientacion, agregarTarea, sesionActual]);
 
   if (!proyectoId) {
+    if (buscandoProyecto) {
+      return (
+        <Marco activo="/nodos" titulo="Mapa de nodos" subtitulo="Localizando tu tarea en curso...">
+          <div className="grid place-items-center rounded-2xl border border-white/10 bg-slate-900/60 p-16 text-center backdrop-blur">
+            <div className="flex flex-col items-center gap-3">
+              <span className="relative flex h-5 w-5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-5 w-5 rounded-full bg-emerald-500" />
+              </span>
+              <p className="text-sm font-semibold text-white">Abriendo tu tarea activa...</p>
+              <p className="text-xs text-slate-400">Te estamos llevando directo al cronómetro de tu proyecto.</p>
+            </div>
+          </div>
+        </Marco>
+      );
+    }
+
     return (
       <Marco activo="/nodos" titulo="Mapa de nodos" subtitulo="Flujo de tareas y derivaciones">
         <div className="grid place-items-center rounded-2xl border border-dashed border-white/15 p-16 text-center">
           <p className="mb-4 max-w-sm text-sm text-slate-400">
-            El mapa de nodos ahora se arma por proyecto. Elige un proyecto y entra desde
-            &quot;Ir a las tareas&quot; para ver y editar su árbol de tareas.
+            No tienes proyectos o tareas asignadas por el momento. Entra a Proyectos para explorar o crear un nuevo proyecto.
           </p>
           <Link
             href="/panel"
@@ -258,7 +329,7 @@ function Nodos() {
         <div className="flex items-center gap-2">
           {esTrabajador ? (
             <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
-              Vista Trabajador · Tareas vinculadas a tu perfil
+              Vista Colaborativa · Equipo del Proyecto
             </span>
           ) : esSupervisor ? (
             <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-300">

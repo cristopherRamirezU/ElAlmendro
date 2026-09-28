@@ -17,7 +17,7 @@ export class JornadaController {
 
   @Post('entrada')
   entrada(@Usuario() u: UsuarioActual) {
-    return this.jornadas.entrada(u.id);
+    return this.jornadas.entrada(u.id, u.organizacionId);
   }
 
   @Post('salida')

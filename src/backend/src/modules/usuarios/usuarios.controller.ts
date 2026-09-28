@@ -41,8 +41,8 @@ export class UsuariosController {
   @Get('trabajadores')
   trabajadores(@Usuario() u: UsuarioActual) {
     const puedeVerEquipo =
-      u.rol === 'ADMINISTRADOR' || u.rol === 'SUPERVISOR';
-    return this.usuarios.trabajadores(puedeVerEquipo ? undefined : u.id);
+      u.rol === 'ADMINISTRADOR' || u.rol === 'SUPERVISOR' || u.rol === 'SUPER_ADMIN';
+    return this.usuarios.trabajadores(u, puedeVerEquipo ? undefined : u.id);
   }
 
   /**
@@ -51,6 +51,7 @@ export class UsuariosController {
   @Get()
   @ExigirPermisos(PERMISOS.USUARIOS_VER)
   listarTodos(
+    @Usuario() u: UsuarioActual,
     @Query('rol') rol?: Rol,
     @Query('activo') activo?: string,
     @Query('q') busqueda?: string,
@@ -58,7 +59,7 @@ export class UsuariosController {
     const esActivo =
       activo === 'true' ? true : activo === 'false' ? false : undefined;
 
-    return this.usuarios.listarTodos({
+    return this.usuarios.listarTodos(u, {
       rol,
       activo: esActivo,
       busqueda,
@@ -70,8 +71,8 @@ export class UsuariosController {
    */
   @Get(':id')
   @ExigirPermisos(PERMISOS.USUARIOS_VER)
-  detalle(@Param('id') id: string) {
-    return this.usuarios.detalle(id);
+  detalle(@Usuario() u: UsuarioActual, @Param('id') id: string) {
+    return this.usuarios.detalle(u, id);
   }
 
   /**

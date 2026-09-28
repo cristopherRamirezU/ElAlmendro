@@ -21,6 +21,8 @@ export interface DatosNodoTarea {
   tieneHijos: boolean;
   expandido: boolean;
   orientacion: Orientacion;
+  responsableNombre?: string;
+  esMiTarea?: boolean;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -48,26 +50,43 @@ export default function NodoTarea({ data }: NodeProps) {
   return (
     <div className="group relative">
       <div
-        className="flex max-w-[210px] items-center gap-2 rounded-lg border px-3.5 py-2 shadow-lg backdrop-blur-sm"
+        className="flex max-w-[220px] flex-col gap-1 rounded-xl border px-3.5 py-2 shadow-lg backdrop-blur-sm"
         style={{ borderColor: `${d.color}80`, background: `${d.color}22` }}
       >
-        <Handle
-          type="target"
-          position={disposicion.entrada}
-          className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
-          style={{ borderColor: d.color }}
-        />
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: COLOR_ESTADO[d.estado] ?? '#94a3b8' }}
-        />
-        <span className="truncate text-xs font-semibold text-white">{d.titulo}</span>
-        <Handle
-          type="source"
-          position={disposicion.salida}
-          className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
-          style={{ borderColor: d.color }}
-        />
+        <div className="flex items-center gap-2">
+          <Handle
+            type="target"
+            position={disposicion.entrada}
+            className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
+            style={{ borderColor: d.color }}
+          />
+          <span
+            className="h-2 w-2 shrink-0 rounded-full"
+            style={{ background: COLOR_ESTADO[d.estado] ?? '#94a3b8' }}
+          />
+          <span className="truncate text-xs font-semibold text-white">{d.titulo}</span>
+          <Handle
+            type="source"
+            position={disposicion.salida}
+            className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
+            style={{ borderColor: d.color }}
+          />
+        </div>
+
+        {d.responsableNombre && (
+          <div className="flex items-center gap-1">
+            <span
+              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${
+                d.esMiTarea
+                  ? 'bg-sky-500/30 text-sky-200 border border-sky-400/40 font-semibold'
+                  : 'bg-slate-800/80 text-slate-300 border border-white/10'
+              }`}
+            >
+              <span>{d.esMiTarea ? '⭐' : '👤'}</span>
+              <span className="truncate max-w-[140px]">{d.esMiTarea ? 'Tú' : d.responsableNombre}</span>
+            </span>
+          </div>
+        )}
 
         {d.tieneHijos && (
           <button

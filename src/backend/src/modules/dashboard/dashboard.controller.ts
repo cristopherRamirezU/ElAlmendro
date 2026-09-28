@@ -16,8 +16,8 @@ export class DashboardController {
 
   @Get('resumen')
   @ExigirPermisos(PERMISOS.DASHBOARD_VER_RESUMEN)
-  resumen() {
-    return this.dashboard.resumen();
+  resumen(@Usuario() u: UsuarioActual) {
+    return this.dashboard.resumen(u);
   }
 
   /** Indicadores individuales de rendimiento para el dashboard del trabajador. */

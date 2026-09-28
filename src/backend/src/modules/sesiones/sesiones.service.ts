@@ -26,7 +26,14 @@ export class SesionesService {
     const sesion = await this.prisma.sesionTrabajo.findFirst({
       where: { usuarioId, estado: { in: ['ACTIVA', 'PAUSADA'] } },
       include: {
-        actividad: { select: { id: true, titulo: true } },
+        actividad: {
+          select: {
+            id: true,
+            titulo: true,
+            proyectoId: true,
+            proyecto: { select: { id: true, nombre: true } },
+          },
+        },
         tramos: { orderBy: { inicioEn: 'asc' } },
       },
     });

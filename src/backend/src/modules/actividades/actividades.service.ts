@@ -370,4 +370,97 @@ export class ActividadesService {
 
     return this.detalle(id);
   }
+
+  /**
+   * Elimina un nodo (actividad) y todos sus subnodos descendientes.
+   * Exclusivo para Administrador y Super Admin.
+   */
+  async eliminar(id: string, u: UsuarioActual) {
+    if (u.rol !== 'ADMINISTRADOR' && u.rol !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Solo un administrador puede eliminar nodos o tareas.');
+    }
+
+    const actividad = await this.prisma.actividad.findFirst({
+      where: { id, eliminadoEn: null },
+      include: {
+        proyecto: { select: { id: true, organizacionId: true } },
+      },
+    });
+
+    if (!actividad) {
+      throw new NotFoundException('La actividad no existe o ya fue eliminada.');
+    }
+
+    if (u.rol !== 'SUPER_ADMIN' && actividad.proyecto.organizacionId !== u.organizacionId) {
+      throw new ForbiddenException('No tienes permisos para eliminar actividades de otra organización.');
+    }
+
+    // Buscar recursivamente todas las ramas hijas descendientes
+    const todosDescendientesIds: string[] = [id];
+    let capaActual = [id];
+    while (capaActual.length > 0) {
+      const hijas: { id: string }[] = await this.prisma.actividad.findMany({
+        where: { actividadPadreId: { in: capaActual }, eliminadoEn: null },
+        select: { id: true },
+      });
+      if (hijas.length === 0) break;
+      const idsHijas = hijas.map((h) => h.id);
+      todosDescendientesIds.push(...idsHijas);
+      capaActual = idsHijas;
+    }
+
+    const ahora = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Cerrar cualquier sesión activa o pausada en estos nodos
+      await tx.sesionTrabajo.updateMany({
+        where: {
+          actividadId: { in: todosDescendientesIds },
+          estado: { in: ['ACTIVA', 'PAUSADA'] },
+        },
+        data: {
+          estado: 'AUTOCERRADA',
+          desenlace: 'INCONCLUSA',
+          notaCierre: 'Sesión cerrada automáticamente por eliminación de la tarea.',
+          terminoEn: ahora,
+          actualizadoEn: ahora,
+        },
+      });
+
+      // 2. Cerrar tramos de cronómetro abiertos
+      await tx.tramoSesion.updateMany({
+        where: {
+          sesion: { actividadId: { in: todosDescendientesIds } },
+          terminoEn: null,
+        },
+        data: { terminoEn: ahora },
+      });
+
+      // 3. Marcar borrado lógico de todas las actividades descendientes y la principal
+      await tx.actividad.updateMany({
+        where: { id: { in: todosDescendientesIds } },
+        data: { eliminadoEn: ahora },
+      });
+
+      // 4. Registro de auditoría
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: u.id,
+          organizacionId: actividad.proyecto.organizacionId,
+          accion: 'ACTIVIDAD_ELIMINADA',
+          tipoEntidad: 'Actividad',
+          entidadId: id,
+          valorAnterior: { titulo: actividad.titulo },
+          valorNuevo: { eliminadoEn: ahora, descendientesEliminados: todosDescendientesIds.length - 1 },
+        },
+      });
+    });
+
+    return {
+      ok: true,
+      id,
+      totalEliminados: todosDescendientesIds.length,
+      mensaje: `Nodo "${actividad.titulo}" y ${todosDescendientesIds.length - 1} subnodo(s) eliminados exitosamente.`,
+    };
+  }
 }

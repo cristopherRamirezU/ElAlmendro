@@ -31,6 +31,9 @@ export class JwtAuthGuard implements CanActivate {
         rol: carga.rol,
         nombreCompleto: carga.nombre,
         permisos: obtenerPermisosDeRol(carga.rol),
+        organizacionId: carga.organizacionId ?? null,
+        organizacionNombre: carga.organizacionNombre ?? null,
+        organizacionSlug: carga.organizacionSlug ?? null,
       };
       return true;
     } catch {

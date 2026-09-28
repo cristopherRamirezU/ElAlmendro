@@ -23,7 +23,11 @@ export default function Login() {
       const usuario = await api.post<Usuario>('/auth/login', { email, contrasena });
       // El panel se pinta de inmediato con el usuario recien autenticado.
       guardarCacheSesion({ usuario, jornada: null });
-      router.push('/panel');
+      if (usuario.rol === 'SUPER_ADMIN') {
+        router.push('/saas-admin');
+      } else {
+        router.push('/panel');
+      }
     } catch (err) {
       setError(
         err instanceof ErrorApi

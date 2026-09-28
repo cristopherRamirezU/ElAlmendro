@@ -91,6 +91,56 @@ export interface Usuario {
   nombreCompleto: string;
   rol: Rol;
   permisos: PermisoCodigo[];
+  organizacionId?: string | null;
+  organizacionNombre?: string | null;
+  organizacionSlug?: string | null;
+}
+
+export type PlanSaaS = 'GRATIS' | 'PRO' | 'EMPRESA';
+
+export interface OrganizacionItem {
+  id: string;
+  nombre: string;
+  slug: string;
+  rut: string | null;
+  plan: PlanSaaS;
+  maxUsuarios: number;
+  maxProyectos: number;
+  activo: boolean;
+  creadoEn: string;
+  actualizadoEn: string;
+  totalUsuarios: number;
+  totalProyectos: number;
+}
+
+export interface MetricasSaaS {
+  totalOrganizaciones: number;
+  activas: number;
+  inactivas: number;
+  totalUsuarios: number;
+  totalProyectos: number;
+  distribucionPlanes: Record<PlanSaaS, number>;
+}
+
+export interface CrearOrganizacionPayload {
+  nombre: string;
+  slug: string;
+  rut?: string;
+  plan?: PlanSaaS;
+  maxUsuarios?: number;
+  maxProyectos?: number;
+  adminEmail?: string;
+  adminNombre?: string;
+  adminPassword?: string;
+}
+
+export interface ActualizarOrganizacionPayload {
+  nombre?: string;
+  rut?: string;
+  plan?: PlanSaaS;
+  maxUsuarios?: number;
+  maxProyectos?: number;
+  activo?: boolean;
 }
 
 export interface UsuarioItem {
@@ -181,7 +231,12 @@ export interface Sesion {
   estado: 'ACTIVA' | 'PAUSADA';
   inicioEn: string;
   segundosAcumulados: number;
-  actividad: { id: string; titulo: string };
+  actividad: {
+    id: string;
+    titulo: string;
+    proyectoId?: string;
+    proyecto?: { id: string; nombre: string };
+  };
 }
 
 export interface ProgresoPersonalItem {

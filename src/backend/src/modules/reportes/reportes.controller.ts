@@ -24,39 +24,64 @@ export class ReportesController {
     return puedeVerEquipo ? undefined : u.id;
   }
 
+  private resolverOrgId(u: UsuarioActual, queryOrgId?: string): string | null {
+    if (u.rol === 'SUPER_ADMIN') {
+      return queryOrgId?.trim() ? queryOrgId.trim() : null;
+    }
+    return u.organizacionId ?? null;
+  }
+
   @Get('calendario')
   calendario(
     @Usuario() u: UsuarioActual,
     @Query('desde') desde: string,
     @Query('hasta') hasta: string,
+    @Query('organizacionId') orgId?: string,
   ) {
     return this.reportes.calendario(
       new Date(desde),
       new Date(hasta),
       this.alcance(u),
+      this.resolverOrgId(u, orgId),
     );
   }
 
   @Get('dia')
-  dia(@Usuario() u: UsuarioActual, @Query('fecha') fecha: string) {
-    return this.reportes.dia(fecha, this.alcance(u));
+  dia(
+    @Usuario() u: UsuarioActual,
+    @Query('fecha') fecha: string,
+    @Query('organizacionId') orgId?: string,
+  ) {
+    return this.reportes.dia(fecha, this.alcance(u), this.resolverOrgId(u, orgId));
   }
 
   @Get('horas')
   @ExigirPermisos(PERMISOS.REPORTES_VER_EQUIPO)
   horas(
+    @Usuario() u: UsuarioActual,
     @Query('desde') desde: string,
     @Query('hasta') hasta: string,
+    @Query('organizacionId') orgId?: string,
   ) {
-    return this.reportes.porTrabajador(new Date(desde), new Date(hasta));
+    return this.reportes.porTrabajador(
+      new Date(desde),
+      new Date(hasta),
+      this.resolverOrgId(u, orgId),
+    );
   }
 
   @Get('actividades')
   @ExigirPermisos(PERMISOS.REPORTES_VER_EQUIPO)
   actividades(
+    @Usuario() u: UsuarioActual,
     @Query('desde') desde: string,
     @Query('hasta') hasta: string,
+    @Query('organizacionId') orgId?: string,
   ) {
-    return this.reportes.porActividad(new Date(desde), new Date(hasta));
+    return this.reportes.porActividad(
+      new Date(desde),
+      new Date(hasta),
+      this.resolverOrgId(u, orgId),
+    );
   }
 }

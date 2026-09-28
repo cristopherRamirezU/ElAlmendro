@@ -24,8 +24,13 @@ export class UsuariosService {
   /**
    * Lista todos los usuarios con soporte de filtros por rol, estado y búsqueda por nombre o correo.
    */
-  async listarTodos(filtros?: { rol?: Rol; activo?: boolean; busqueda?: string }) {
+  async listarTodos(actor: UsuarioActual, filtros?: { rol?: Rol; activo?: boolean; busqueda?: string }) {
     const where: any = {};
+
+    if (actor.rol !== 'SUPER_ADMIN') {
+      where.organizacionId = actor.organizacionId;
+      where.rol = { not: 'SUPER_ADMIN' };
+    }
 
     if (filtros?.rol) {
       where.rol = filtros.rol;
@@ -52,6 +57,7 @@ export class UsuariosService {
         rol: true,
         zonaHoraria: true,
         activo: true,
+        organizacionId: true,
         creadoEn: true,
         actualizadoEn: true,
         _count: {
@@ -72,9 +78,10 @@ export class UsuariosService {
   }
 
   /** Obtiene el detalle de un usuario por su ID. */
-  async detalle(id: string) {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id },
+  async detalle(actor: UsuarioActual, id: string) {
+    const whereOrg = actor.rol === 'SUPER_ADMIN' || !actor.organizacionId ? {} : { organizacionId: actor.organizacionId };
+    const usuario = await this.prisma.usuario.findFirst({
+      where: { id, ...whereOrg },
       select: {
         id: true,
         email: true,
@@ -82,13 +89,14 @@ export class UsuariosService {
         rol: true,
         zonaHoraria: true,
         activo: true,
+        organizacionId: true,
         creadoEn: true,
         actualizadoEn: true,
       },
     });
 
     if (!usuario) {
-      throw new NotFoundException('El usuario no existe.');
+      throw new NotFoundException('El usuario no existe o no pertenece a tu organización.');
     }
 
     return {
@@ -106,6 +114,23 @@ export class UsuariosService {
       throw new ForbiddenException(
         'Un supervisor solo tiene autorización para dar de alta trabajadores a su cargo.',
       );
+    }
+
+    if (actor.rol !== 'SUPER_ADMIN') {
+      if (!actor.organizacionId) {
+        throw new ForbiddenException('Debes pertenecer a una organización para crear usuarios.');
+      }
+
+      const org = await this.prisma.organizacion.findUnique({
+        where: { id: actor.organizacionId },
+        include: { _count: { select: { usuarios: { where: { activo: true } } } } },
+      });
+
+      if (org && org._count.usuarios >= org.maxUsuarios) {
+        throw new BadRequestException(
+          `Has alcanzado el límite máximo de ${org.maxUsuarios} usuarios permitidos en tu plan SaaS. Contacta al administrador para aumentar la capacidad.`,
+        );
+      }
     }
 
     const email = dto.email.toLowerCase().trim();
@@ -129,6 +154,7 @@ export class UsuariosService {
           rol: dto.rol as any,
           zonaHoraria: dto.zonaHoraria || 'America/Santiago',
           activo: true,
+          organizacionId: actor.rol === 'SUPER_ADMIN' ? null : actor.organizacionId,
         },
         select: {
           id: true,
@@ -137,6 +163,7 @@ export class UsuariosService {
           rol: true,
           zonaHoraria: true,
           activo: true,
+          organizacionId: true,
           creadoEn: true,
         },
       });
@@ -144,6 +171,7 @@ export class UsuariosService {
       await tx.registroAuditoria.create({
         data: {
           actorId: actor.id,
+          organizacionId: actor.organizacionId ?? undefined,
           accion: 'USUARIO_CREADO',
           tipoEntidad: 'Usuario',
           entidadId: nuevo.id,
@@ -172,6 +200,10 @@ export class UsuariosService {
     const existente = await this.prisma.usuario.findUnique({ where: { id } });
     if (!existente) {
       throw new NotFoundException('El usuario a actualizar no existe.');
+    }
+
+    if (actor.rol !== 'SUPER_ADMIN' && existente.organizacionId !== actor.organizacionId) {
+      throw new ForbiddenException('No tienes permisos para modificar usuarios de otra organización.');
     }
 
     // Regla de salvaguarda: supervisor solo gestiona trabajadores a su cargo
@@ -293,13 +325,18 @@ export class UsuariosService {
   }
 
   /**
-   * Desactiva un usuario (Soft Delete).
-   * Impide que un usuario se desactive a sí mismo o al último administrador,
-   * y que un supervisor desactive administradores.
+   * Elimina o desactiva un usuario.
+   * Restringido de forma estricta a Administrador y Super Administrador.
+   * Si el usuario no tiene historial laboral ni registros de auditoría, se elimina físicamente.
+   * Si posee historial, se desactiva lógicamente (Soft Delete) revocando tokens.
    */
   async desactivar(actor: UsuarioActual, id: string) {
+    if (actor.rol !== 'ADMINISTRADOR' && actor.rol !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('Solo un administrador puede eliminar o desactivar usuarios.');
+    }
+
     if (actor.id === id) {
-      throw new BadRequestException('No puedes desactivar tu propia cuenta.');
+      throw new BadRequestException('No puedes eliminar ni desactivar tu propia cuenta.');
     }
 
     const existente = await this.prisma.usuario.findUnique({ where: { id } });
@@ -307,16 +344,8 @@ export class UsuariosService {
       throw new NotFoundException('El usuario no existe.');
     }
 
-    if (actor.rol === 'SUPERVISOR') {
-      if (existente.rol !== 'TRABAJADOR') {
-        throw new ForbiddenException(
-          'Un supervisor no tiene permisos para desactivar administradores ni otros supervisores.',
-        );
-      }
-    }
-
-    if (!existente.activo) {
-      return { ok: true, mensaje: 'El usuario ya se encuentra inactivo.', id };
+    if (actor.rol !== 'SUPER_ADMIN' && existente.organizacionId !== actor.organizacionId) {
+      throw new ForbiddenException('No tienes permisos para eliminar usuarios de otra organización.');
     }
 
     if (existente.rol === 'ADMINISTRADOR') {
@@ -325,41 +354,96 @@ export class UsuariosService {
           rol: 'ADMINISTRADOR',
           activo: true,
           id: { not: id },
+          ...(existente.organizacionId ? { organizacionId: existente.organizacionId } : {}),
         },
       });
 
       if (otrosAdmins === 0) {
         throw new BadRequestException(
-          'No puedes desactivar al único administrador activo del sistema.',
+          'No puedes eliminar ni desactivar al único administrador activo de la organización.',
         );
       }
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.usuario.update({
-        where: { id },
-        data: { activo: false },
+    // Comprobar si tiene historial protegido
+    const [tieneSesiones, tieneEvidencias, tieneAuditoria, tieneJornadas, tieneActividades, tieneProyectos] = await Promise.all([
+      this.prisma.sesionTrabajo.count({ where: { usuarioId: id } }),
+      this.prisma.evidencia.count({ where: { subidaPorId: id } }),
+      this.prisma.registroAuditoria.count({ where: { actorId: id } }),
+      this.prisma.jornada.count({ where: { usuarioId: id } }),
+      this.prisma.actividad.count({ where: { responsableId: id, eliminadoEn: null } }),
+      this.prisma.proyecto.count({ where: { propietarioId: id, eliminadoEn: null } }),
+    ]);
+
+    const tieneHistorial = tieneSesiones > 0 || tieneEvidencias > 0 || tieneAuditoria > 0 || tieneJornadas > 0 || tieneActividades > 0 || tieneProyectos > 0;
+
+    if (tieneHistorial) {
+      // Soft-delete
+      await this.prisma.$transaction(async (tx) => {
+        await tx.usuario.update({
+          where: { id },
+          data: { activo: false },
+        });
+
+        await tx.tokenRefresco.deleteMany({ where: { usuarioId: id } });
+
+        await tx.registroAuditoria.create({
+          data: {
+            actorId: actor.id,
+            organizacionId: existente.organizacionId ?? undefined,
+            accion: 'USUARIO_ELIMINADO',
+            tipoEntidad: 'Usuario',
+            entidadId: id,
+            valorAnterior: { activo: existente.activo, email: existente.email },
+            valorNuevo: { activo: false, metodo: 'SOFT_DELETE' },
+          },
+        });
       });
 
-      await tx.registroAuditoria.create({
-        data: {
-          actorId: actor.id,
-          accion: 'USUARIO_DESACTIVADO',
-          tipoEntidad: 'Usuario',
-          entidadId: id,
-          valorAnterior: { activo: true },
-          valorNuevo: { activo: false },
-        },
-      });
-    });
+      return {
+        ok: true,
+        id,
+        eliminadoPermanente: false,
+        mensaje: `Usuario ${existente.nombreCompleto} desactivado y accesos revocados (cuenta con historial registrado).`,
+      };
+    } else {
+      // Hard-delete
+      await this.prisma.$transaction(async (tx) => {
+        await tx.tokenRefresco.deleteMany({ where: { usuarioId: id } });
+        await tx.miembroProyecto.deleteMany({ where: { usuarioId: id } });
+        await tx.mensajeChat.deleteMany({
+          where: { OR: [{ emisorId: id }, { receptorId: id }] },
+        });
+        await tx.usuario.delete({ where: { id } });
 
-    return { ok: true, id };
+        await tx.registroAuditoria.create({
+          data: {
+            actorId: actor.id,
+            organizacionId: existente.organizacionId ?? undefined,
+            accion: 'USUARIO_ELIMINADO',
+            tipoEntidad: 'Usuario',
+            entidadId: id,
+            valorAnterior: { email: existente.email, nombre: existente.nombreCompleto },
+            valorNuevo: { eliminado: true, metodo: 'HARD_DELETE' },
+          },
+        });
+      });
+
+      return {
+        ok: true,
+        id,
+        eliminadoPermanente: true,
+        mensaje: `Usuario ${existente.nombreCompleto} eliminado permanentemente del sistema.`,
+      };
+    }
   }
 
   /** Trabajadores activos, para poblar el selector del calendario y los reportes. */
-  async trabajadores(soloId?: string) {
+  async trabajadores(actor: UsuarioActual, soloId?: string) {
+    const whereOrg = actor.rol === 'SUPER_ADMIN' || !actor.organizacionId ? {} : { organizacionId: actor.organizacionId };
     const filas = await this.prisma.usuario.findMany({
       where: {
+        ...whereOrg,
         rol: { in: ['TRABAJADOR', 'SUPERVISOR'] as any },
         activo: true,
         ...(soloId ? { id: soloId } : {}),

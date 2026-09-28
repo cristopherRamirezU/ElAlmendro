@@ -36,8 +36,8 @@ const FILTRO_EXTENSIONES = `(function () {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-CL">
-      <body>
+    <html lang="es-CL" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: FILTRO_EXTENSIONES }} />
         {/* El tesoro envuelve toda la aplicacion desde la raiz: asi la ventana
             de la bolsa no se desmonta al navegar entre pantallas. */}

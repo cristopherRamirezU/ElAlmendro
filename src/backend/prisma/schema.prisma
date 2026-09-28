@@ -22,9 +22,16 @@ datasource db {
 // ----------------------------- Enumeraciones -------------------------------
 
 enum Rol {
+  SUPER_ADMIN
   ADMINISTRADOR
   SUPERVISOR
   TRABAJADOR
+}
+
+enum PlanSaaS {
+  GRATIS
+  PRO
+  EMPRESA
 }
 
 enum EstadoProyecto {
@@ -79,6 +86,29 @@ enum RolEnProyecto {
   OBSERVADOR
 }
 
+// ------------------------------ Organizaciones ------------------------------
+
+model Organizacion {
+  id            String    @id @default(uuid()) @db.Uuid
+  nombre        String
+  slug          String    @unique
+  rut           String?   @unique
+  plan          PlanSaaS  @default(GRATIS)
+  maxUsuarios   Int       @default(10)
+  maxProyectos  Int       @default(5)
+  activo        Boolean   @default(true)
+  creadoEn      DateTime  @default(now()) @db.Timestamptz(3)
+  actualizadoEn DateTime  @updatedAt @db.Timestamptz(3)
+
+  usuarios      Usuario[]
+  proyectos     Proyecto[]
+  jornadas      Jornada[]
+  mensajesChat  MensajeChat[]
+  auditorias    RegistroAuditoria[]
+
+  @@map("organizaciones")
+}
+
 // -------------------------------- Usuarios ---------------------------------
 
 model Usuario {
@@ -91,6 +121,9 @@ model Usuario {
   activo         Boolean  @default(true)
   creadoEn       DateTime @default(now()) @db.Timestamptz(3)
   actualizadoEn  DateTime @updatedAt @db.Timestamptz(3)
+
+  organizacionId String?       @db.Uuid
+  organizacion   Organizacion? @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
 
   proyectosPropios      Proyecto[]          @relation("PropietarioProyecto")
   membresias            MiembroProyecto[]
@@ -107,6 +140,7 @@ model Usuario {
   mensajesRecibidos     MensajeChat[]       @relation("MensajeReceptor")
 
   @@index([rol, activo])
+  @@index([organizacionId, activo])
   @@map("usuarios")
 }
 
@@ -136,11 +170,17 @@ model Proyecto {
   propietario   Usuario        @relation("PropietarioProyecto", fields: [propietarioId], references: [id])
   estado        EstadoProyecto @default(ACTIVO)
   creadoEn      DateTime       @default(now()) @db.Timestamptz(3)
+  eliminadoEn   DateTime?      @db.Timestamptz(3)
+
+  organizacionId String        @db.Uuid
+  organizacion   Organizacion  @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
 
   miembros    MiembroProyecto[]
   sprints     Sprint[]
   actividades Actividad[]
 
+  @@index([organizacionId, estado])
+  @@index([organizacionId, eliminadoEn])
   @@map("proyectos")
 }
 
@@ -260,9 +300,13 @@ model Jornada {
   estado                 EstadoJornada @default(ABIERTA)
   cerradaAutomaticamente Boolean       @default(false)
 
+  organizacionId         String        @db.Uuid
+  organizacion           Organizacion  @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+
   sesiones SesionTrabajo[]
 
   @@index([usuarioId, inicioEn])
+  @@index([organizacionId, inicioEn])
   @@map("jornadas")
 }
 
@@ -357,7 +401,11 @@ model RegistroAuditoria {
   direccionIp   String?
   ocurridoEn    DateTime @default(now()) @db.Timestamptz(3)
 
+  organizacionId String?       @db.Uuid
+  organizacion   Organizacion? @relation(fields: [organizacionId], references: [id], onDelete: SetNull)
+
   @@index([tipoEntidad, entidadId, ocurridoEn])
+  @@index([organizacionId, ocurridoEn])
   @@map("registros_auditoria")
 }
 
@@ -378,8 +426,12 @@ model MensajeChat {
   // Solo aplica a mensajes privados: el canal general no lleva lectura.
   leidoEn    DateTime? @db.Timestamptz(3)
 
+  organizacionId String        @db.Uuid
+  organizacion   Organizacion  @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+
   @@index([emisorId, receptorId, creadoEn])
   @@index([receptorId, leidoEn])
   @@index([creadoEn])
+  @@index([organizacionId, creadoEn])
   @@map("mensajes_chat")
 }

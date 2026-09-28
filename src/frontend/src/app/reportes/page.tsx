@@ -1,40 +1,90 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Marco from '@/components/Marco';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
-import { api, ErrorApi } from '@/lib/api';
+import { api, ErrorApi, OrganizacionItem, Usuario } from '@/lib/api';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { HorasActividad, HorasTrabajador } from '@/lib/tipos';
 import { duracion } from '@/lib/formato';
+import {
+  leerCacheSesion,
+  leerCacheSesionServidor,
+  suscribirCacheSesion,
+} from '@/lib/cacheSesion';
 
 const RANGOS = [
-  { dias: 7, texto: 'Ultima semana' },
-  { dias: 30, texto: 'Ultimo mes' },
-  { dias: 90, texto: 'Ultimos 3 meses' },
+  { dias: 7, texto: 'Última semana' },
+  { dias: 30, texto: 'Último mes' },
+  { dias: 90, texto: 'Últimos 3 meses' },
 ];
 
-/** US-07 — horas por trabajador y por actividad en un periodo. */
 export default function Reportes() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-400">
+          Cargando reportes...
+        </main>
+      }
+    >
+      <ReportesContenido />
+    </Suspense>
+  );
+}
+
+/** US-07 y Multi-SaaS — horas por trabajador y por actividad en un periodo, con filtro por organización para Super Admin. */
+function ReportesContenido() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const cache = useSyncExternalStore(suscribirCacheSesion, leerCacheSesion, leerCacheSesionServidor);
+  const usuario: Usuario | null = cache?.usuario ?? null;
+  const esSuperAdmin = usuario?.rol === 'SUPER_ADMIN';
+
   const [dias, setDias] = useState(30);
+  const [organizaciones, setOrganizaciones] = useState<OrganizacionItem[]>([]);
+  const [orgSeleccionada, setOrgSeleccionada] = useState<string>(
+    searchParams.get('organizacionId') || ''
+  );
+
+  // Sincronizar parametro de query si cambia externamente (ej: navegacion directa)
+  useEffect(() => {
+    const orgParam = searchParams.get('organizacionId') || '';
+    setOrgSeleccionada(orgParam);
+  }, [searchParams]);
+
+  // Si es Super Admin, cargar el catalogo de organizaciones activas
+  useEffect(() => {
+    if (esSuperAdmin) {
+      api
+        .get<OrganizacionItem[]>('/organizaciones')
+        .then((orgs) => setOrganizaciones(orgs || []))
+        .catch(() => {});
+    }
+  }, [esSuperAdmin]);
 
   const cargar = useCallback(async () => {
     const hasta = new Date();
     const desde = new Date();
     desde.setDate(desde.getDate() - dias);
-    const q = `desde=${desde.toISOString()}&hasta=${hasta.toISOString()}`;
+
+    let q = `desde=${desde.toISOString()}&hasta=${hasta.toISOString()}`;
+    if (esSuperAdmin && orgSeleccionada) {
+      q += `&organizacionId=${encodeURIComponent(orgSeleccionada)}`;
+    }
 
     const [trabajadores, actividades] = await Promise.all([
       api.get<HorasTrabajador[]>(`/reportes/horas?${q}`),
       api.get<HorasActividad[]>(`/reportes/actividades?${q}`),
     ]);
     return { trabajadores, actividades };
-  }, [dias]);
+  }, [dias, esSuperAdmin, orgSeleccionada]);
 
-  // Al volver a esta pantalla se pinta con lo ultimo visto y revalida detras.
-  const { datos, cargando, error } = useDatosCache(`reportes:${dias}`, cargar);
+  // Clave de cache reactiva al periodo y al inquilino seleccionado
+  const claveCache = `reportes:${dias}:${esSuperAdmin ? orgSeleccionada || 'global' : 'org'}`;
+  const { datos, cargando, error } = useDatosCache(claveCache, cargar);
   const trabajadores = datos?.trabajadores ?? [];
   const actividades = datos?.actividades ?? [];
 
@@ -44,30 +94,91 @@ export default function Reportes() {
 
   const totalSeg = trabajadores.reduce((s, t) => s + t.segundos, 0);
   const grafico = actividades.map((a) => ({
-    nombre: a.actividad,
+    nombre: a.actividad + (a.organizacionNombre && esSuperAdmin && !orgSeleccionada ? ` (${a.organizacionNombre})` : ''),
     valor: Number((a.segundos / 3600).toFixed(1)),
     etiqueta: duracion(a.segundos),
   }));
+
+  const orgActual = organizaciones.find((o) => o.id === orgSeleccionada);
+
+  const cambiarOrganizacion = (nuevaOrgId: string) => {
+    setOrgSeleccionada(nuevaOrgId);
+    if (nuevaOrgId) {
+      router.replace(`/reportes?organizacionId=${encodeURIComponent(nuevaOrgId)}`);
+    } else {
+      router.replace('/reportes');
+    }
+  };
 
   return (
     <Marco
       activo="/reportes"
       titulo="Reportes de horas"
-      subtitulo="Agregacion por trabajador y por actividad"
+      subtitulo={
+        esSuperAdmin
+          ? 'Métricas de productividad · Plataforma Multi-SaaS'
+          : 'Agregación por trabajador y por actividad'
+      }
       acciones={
-        <select
-          value={dias}
-          onChange={(e) => setDias(Number(e.target.value))}
-          className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-400"
-        >
-          {RANGOS.map((r) => (
-            <option key={r.dias} value={r.dias}>
-              {r.texto}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          {esSuperAdmin && (
+            <select
+              value={orgSeleccionada}
+              onChange={(e) => cambiarOrganizacion(e.target.value)}
+              className="rounded-xl border border-sky-500/30 bg-slate-900 px-3 py-2 text-sm text-sky-200 outline-none focus:border-sky-400"
+            >
+              <option value="">🏢 Todas las Empresas (Consolidado Global)</option>
+              {organizaciones.map((org) => (
+                <option key={org.id} value={org.id}>
+                  🏢 {org.nombre} ({org.plan})
+                </option>
+              ))}
+            </select>
+          )}
+
+          <select
+            value={dias}
+            onChange={(e) => setDias(Number(e.target.value))}
+            className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-400"
+          >
+            {RANGOS.map((r) => (
+              <option key={r.dias} value={r.dias}>
+                {r.texto}
+              </option>
+            ))}
+          </select>
+        </div>
       }
     >
+      {/* Banner explicativo del alcance actual para Super Admin */}
+      {esSuperAdmin && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-300">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🏢</span>
+            <div>
+              <div className="font-semibold text-white">
+                {orgActual
+                  ? `Organización Seleccionada: ${orgActual.nombre}`
+                  : 'Consolidado Global de la Plataforma'}
+              </div>
+              <p className="text-xs text-sky-300/80">
+                {orgActual
+                  ? `Visualizando exclusivamente las métricas, actividades y colaboradores de ${orgActual.nombre} (Plan ${orgActual.plan}).`
+                  : 'Mostrando datos acumulados de todas las organizaciones registradas en TimeFlow.'}
+              </p>
+            </div>
+          </div>
+          {orgActual && (
+            <button
+              onClick={() => cambiarOrganizacion('')}
+              className="rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-400/20"
+            >
+              Ver Consolidado Global
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
         <Indicador etiqueta="Horas del periodo" valor={cargando ? null : duracion(totalSeg)} />
         <Indicador
@@ -81,12 +192,22 @@ export default function Reportes() {
       </div>
 
       <section className="mb-4 rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur">
-        <h2 className="mb-4 font-bold text-white">Horas por trabajador</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-bold text-white">
+            {orgActual ? `Horas por trabajador — ${orgActual.nombre}` : 'Horas por trabajador'}
+          </h2>
+          {esSuperAdmin && orgActual && (
+            <span className="rounded-md bg-sky-500/15 px-2.5 py-0.5 text-xs font-medium text-sky-300 border border-sky-500/30">
+              Inquilino: {orgActual.nombre}
+            </span>
+          )}
+        </div>
+
         {cargando ? (
           <Esqueleto filas={3} />
         ) : trabajadores.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-500">
-            Sin registros en el periodo seleccionado.
+            Sin registros en el periodo seleccionado {orgActual ? `para ${orgActual.nombre}` : ''}.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -94,8 +215,11 @@ export default function Reportes() {
               <thead>
                 <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="pb-2 font-medium">Trabajador</th>
+                  {esSuperAdmin && !orgSeleccionada && (
+                    <th className="pb-2 font-medium">Organización</th>
+                  )}
                   <th className="pb-2 text-right font-medium">Horas</th>
-                  <th className="pb-2 text-right font-medium">Dias</th>
+                  <th className="pb-2 text-right font-medium">Días</th>
                   <th className="pb-2 text-right font-medium">Sesiones</th>
                   <th className="pb-2 text-right font-medium">Actividades</th>
                   <th className="pb-2 text-right font-medium">Promedio diario</th>
@@ -103,8 +227,13 @@ export default function Reportes() {
               </thead>
               <tbody>
                 {trabajadores.map((t) => (
-                  <tr key={t.id} className="border-b border-white/5 last:border-0">
+                  <tr key={t.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
                     <td className="py-2.5 font-medium text-white">{t.trabajador}</td>
+                    {esSuperAdmin && !orgSeleccionada && (
+                      <td className="py-2.5 text-xs font-semibold text-sky-300">
+                        {t.organizacionNombre || 'Sin asignar'}
+                      </td>
+                    )}
                     <td className="py-2.5 text-right font-mono text-slate-200">{duracion(t.segundos)}</td>
                     <td className="py-2.5 text-right text-slate-400">{t.dias}</td>
                     <td className="py-2.5 text-right text-slate-400">{t.sesiones}</td>
@@ -121,12 +250,14 @@ export default function Reportes() {
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur">
-        <h2 className="mb-4 font-bold text-white">Horas por actividad</h2>
+        <h2 className="mb-4 font-bold text-white">
+          {orgActual ? `Horas por actividad — ${orgActual.nombre}` : 'Horas por actividad'}
+        </h2>
         {cargando ? (
           <Esqueleto filas={5} />
         ) : grafico.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-500">
-            Sin registros en el periodo seleccionado.
+            Sin registros en el periodo seleccionado {orgActual ? `para ${orgActual.nombre}` : ''}.
           </p>
         ) : (
           <GraficoBarras datos={grafico} unidad="h" />

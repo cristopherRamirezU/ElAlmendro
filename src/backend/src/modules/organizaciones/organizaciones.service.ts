@@ -1,0 +1,246 @@
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import * as argon2 from 'argon2';
+import { PrismaService } from '../../infra/prisma/prisma.service';
+import { CrearOrganizacionDto } from './dto/crear-organizacion.dto';
+import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto';
+import { PlanSaaS, Rol } from '@prisma/client';
+
+@Injectable()
+export class OrganizacionesService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async listar(buscar?: string, activo?: boolean) {
+    const where: any = {};
+    if (activo !== undefined) {
+      where.activo = activo;
+    }
+    if (buscar && buscar.trim().length > 0) {
+      const q = buscar.trim();
+      where.OR = [
+        { nombre: { contains: q, mode: 'insensitive' } },
+        { slug: { contains: q, mode: 'insensitive' } },
+        { rut: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const organizaciones = await this.prisma.organizacion.findMany({
+      where,
+      orderBy: { creadoEn: 'desc' },
+      include: {
+        _count: {
+          select: {
+            usuarios: true,
+            proyectos: true,
+          },
+        },
+      },
+    });
+
+    return organizaciones.map((org) => ({
+      id: org.id,
+      nombre: org.nombre,
+      slug: org.slug,
+      rut: org.rut,
+      plan: org.plan,
+      maxUsuarios: org.maxUsuarios,
+      maxProyectos: org.maxProyectos,
+      activo: org.activo,
+      creadoEn: org.creadoEn,
+      actualizadoEn: org.actualizadoEn,
+      totalUsuarios: org._count.usuarios,
+      totalProyectos: org._count.proyectos,
+    }));
+  }
+
+  async obtenerPorId(id: string) {
+    const org = await this.prisma.organizacion.findUnique({
+      where: { id },
+      include: {
+        usuarios: {
+          select: {
+            id: true,
+            email: true,
+            nombreCompleto: true,
+            rol: true,
+            activo: true,
+            creadoEn: true,
+          },
+          orderBy: { creadoEn: 'desc' },
+        },
+        proyectos: {
+          select: {
+            id: true,
+            nombre: true,
+            estado: true,
+            creadoEn: true,
+          },
+          orderBy: { creadoEn: 'desc' },
+        },
+        _count: {
+          select: {
+            usuarios: true,
+            proyectos: true,
+          },
+        },
+      },
+    });
+
+    if (!org) {
+      throw new NotFoundException('Organización no encontrada.');
+    }
+
+    return {
+      ...org,
+      totalUsuarios: org._count.usuarios,
+      totalProyectos: org._count.proyectos,
+    };
+  }
+
+  async crear(dto: CrearOrganizacionDto, actorId?: string) {
+    const slug = dto.slug.toLowerCase().trim();
+
+    const existeSlug = await this.prisma.organizacion.findUnique({
+      where: { slug },
+    });
+    if (existeSlug) {
+      throw new ConflictException(`Ya existe una organización con el slug "${slug}".`);
+    }
+
+    if (dto.rut && dto.rut.trim().length > 0) {
+      const existeRut = await this.prisma.organizacion.findUnique({
+        where: { rut: dto.rut.trim() },
+      });
+      if (existeRut) {
+        throw new ConflictException(`Ya existe una organización con el RUT "${dto.rut.trim()}".`);
+      }
+    }
+
+    if (dto.adminEmail) {
+      const existeEmail = await this.prisma.usuario.findUnique({
+        where: { email: dto.adminEmail.toLowerCase().trim() },
+      });
+      if (existeEmail) {
+        throw new ConflictException(`El correo "${dto.adminEmail}" ya está registrado para otro usuario.`);
+      }
+    }
+
+    return await this.prisma.$transaction(async (tx) => {
+      const org = await tx.organizacion.create({
+        data: {
+          nombre: dto.nombre.trim(),
+          slug,
+          rut: dto.rut ? dto.rut.trim() : null,
+          plan: dto.plan ?? PlanSaaS.GRATIS,
+          maxUsuarios: dto.maxUsuarios ?? 10,
+          maxProyectos: dto.maxProyectos ?? 5,
+          activo: true,
+        },
+      });
+
+      if (dto.adminEmail && dto.adminPassword) {
+        const hash = await argon2.hash(dto.adminPassword);
+        await tx.usuario.create({
+          data: {
+            email: dto.adminEmail.toLowerCase().trim(),
+            hashContrasena: hash,
+            nombreCompleto: (dto.adminNombre || 'Administrador').trim(),
+            rol: Rol.ADMINISTRADOR,
+            organizacionId: org.id,
+          },
+        });
+      }
+
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: actorId ?? null,
+          organizacionId: org.id,
+          accion: 'ORGANIZACION_CREADA',
+          tipoEntidad: 'Organizacion',
+          entidadId: org.id,
+          valorNuevo: { nombre: org.nombre, slug: org.slug, plan: org.plan } as any,
+        },
+      });
+
+      return org;
+    });
+  }
+
+  async actualizar(id: string, dto: ActualizarOrganizacionDto, actorId?: string) {
+    const org = await this.prisma.organizacion.findUnique({
+      where: { id },
+    });
+    if (!org) {
+      throw new NotFoundException('Organización no encontrada.');
+    }
+
+    if (dto.rut && dto.rut.trim() !== org.rut) {
+      const existeRut = await this.prisma.organizacion.findUnique({
+        where: { rut: dto.rut.trim() },
+      });
+      if (existeRut && existeRut.id !== id) {
+        throw new ConflictException(`Ya existe una organización con el RUT "${dto.rut.trim()}".`);
+      }
+    }
+
+    const data: any = {};
+    if (dto.nombre !== undefined) data.nombre = dto.nombre.trim();
+    if (dto.rut !== undefined) data.rut = dto.rut ? dto.rut.trim() : null;
+    if (dto.plan !== undefined) data.plan = dto.plan;
+    if (dto.maxUsuarios !== undefined) data.maxUsuarios = dto.maxUsuarios;
+    if (dto.maxProyectos !== undefined) data.maxProyectos = dto.maxProyectos;
+    if (dto.activo !== undefined) data.activo = dto.activo;
+
+    const actualizada = await this.prisma.organizacion.update({
+      where: { id },
+      data,
+    });
+
+    await this.prisma.registroAuditoria.create({
+      data: {
+        actorId: actorId ?? null,
+        organizacionId: id,
+        accion: 'ORGANIZACION_ACTUALIZADA',
+        tipoEntidad: 'Organizacion',
+        entidadId: id,
+        valorAnterior: { plan: org.plan, activo: org.activo, maxUsuarios: org.maxUsuarios } as any,
+        valorNuevo: data as any,
+      },
+    });
+
+    return actualizada;
+  }
+
+  async obtenerMetricasGlobales() {
+    const [totalOrganizaciones, activas, inactivas, totalUsuarios, totalProyectos, planes] =
+      await Promise.all([
+        this.prisma.organizacion.count(),
+        this.prisma.organizacion.count({ where: { activo: true } }),
+        this.prisma.organizacion.count({ where: { activo: false } }),
+        this.prisma.usuario.count({ where: { rol: { not: Rol.SUPER_ADMIN } } }),
+        this.prisma.proyecto.count(),
+        this.prisma.organizacion.groupBy({
+          by: ['plan'],
+          _count: { id: true },
+        }),
+      ]);
+
+    const distribucionPlanes: Record<string, number> = {
+      GRATIS: 0,
+      PRO: 0,
+      EMPRESA: 0,
+    };
+
+    planes.forEach((p) => {
+      distribucionPlanes[p.plan] = p._count.id;
+    });
+
+    return {
+      totalOrganizaciones,
+      activas,
+      inactivas,
+      totalUsuarios,
+      totalProyectos,
+      distribucionPlanes,
+    };
+  }
+}

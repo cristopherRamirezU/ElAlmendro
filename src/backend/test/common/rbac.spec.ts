@@ -66,6 +66,20 @@ describe('rbac', () => {
       expect(conGestion).toEqual(['ADMINISTRADOR']);
     });
 
+    it('solo el SUPER_ADMIN gestiona organizaciones SaaS', () => {
+      const conGestionSaaS = (Object.keys(ROLES_PERMISOS) as Rol[]).filter((rol) =>
+        ROLES_PERMISOS[rol].includes(PERMISOS.ORGANIZACIONES_GESTIONAR),
+      );
+
+      expect(conGestionSaaS).toEqual(['SUPER_ADMIN']);
+    });
+
+    it('los roles de inquilino (ADMIN, SUPERVISOR, TRABAJADOR) no tienen permisos SaaS', () => {
+      expect(ROLES_PERMISOS.ADMINISTRADOR).not.toContain(PERMISOS.ORGANIZACIONES_GESTIONAR);
+      expect(ROLES_PERMISOS.SUPERVISOR).not.toContain(PERMISOS.ORGANIZACIONES_GESTIONAR);
+      expect(ROLES_PERMISOS.TRABAJADOR).not.toContain(PERMISOS.ORGANIZACIONES_GESTIONAR);
+    });
+
     it('no hay permisos huerfanos: cada codigo lo usa al menos un rol', () => {
       const asignados = new Set<string>(Object.values(ROLES_PERMISOS).flat());
       const huerfanos = Object.values(PERMISOS).filter((p) => !asignados.has(p));

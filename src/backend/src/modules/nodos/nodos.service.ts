@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
 
@@ -7,8 +7,7 @@ import { UsuarioActual } from '../../common/usuario-actual.decorator';
  *
  * El arbol expresa composicion: que actividad forma parte de que agrupacion.
  * La derivacion es un hecho historico distinto: que actividad paso de un
- * responsable a otro, cuando y por que motivo. Por eso son dos consultas y no
- * una sola.
+ * responsable a otro, cuando y por que motivo.
  */
 @Injectable()
 export class NodosService {
@@ -17,18 +16,62 @@ export class NodosService {
   async arbol(u: UsuarioActual, proyectoId?: string) {
     const esTrabajador = u.rol === 'TRABAJADOR';
 
+    // Si se consulta un proyecto especifico, validar organizacion y que el trabajador este asignado
+    if (proyectoId) {
+      const proyecto = await this.prisma.proyecto.findFirst({
+        where: {
+          id: proyectoId,
+          eliminadoEn: null,
+          ...(u.rol === 'SUPER_ADMIN' ? {} : u.organizacionId ? { organizacionId: u.organizacionId } : {}),
+        },
+        select: {
+          id: true,
+          propietarioId: true,
+          miembros: { select: { usuarioId: true } },
+        },
+      });
+
+      if (!proyecto) {
+        throw new NotFoundException('El proyecto no existe o no tienes acceso.');
+      }
+
+      if (esTrabajador) {
+        const tieneTarea = await this.prisma.actividad.findFirst({
+          where: { proyectoId, responsableId: u.id, eliminadoEn: null },
+          select: { id: true },
+        });
+
+        const estaAsignado =
+          proyecto.propietarioId === u.id ||
+          proyecto.miembros.some((m) => m.usuarioId === u.id) ||
+          Boolean(tieneTarea);
+
+        if (!estaAsignado) {
+          throw new ForbiddenException('No estás asignado a este proyecto.');
+        }
+      }
+    }
+
     const actividades = await this.prisma.actividad.findMany({
       where: {
         eliminadoEn: null,
-        ...(proyectoId ? { proyectoId } : {}),
-        ...(esTrabajador
-          ? {
-              OR: [
-                { responsableId: u.id },
-                { hijas: { some: { responsableId: u.id, eliminadoEn: null } } },
-              ],
-            }
-          : {}),
+        ...(proyectoId
+          ? { proyectoId }
+          : {
+              proyecto: {
+                eliminadoEn: null,
+                ...(u.rol === 'SUPER_ADMIN' ? {} : u.organizacionId ? { organizacionId: u.organizacionId } : {}),
+                ...(esTrabajador
+                  ? {
+                      OR: [
+                        { propietarioId: u.id },
+                        { miembros: { some: { usuarioId: u.id } } },
+                        { actividades: { some: { responsableId: u.id, eliminadoEn: null } } },
+                      ],
+                    }
+                  : {}),
+              },
+            }),
       },
       orderBy: [{ actividadPadreId: 'asc' }, { orden: 'asc' }],
       select: {
@@ -47,11 +90,27 @@ export class NodosService {
     });
 
     const derivaciones = await this.prisma.derivacion.findMany({
-      where: esTrabajador
-        ? {
-            OR: [{ deUsuarioId: u.id }, { aUsuarioId: u.id }],
-          }
-        : undefined,
+      where: {
+        actividad: {
+          eliminadoEn: null,
+          ...(proyectoId
+            ? { proyectoId }
+            : {
+                proyecto: {
+                  ...(u.rol === 'SUPER_ADMIN' ? {} : u.organizacionId ? { organizacionId: u.organizacionId } : {}),
+                  ...(esTrabajador
+                    ? {
+                        OR: [
+                          { propietarioId: u.id },
+                          { miembros: { some: { usuarioId: u.id } } },
+                          { actividades: { some: { responsableId: u.id, eliminadoEn: null } } },
+                        ],
+                      }
+                    : {}),
+                },
+              }),
+        },
+      },
       orderBy: { ocurridoEn: 'desc' },
       take: 20,
       select: {

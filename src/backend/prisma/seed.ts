@@ -15,6 +15,7 @@
 import {
   EstadoActividad,
   EstadoSprint,
+  PlanSaaS,
   Prioridad,
   PrismaClient,
   Rol,
@@ -27,6 +28,7 @@ const prisma = new PrismaClient();
 // se crean a mano y nunca se versionan.
 const CLAVE_DEMO = 'Timeflow2026!';
 const CLAVE_ADMIN = '12345';
+const CLAVE_SUPERADMIN = 'SuperAdmin2026!';
 
 /**
  * Dias corridos hacia atras que se generan de historial.
@@ -39,50 +41,93 @@ const DIAS_HISTORIAL = 90;
 async function main() {
   const hash = await argon2.hash(CLAVE_DEMO);
   const hashAdmin = await argon2.hash(CLAVE_ADMIN);
+  const hashSuperAdmin = await argon2.hash(CLAVE_SUPERADMIN);
+
+  // ----------------------------------------------------------- organizacion
+  const organizacion = await prisma.organizacion.upsert({
+    where: { slug: 'el-almendro' },
+    update: {},
+    create: {
+      id: 'a0000000-0000-0000-0000-000000000001',
+      nombre: 'El Almendro',
+      slug: 'el-almendro',
+      plan: PlanSaaS.EMPRESA,
+      maxUsuarios: 100,
+      maxProyectos: 50,
+      activo: true,
+    },
+  });
+
+  // ----------------------------------------------------------- super admin
+  await prisma.usuario.upsert({
+    where: { email: 'superadmin@timeflow.cl' },
+    update: {
+      rol: Rol.SUPER_ADMIN,
+    },
+    create: {
+      email: 'superadmin@timeflow.cl',
+      hashContrasena: hashSuperAdmin,
+      nombreCompleto: 'Super Administrador SaaS',
+      rol: Rol.SUPER_ADMIN,
+      organizacionId: null,
+    },
+  });
 
   // ----------------------------------------------------------- usuarios
 
   const admin = await prisma.usuario.upsert({
     where: { email: 'admin@admin.cl' },
-    update: {},
+    update: {
+      organizacionId: organizacion.id,
+    },
     create: {
       email: 'admin@admin.cl',
       hashContrasena: hashAdmin,
       nombreCompleto: 'Administrador TimeFlow',
       rol: Rol.ADMINISTRADOR,
+      organizacionId: organizacion.id,
     },
   });
 
   const trabajador = await prisma.usuario.upsert({
     where: { email: 'trabajador@timeflow.cl' },
-    update: {},
+    update: {
+      organizacionId: organizacion.id,
+    },
     create: {
       email: 'trabajador@timeflow.cl',
       hashContrasena: hash,
       nombreCompleto: 'Camila Soto',
       rol: Rol.TRABAJADOR,
+      organizacionId: organizacion.id,
     },
   });
 
   const segundo = await prisma.usuario.upsert({
     where: { email: 'trabajador2@timeflow.cl' },
-    update: {},
+    update: {
+      organizacionId: organizacion.id,
+    },
     create: {
       email: 'trabajador2@timeflow.cl',
       hashContrasena: hash,
       nombreCompleto: 'Diego Fuentes',
       rol: Rol.TRABAJADOR,
+      organizacionId: organizacion.id,
     },
   });
 
   const supervisor = await prisma.usuario.upsert({
     where: { email: 'supervisor@timeflow.cl' },
-    update: {},
+    update: {
+      organizacionId: organizacion.id,
+    },
     create: {
       email: 'supervisor@timeflow.cl',
       hashContrasena: hash,
       nombreCompleto: 'Valeria Miranda',
       rol: (Rol as any).SUPERVISOR ?? 'SUPERVISOR',
+      organizacionId: organizacion.id,
     },
   });
 
@@ -97,6 +142,7 @@ async function main() {
         nombre: 'Plataforma El Almendro',
         descripcion: 'Proyecto de ejemplo para el entorno de desarrollo.',
         propietarioId: admin.id,
+        organizacionId: organizacion.id,
         miembros: {
           create: [
             { usuarioId: admin.id, rolEnProyecto: 'LIDER' },
@@ -294,9 +340,10 @@ async function main() {
 
   // ----------------------------------------------------------- historial
 
-  await generarHistorial(trabajador.id, segundo.id, proyecto.id);
+  await generarHistorial(trabajador.id, segundo.id, proyecto.id, organizacion.id);
 
   console.log('\n  Datos iniciales listos.\n');
+  console.log(`    superadmin@timeflow.cl   / ${CLAVE_SUPERADMIN} (Super Administrador SaaS)`);
   console.log(`    admin@admin.cl           / ${CLAVE_ADMIN}       (administrador)`);
   console.log(`    supervisor@timeflow.cl   / ${CLAVE_DEMO}   (Valeria Miranda - supervisor)`);
   console.log(`    trabajador@timeflow.cl   / ${CLAVE_DEMO}   (Camila Soto)`);
@@ -322,6 +369,7 @@ async function generarHistorial(
   trabajadorId: string,
   segundoId: string,
   proyectoId: string,
+  organizacionId: string,
 ) {
   const yaHayHistorial = await prisma.sesionTrabajo.count();
   if (yaHayHistorial > 0) return;
@@ -399,6 +447,7 @@ async function generarHistorial(
       const jornada = await prisma.jornada.create({
         data: {
           usuarioId,
+          organizacionId,
           inicioEn: inicioJornada,
           estado: abierta ? 'ABIERTA' : 'CERRADA',
           terminoEn: abierta ? null : finJornada,

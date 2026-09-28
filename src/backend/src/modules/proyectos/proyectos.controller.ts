@@ -24,7 +24,7 @@ export class ProyectosController {
 
   @Post()
   crear(@Usuario() u: UsuarioActual, @Body() dto: CrearProyectoDto) {
-    return this.proyectos.crear(u.id, dto);
+    return this.proyectos.crear(u, dto);
   }
 
   @Patch(':id')
@@ -62,4 +62,11 @@ export class ProyectosController {
   ) {
     return this.proyectos.quitarMiembro(id, u.id, usuarioId);
   }
+
+  /** Elimina un proyecto y todos sus nodos asociados (Solo Administrador / Super Admin). */
+  @Delete(':id')
+  eliminar(@Param('id') id: string, @Usuario() u: UsuarioActual) {
+    return this.proyectos.eliminar(id, u);
+  }
 }
+

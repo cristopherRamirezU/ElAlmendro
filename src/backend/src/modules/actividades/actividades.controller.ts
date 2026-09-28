@@ -106,4 +106,14 @@ export class ActividadesController {
   ) {
     return this.actividades.reasignar(id, u.id, dto);
   }
+
+  /** Elimina un nodo (actividad) y sus ramas dependientes (Solo Administrador / Super Admin). */
+  @Delete(':id')
+  eliminar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Usuario() u: UsuarioActual,
+  ) {
+    return this.actividades.eliminar(id, u);
+  }
 }
+

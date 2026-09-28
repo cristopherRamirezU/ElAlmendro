@@ -35,6 +35,9 @@ export class AuthService {
   async login(dto: LoginDto) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { email: dto.email.toLowerCase().trim() },
+      include: {
+        organizacion: true,
+      },
     });
 
     const generico = new UnauthorizedException('Correo o contrasena incorrectos.');
@@ -47,6 +50,10 @@ export class AuthService {
       throw new UnauthorizedException('Cuenta suspendida por el administrador.');
     }
 
+    if (usuario.organizacion && !usuario.organizacion.activo) {
+      throw new UnauthorizedException('Tu organización se encuentra suspendida. Contacta a soporte.');
+    }
+
     const permisos = obtenerPermisosDeRol(usuario.rol);
 
     const token = await this.jwt.signAsync(
@@ -56,6 +63,9 @@ export class AuthService {
         rol: usuario.rol,
         nombre: usuario.nombreCompleto,
         permisos,
+        organizacionId: usuario.organizacionId ?? null,
+        organizacionNombre: usuario.organizacion?.nombre ?? null,
+        organizacionSlug: usuario.organizacion?.slug ?? null,
       },
       {
         secret: process.env.JWT_ACCESO_SECRET ?? process.env.JWT_ACCESS_SECRET,
@@ -68,6 +78,7 @@ export class AuthService {
     await this.prisma.registroAuditoria.create({
       data: {
         actorId: usuario.id,
+        organizacionId: usuario.organizacionId ?? undefined,
         // Distinto de SESION_INICIADA, que corresponde al inicio de una
         // sesion de trabajo cronometrada.
         accion: 'INICIO_SESION',
@@ -84,6 +95,13 @@ export class AuthService {
         nombreCompleto: usuario.nombreCompleto,
         rol: usuario.rol,
         permisos,
+        organizacionId: usuario.organizacionId,
+        organizacion: usuario.organizacion ? {
+          id: usuario.organizacion.id,
+          nombre: usuario.organizacion.nombre,
+          slug: usuario.organizacion.slug,
+          plan: usuario.organizacion.plan,
+        } : null,
       },
     };
   }

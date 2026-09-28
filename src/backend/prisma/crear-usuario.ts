@@ -40,8 +40,8 @@ async function main() {
   }
 
   const rol = rolPedido.toUpperCase();
-  if (rol !== 'TRABAJADOR' && rol !== 'ADMINISTRADOR' && rol !== 'SUPERVISOR') {
-    abortar(`Rol no valido: "${rolPedido}". Usa TRABAJADOR, SUPERVISOR o ADMINISTRADOR.`);
+  if (rol !== 'TRABAJADOR' && rol !== 'ADMINISTRADOR' && rol !== 'SUPERVISOR' && rol !== 'SUPER_ADMIN') {
+    abortar(`Rol no valido: "${rolPedido}". Usa TRABAJADOR, SUPERVISOR, ADMINISTRADOR o SUPER_ADMIN.`);
   }
 
   const email = correo.toLowerCase().trim();
@@ -51,12 +51,19 @@ async function main() {
     abortar(`Ya existe un usuario con el correo ${email}.`);
   }
 
+  let organizacionId: string | null = null;
+  if (rol !== 'SUPER_ADMIN') {
+    const org = await prisma.organizacion.findFirst();
+    organizacionId = org?.id ?? 'a0000000-0000-0000-0000-000000000001';
+  }
+
   const usuario = await prisma.usuario.create({
     data: {
       email,
       nombreCompleto: nombre.trim(),
       hashContrasena: await argon2.hash(clave),
       rol: rol as Rol,
+      organizacionId,
     },
   });
 

@@ -2,9 +2,13 @@
  * Contratos y lógica de control de acceso basado en roles (RBAC) para Frontend.
  */
 
-export type Rol = 'ADMINISTRADOR' | 'SUPERVISOR' | 'TRABAJADOR';
+export type Rol = 'SUPER_ADMIN' | 'ADMINISTRADOR' | 'SUPERVISOR' | 'TRABAJADOR';
 
 export const PERMISOS = {
+  // Módulo SaaS Global (Super Admin)
+  ORGANIZACIONES_GESTIONAR: 'organizaciones:gestionar',
+  ORGANIZACIONES_VER: 'organizaciones:ver',
+
   // Módulo Jornada / Presencia
   JORNADA_REGISTRAR: 'jornada:registrar',
 
@@ -39,6 +43,13 @@ export type PermisoCodigo = (typeof PERMISOS)[keyof typeof PERMISOS];
 
 /** Matriz de asignación de permisos según el rol del usuario. */
 export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
+  SUPER_ADMIN: [
+    PERMISOS.ORGANIZACIONES_GESTIONAR,
+    PERMISOS.ORGANIZACIONES_VER,
+    PERMISOS.REPORTES_VER_EQUIPO,
+    PERMISOS.DASHBOARD_VER_RESUMEN,
+    PERMISOS.USUARIOS_VER,
+  ],
   ADMINISTRADOR: [
     PERMISOS.JORNADA_REGISTRAR,
     PERMISOS.SESION_CRONOMETRAR,
@@ -85,6 +96,12 @@ export interface RolDetalle {
 }
 
 export const ROLES_CATALOGO: readonly RolDetalle[] = [
+  {
+    codigo: 'SUPER_ADMIN',
+    nombre: 'Super Administrador SaaS',
+    descripcion: 'Control y administración global de organizaciones clientes, asignación de planes SaaS, límites y métricas de la plataforma.',
+    permisos: ROLES_PERMISOS.SUPER_ADMIN,
+  },
   {
     codigo: 'ADMINISTRADOR',
     nombre: 'Administrador',

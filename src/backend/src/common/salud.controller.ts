@@ -19,3 +19,18 @@ export class SaludController {
     };
   }
 }
+
+/** Raiz de la API para responder amigablemente en /api en lugar de 404 */
+@Controller()
+export class ApiRaizController {
+  @Get()
+  raiz() {
+    return {
+      sistema: 'TimeFlow API - Plataforma Multi-SaaS',
+      version: '0.1.0',
+      estado: 'operativo',
+      documentacion: '/api/docs',
+      salud: '/api/salud',
+    };
+  }
+}

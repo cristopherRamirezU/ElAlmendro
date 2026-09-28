@@ -19,19 +19,37 @@ export class JornadaService {
     });
   }
 
-  async entrada(usuarioId: string) {
+  async entrada(usuarioId: string, organizacionId?: string | null) {
     const abierta = await this.actual(usuarioId);
     if (abierta) {
       throw new BadRequestException('Ya tienes una jornada abierta.');
     }
 
+    let orgId = organizacionId;
+    if (!orgId) {
+      const u = await this.prisma.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { organizacionId: true },
+      });
+      orgId = u?.organizacionId ?? null;
+      if (!orgId) {
+        const primeraOrg = await this.prisma.organizacion.findFirst();
+        orgId = primeraOrg?.id ?? null;
+      }
+    }
+
+    if (!orgId) {
+      throw new BadRequestException('No se encontró una organización asociada.');
+    }
+
     const jornada = await this.prisma.jornada.create({
-      data: { usuarioId, estado: 'ABIERTA' },
+      data: { usuarioId, organizacionId: orgId, estado: 'ABIERTA' },
     });
 
     await this.prisma.registroAuditoria.create({
       data: {
         actorId: usuarioId,
+        organizacionId: orgId,
         accion: 'JORNADA_ABIERTA',
         tipoEntidad: 'Jornada',
         entidadId: jornada.id,

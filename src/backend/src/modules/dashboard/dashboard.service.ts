@@ -1,16 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
+import { UsuarioActual } from '../../common/usuario-actual.decorator';
 
 /** US-09 — indicadores del panel del administrador. */
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resumen() {
+  async resumen(u: UsuarioActual) {
+    const orgId = u.rol === 'SUPER_ADMIN' ? null : u.organizacionId;
+    const whereUsuarioOrg = orgId ? { usuario: { organizacionId: orgId } } : {};
+    const whereJornadaOrg = orgId ? { organizacionId: orgId } : {};
+    const whereActividadOrg = orgId ? { proyecto: { organizacionId: orgId } } : {};
+
     const [trabajando, enJornada, porEstado, hoy, semana] = await Promise.all([
       // Quien esta cronometrando en este momento.
       this.prisma.sesionTrabajo.findMany({
-        where: { estado: { in: ['ACTIVA', 'PAUSADA'] } },
+        where: { estado: { in: ['ACTIVA', 'PAUSADA'] }, ...whereUsuarioOrg },
         select: {
           id: true,
           estado: true,
@@ -19,14 +25,14 @@ export class DashboardService {
           actividad: { select: { titulo: true } },
         },
       }),
-      this.prisma.jornada.count({ where: { terminoEn: null } }),
+      this.prisma.jornada.count({ where: { terminoEn: null, ...whereJornadaOrg } }),
       this.prisma.actividad.groupBy({
         by: ['estado'],
-        where: { eliminadoEn: null },
+        where: { eliminadoEn: null, ...whereActividadOrg },
         _count: { _all: true },
       }),
-      this.segundos('hoy'),
-      this.segundos('semana'),
+      this.segundos('hoy', orgId),
+      this.segundos('semana', orgId),
     ]);
 
     return {
@@ -42,18 +48,32 @@ export class DashboardService {
   }
 
   /** Segundos trabajados por todo el equipo en el periodo indicado. */
-  private async segundos(periodo: 'hoy' | 'semana'): Promise<number> {
-    const filas = await this.prisma.$queryRaw<{ segundos: number }[]>`
-      SELECT COALESCE(SUM(
-               EXTRACT(EPOCH FROM (COALESCE(t."terminoEn", now()) - t."inicioEn"))
-             ), 0)::int AS segundos
-        FROM tramos_sesion t
-       WHERE (t."inicioEn" AT TIME ZONE 'America/Santiago')::date
-             >= (CASE WHEN ${periodo} = 'hoy'
-                      THEN (now() AT TIME ZONE 'America/Santiago')::date
-                      ELSE (now() AT TIME ZONE 'America/Santiago')::date - 6
-                 END)
-    `;
+  private async segundos(periodo: 'hoy' | 'semana', orgId?: string | null): Promise<number> {
+    const filas = orgId
+      ? await this.prisma.$queryRaw<{ segundos: number }[]>`
+          SELECT COALESCE(SUM(
+                   EXTRACT(EPOCH FROM (COALESCE(t."terminoEn", now()) - t."inicioEn"))
+                 ), 0)::int AS segundos
+            FROM tramos_sesion t
+            JOIN usuarios u ON u.id = t."usuarioId"
+           WHERE u."organizacionId" = ${orgId}::uuid
+             AND (t."inicioEn" AT TIME ZONE 'America/Santiago')::date
+                 >= (CASE WHEN ${periodo} = 'hoy'
+                          THEN (now() AT TIME ZONE 'America/Santiago')::date
+                          ELSE (now() AT TIME ZONE 'America/Santiago')::date - 6
+                     END)
+        `
+      : await this.prisma.$queryRaw<{ segundos: number }[]>`
+          SELECT COALESCE(SUM(
+                   EXTRACT(EPOCH FROM (COALESCE(t."terminoEn", now()) - t."inicioEn"))
+                 ), 0)::int AS segundos
+            FROM tramos_sesion t
+           WHERE (t."inicioEn" AT TIME ZONE 'America/Santiago')::date
+                 >= (CASE WHEN ${periodo} = 'hoy'
+                          THEN (now() AT TIME ZONE 'America/Santiago')::date
+                          ELSE (now() AT TIME ZONE 'America/Santiago')::date - 6
+                     END)
+        `;
     return Number(filas[0]?.segundos ?? 0);
   }
 

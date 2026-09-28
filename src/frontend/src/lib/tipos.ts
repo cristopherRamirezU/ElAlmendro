@@ -21,6 +21,7 @@ export interface SesionDelDia {
 export interface HorasTrabajador {
   id: string;
   trabajador: string;
+  organizacionNombre?: string | null;
   segundos: number;
   sesiones: number;
   actividades: number;
@@ -29,6 +30,7 @@ export interface HorasTrabajador {
 
 export interface HorasActividad {
   actividad: string;
+  organizacionNombre?: string | null;
   estado: string;
   segundos: number;
 }
@@ -40,7 +42,8 @@ export interface NodoActividad {
   prioridad: string;
   actividadPadreId: string | null;
   posicionNodo: { x: number; y: number } | null;
-  responsable: { nombreCompleto: string };
+  responsableId?: string;
+  responsable: { id?: string; nombreCompleto: string };
   /** Monedas (microtareas) de la bolsa y cuantas estan marcadas. */
   monedas: number;
   monedasListas: number;

@@ -9,6 +9,9 @@ export interface UsuarioActual {
   rol: Rol;
   nombreCompleto: string;
   permisos: PermisoCodigo[];
+  organizacionId: string | null;
+  organizacionNombre?: string | null;
+  organizacionSlug?: string | null;
 }
 
 export const Usuario = createParamDecorator(
