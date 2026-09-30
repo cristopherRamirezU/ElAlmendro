@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { filtroOrganizacion } from '../../common/organizacion';
 
 /**
  * US-05 y US-06 — mapa de nodos y derivaciones.
@@ -22,7 +23,7 @@ export class NodosService {
         where: {
           id: proyectoId,
           eliminadoEn: null,
-          ...(u.rol === 'SUPER_ADMIN' ? {} : u.organizacionId ? { organizacionId: u.organizacionId } : {}),
+          ...filtroOrganizacion(u),
         },
         select: {
           id: true,
@@ -60,7 +61,7 @@ export class NodosService {
           : {
               proyecto: {
                 eliminadoEn: null,
-                ...(u.rol === 'SUPER_ADMIN' ? {} : u.organizacionId ? { organizacionId: u.organizacionId } : {}),
+                ...filtroOrganizacion(u),
                 ...(esTrabajador
                   ? {
                       OR: [
@@ -83,6 +84,10 @@ export class NodosService {
         posicionNodo: true,
         responsableId: true,
         responsable: { select: { id: true, nombreCompleto: true } },
+        // Fechas de la carta Gantt: nace, vence y se guarda en el cofre.
+        creadoEn: true,
+        fechaLimite: true,
+        completadaEn: true,
         // Monedas de cada bolsa: con ellas la vista dibuja cuanto lleva
         // llena la tarea sin pedir el detalle de una en una.
         subtareas: { select: { completada: true } },
@@ -97,7 +102,7 @@ export class NodosService {
             ? { proyectoId }
             : {
                 proyecto: {
-                  ...(u.rol === 'SUPER_ADMIN' ? {} : u.organizacionId ? { organizacionId: u.organizacionId } : {}),
+                  ...filtroOrganizacion(u),
                   ...(esTrabajador
                     ? {
                         OR: [
@@ -123,9 +128,21 @@ export class NodosService {
       },
     });
 
+    // Cuando se empezo a trabajar de verdad cada bolsa: la primera vez que se
+    // encendio su cronometro. En el Gantt separa la espera del trabajo.
+    const primerasSesiones = actividades.length
+      ? await this.prisma.sesionTrabajo.groupBy({
+          by: ['actividadId'],
+          where: { actividadId: { in: actividades.map((a) => a.id) } },
+          _min: { inicioEn: true },
+        })
+      : [];
+    const inicioTrabajo = new Map(primerasSesiones.map((s) => [s.actividadId, s._min.inicioEn]));
+
     return {
       actividades: actividades.map(({ subtareas, ...a }) => ({
         ...a,
+        inicioTrabajoEn: inicioTrabajo.get(a.id) ?? null,
         monedas: subtareas.length,
         monedasListas: subtareas.filter((m) => m.completada).length,
       })),

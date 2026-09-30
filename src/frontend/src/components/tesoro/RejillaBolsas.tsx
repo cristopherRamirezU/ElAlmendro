@@ -6,6 +6,10 @@ import { ESTADOS, PRIORIDADES } from '@/lib/formato';
 import { NodoActividad } from '@/lib/tipos';
 import { useTesoro } from '@/lib/tesoro';
 import BolsaOro from './BolsaOro';
+import GanttBolsas from './GanttBolsas';
+import { llenadoDeBolsa } from './llenado';
+
+export { llenadoDeBolsa };
 
 type Filtro = 'todas' | 'en_curso' | 'guardadas' | 'alta';
 
@@ -16,17 +20,25 @@ const FILTROS: { clave: Filtro; texto: string }[] = [
   { clave: 'alta', texto: 'Prioridad alta' },
 ];
 
-/** Cuanto oro tiene la bolsa: sus monedas marcadas, o su estado si no tiene. */
-export function llenadoDeBolsa(a: Pick<NodoActividad, 'estado' | 'monedas' | 'monedasListas'>) {
-  if (a.estado === 'COMPLETADA') return 1;
-  if (a.monedas > 0) return a.monedasListas / a.monedas;
-  return a.estado === 'EN_PROGRESO' ? 0.45 : 0.08;
+type Vista = 'gantt' | 'rejilla';
+const CLAVE_VISTA = 'tf_vista_bolsas';
+
+/** La vista elegida se recuerda en el navegador; por defecto, el Gantt. */
+function vistaGuardada(): Vista {
+  try {
+    return window.localStorage.getItem(CLAVE_VISTA) === 'rejilla' ? 'rejilla' : 'gantt';
+  } catch {
+    return 'gantt';
+  }
 }
 
 /**
  * Las bolsas de un proyecto. Cada tarea es una bolsa que se va llenando con
  * sus monedas; al tocarla se abre en la ventana flotante, donde se cronometra
  * y se guarda en el cofre.
+ *
+ * Se ven como carta Gantt (cuando nacio y cuando se guardo cada bolsa) o como
+ * rejilla. Ambas vistas comparten filtros, busqueda y la ventana flotante.
  */
 export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
   const { abrirBolsa, bolsa, version } = useTesoro();
@@ -34,6 +46,18 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [busqueda, setBusqueda] = useState('');
+  const [vista, setVista] = useState<Vista>('gantt');
+
+  useEffect(() => setVista(vistaGuardada()), []);
+
+  const elegirVista = (v: Vista) => {
+    setVista(v);
+    try {
+      window.localStorage.setItem(CLAVE_VISTA, v);
+    } catch {
+      /* sin almacenamiento: la eleccion dura hasta recargar */
+    }
+  };
 
   const cargar = useCallback(async () => {
     const d = await api.get<{ actividades: NodoActividad[] }>(`/nodos?proyectoId=${proyectoId}`);
@@ -95,7 +119,7 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div className="mb-3 flex flex-wrap items-center gap-1.5">
         {FILTROS.map((f) => (
           <button
             key={f.clave}
@@ -109,6 +133,26 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
             {f.texto}
           </button>
         ))}
+        <div className="ml-auto flex rounded-lg border border-white/10 p-0.5 text-xs" role="tablist">
+          {(
+            [
+              ['gantt', 'Carta Gantt'],
+              ['rejilla', 'Bolsas'],
+            ] as [Vista, string][]
+          ).map(([v, texto]) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={vista === v}
+              onClick={() => elegirVista(v)}
+              className={`rounded-md px-2.5 py-1 transition ${
+                vista === v ? 'bg-white/10 font-semibold text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {texto}
+            </button>
+          ))}
+        </div>
       </div>
 
       {cargando ? (
@@ -123,6 +167,12 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
             ? 'Este proyecto todavía no tiene bolsas. Créalas desde el mapa de nodos.'
             : 'Ninguna bolsa coincide con este filtro.'}
         </p>
+      ) : vista === 'gantt' ? (
+        <GanttBolsas
+          actividades={visibles}
+          activaId={bolsa?.id}
+          onAbrir={(a) => abrirBolsa({ id: a.id, titulo: a.titulo })}
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {visibles.map((a) => {

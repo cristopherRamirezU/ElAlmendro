@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermisosGuard } from '../../common/guards/permisos.guard';
 import { ExigirPermisos } from '../../common/decorators/permisos.decorator';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
+import { exigirOrganizacion } from '../../common/organizacion';
 
 @ApiTags('reportes')
 @UseGuards(JwtAuthGuard, PermisosGuard)
@@ -28,7 +29,7 @@ export class ReportesController {
     if (u.rol === 'SUPER_ADMIN') {
       return queryOrgId?.trim() ? queryOrgId.trim() : null;
     }
-    return u.organizacionId ?? null;
+    return exigirOrganizacion(u);
   }
 
   @Get('calendario')

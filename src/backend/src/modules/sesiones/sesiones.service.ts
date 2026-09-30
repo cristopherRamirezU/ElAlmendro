@@ -61,6 +61,7 @@ export class SesionesService {
 
     const actividad = await this.prisma.actividad.findFirst({
       where: { id: dto.actividadId, eliminadoEn: null },
+      include: { proyecto: { select: { organizacionId: true } } },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
     if (actividad.responsableId !== usuarioId) {
@@ -92,6 +93,7 @@ export class SesionesService {
       await tx.registroAuditoria.create({
         data: {
           actorId: usuarioId,
+          organizacionId: actividad.proyecto.organizacionId,
           accion: 'SESION_INICIADA',
           tipoEntidad: 'SesionTrabajo',
           entidadId: creada.id,
@@ -189,6 +191,7 @@ export class SesionesService {
         where: { id: sesion.actividadId },
         data: {
           estado: dto.desenlace === 'COMPLETADA' ? 'COMPLETADA' : 'INCONCLUSA',
+          completadaEn: dto.desenlace === 'COMPLETADA' ? new Date() : null,
         },
       });
 

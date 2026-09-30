@@ -42,12 +42,12 @@ export class CalendarioService {
    * Matriz completa dia x trabajador del rango, con la serie de dias entera
    * —incluidos los que no tienen registro— y el acumulado por dia ya resuelto.
    */
-  async resumen(desde: string, hasta: string, trabajadorId?: string) {
+  async resumen(organizacionId: string, desde: string, hasta: string, trabajadorId?: string) {
     const dias = this.serieDeDias(desde, hasta);
     const filtro = trabajadorId ?? null;
 
     const [trabajadores, celdas] = await Promise.all([
-      this.trabajadores(filtro),
+      this.trabajadores(organizacionId, filtro),
       this.prisma.$queryRaw<FilaCelda[]>`
         WITH dias AS (
           SELECT generate_series(${desde}::date, ${hasta}::date, interval '1 day')::date AS dia
@@ -57,6 +57,7 @@ export class CalendarioService {
             FROM usuarios u
            WHERE u.rol = 'TRABAJADOR'
              AND u.activo = true
+             AND u."organizacionId" = ${organizacionId}::uuid
              AND (${filtro}::uuid IS NULL OR u.id = ${filtro}::uuid)
         ),
         imputado AS (
@@ -134,12 +135,12 @@ export class CalendarioService {
    * Con `desde === hasta` sirve al panel de un dia; con lunes a domingo, a la
    * vista semanal. Es la misma forma de datos en ambos casos.
    */
-  async detalle(desde: string, hasta: string, trabajadorId?: string) {
+  async detalle(organizacionId: string, desde: string, hasta: string, trabajadorId?: string) {
     const dias = this.serieDeDias(desde, hasta);
     const filtro = trabajadorId ?? null;
 
     const [trabajadores, sesiones, jornadas] = await Promise.all([
-      this.trabajadores(filtro),
+      this.trabajadores(organizacionId, filtro),
       this.prisma.$queryRaw<FilaSesion[]>`
         SELECT s.id,
                to_char((s."inicioEn" AT TIME ZONE 'America/Santiago')::date, 'YYYY-MM-DD') AS fecha,
@@ -155,7 +156,8 @@ export class CalendarioService {
           FROM sesiones_trabajo s
           JOIN actividades a ON a.id = s."actividadId"
           JOIN proyectos   p ON p.id = a."proyectoId"
-         WHERE s."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
+         WHERE p."organizacionId" = ${organizacionId}::uuid
+           AND s."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
            AND s."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
            AND (${filtro}::uuid IS NULL OR s."usuarioId" = ${filtro}::uuid)
          ORDER BY s."inicioEn"
@@ -179,7 +181,8 @@ export class CalendarioService {
                  ) - j."inicioEn"
                ))::int AS segundos
           FROM jornadas j
-         WHERE j."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
+         WHERE j."organizacionId" = ${organizacionId}::uuid
+           AND j."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
            AND j."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
            AND (${filtro}::uuid IS NULL OR j."usuarioId" = ${filtro}::uuid)
          ORDER BY j."inicioEn"
@@ -266,9 +269,10 @@ export class CalendarioService {
   // ----------------------------------------------------------------- privados
 
   /** Trabajadores dentro del alcance, en el orden en que se listan en pantalla. */
-  private async trabajadores(filtro: string | null) {
+  private async trabajadores(organizacionId: string, filtro: string | null) {
     const filas = await this.prisma.usuario.findMany({
       where: {
+        organizacionId,
         rol: 'TRABAJADOR',
         activo: true,
         ...(filtro ? { id: filtro } : {}),

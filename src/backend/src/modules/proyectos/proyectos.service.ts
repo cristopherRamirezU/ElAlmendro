@@ -8,6 +8,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { CrearProyectoDto } from './dto/crear-proyecto.dto';
 import { ActualizarProyectoDto } from './dto/actualizar-proyecto.dto';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { exigirOrganizacion, filtroOrganizacion } from '../../common/organizacion';
 
 /**
  * Proyectos: la unidad que agrupa las tareas de un trabajador. Cada proyecto
@@ -18,10 +19,9 @@ export class ProyectosService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Proyectos del trabajador de la sesion (propios, miembros o donde tiene tareas asignadas; o todos para admin). */
-  /** Proyectos del trabajador de la sesion (propios, miembros o donde tiene tareas asignadas; o todos para admin). */
   async mios(u: UsuarioActual) {
     const esAdmin = u.rol === 'ADMINISTRADOR' || u.rol === 'SUPER_ADMIN';
-    const whereOrg = u.organizacionId ? { organizacionId: u.organizacionId } : {};
+    const whereOrg = filtroOrganizacion(u);
 
     const proyectos = await this.prisma.proyecto.findMany({
       where: {
@@ -65,22 +65,16 @@ export class ProyectosService {
   }
 
   async crear(u: UsuarioActual, dto: CrearProyectoDto) {
-    if (!u.organizacionId && u.rol !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Debes pertenecer a una organización para crear proyectos.');
-    }
-
-    let orgId = u.organizacionId;
-    if (!orgId) {
-      const primeraOrg = await this.prisma.organizacion.findFirst();
-      if (!primeraOrg) throw new BadRequestException('No hay organizaciones registradas.');
-      orgId = primeraOrg.id;
-    }
+    // Un proyecto siempre nace en la empresa de quien lo crea. SUPER_ADMIN no
+    // tiene empresa y no crea proyectos: antes caia en "la primera" que hubiera.
+    const orgId = exigirOrganizacion(u);
 
     const org = await this.prisma.organizacion.findUnique({
       where: { id: orgId },
-      include: { _count: { select: { proyectos: true } } },
+      include: { _count: { select: { proyectos: { where: { eliminadoEn: null } } } } },
     });
 
+    // Los proyectos eliminados ya no ocupan cupo del plan.
     if (org && org._count.proyectos >= org.maxProyectos) {
       throw new BadRequestException(
         `Has alcanzado el límite máximo de ${org.maxProyectos} proyectos permitidos en tu plan. Contacta al administrador para aumentar tu capacidad.`,
@@ -116,7 +110,7 @@ export class ProyectosService {
     if (u.rol === 'TRABAJADOR') {
       throw new ForbiddenException('Solo un administrador o supervisor puede modificar proyectos.');
     }
-    const whereOrg = u.rol === 'SUPER_ADMIN' || !u.organizacionId ? {} : { organizacionId: u.organizacionId };
+    const whereOrg = filtroOrganizacion(u);
     const proyecto = await this.prisma.proyecto.findFirst({
       where: { id, eliminadoEn: null, ...whereOrg },
       select: { id: true },
@@ -162,7 +156,7 @@ export class ProyectosService {
    */
   async miembros(id: string, u: UsuarioActual) {
     const puedeVerTodo = u.rol !== 'TRABAJADOR';
-    const whereOrg = u.rol === 'SUPER_ADMIN' || !u.organizacionId ? {} : { organizacionId: u.organizacionId };
+    const whereOrg = filtroOrganizacion(u);
     const proyecto = await this.prisma.proyecto.findFirst({
       where: {
         id,
@@ -208,16 +202,20 @@ export class ProyectosService {
    * Asignar una persona al proyecto: con eso le aparece en "Mis proyectos".
    * Idempotente: agregar a quien ya es miembro no falla ni duplica.
    */
-  async agregarMiembro(id: string, actorId: string, usuarioId: string) {
-    const [proyecto, usuario] = await Promise.all([
-      this.prisma.proyecto.findUnique({ where: { id }, select: { id: true } }),
-      this.prisma.usuario.findUnique({
-        where: { id: usuarioId },
-        select: { id: true, activo: true },
-      }),
-    ]);
-    if (!proyecto) throw new NotFoundException('El proyecto no existe.');
-    if (!usuario) throw new NotFoundException('El usuario no existe.');
+  async agregarMiembro(id: string, u: UsuarioActual, usuarioId: string) {
+    const actorId = u.id;
+    const proyecto = await this.prisma.proyecto.findFirst({
+      where: { id, eliminadoEn: null, ...filtroOrganizacion(u) },
+      select: { id: true, organizacionId: true },
+    });
+    if (!proyecto) throw new NotFoundException('El proyecto no existe o no pertenece a tu organización.');
+
+    // Solo personas de la misma empresa que el proyecto pueden integrarlo.
+    const usuario = await this.prisma.usuario.findFirst({
+      where: { id: usuarioId, organizacionId: proyecto.organizacionId },
+      select: { id: true, activo: true },
+    });
+    if (!usuario) throw new NotFoundException('El usuario no existe o no pertenece a tu organización.');
     if (!usuario.activo) throw new BadRequestException('El usuario esta desactivado.');
 
     await this.prisma.$transaction(async (tx) => {
@@ -230,6 +228,7 @@ export class ProyectosService {
       await tx.registroAuditoria.create({
         data: {
           actorId,
+          organizacionId: proyecto.organizacionId,
           accion: 'PROYECTO_MIEMBRO_AGREGADO',
           tipoEntidad: 'Proyecto',
           entidadId: id,
@@ -242,7 +241,14 @@ export class ProyectosService {
   }
 
   /** Quitar a alguien del equipo. Sus tareas siguen a su nombre: eso se resuelve reasignando. */
-  async quitarMiembro(id: string, actorId: string, usuarioId: string) {
+  async quitarMiembro(id: string, u: UsuarioActual, usuarioId: string) {
+    const actorId = u.id;
+    const proyecto = await this.prisma.proyecto.findFirst({
+      where: { id, eliminadoEn: null, ...filtroOrganizacion(u) },
+      select: { id: true, organizacionId: true },
+    });
+    if (!proyecto) throw new NotFoundException('El proyecto no existe o no pertenece a tu organización.');
+
     const miembro = await this.prisma.miembroProyecto.findUnique({
       where: { proyectoId_usuarioId: { proyectoId: id, usuarioId } },
       select: { rolEnProyecto: true },
@@ -256,6 +262,7 @@ export class ProyectosService {
       this.prisma.registroAuditoria.create({
         data: {
           actorId,
+          organizacionId: proyecto.organizacionId,
           accion: 'PROYECTO_MIEMBRO_QUITADO',
           tipoEntidad: 'Proyecto',
           entidadId: id,
@@ -273,7 +280,7 @@ export class ProyectosService {
       throw new ForbiddenException('Solo un administrador puede eliminar proyectos.');
     }
 
-    const whereOrg = u.rol === 'SUPER_ADMIN' || !u.organizacionId ? {} : { organizacionId: u.organizacionId };
+    const whereOrg = filtroOrganizacion(u);
     const proyecto = await this.prisma.proyecto.findFirst({
       where: { id, eliminadoEn: null, ...whereOrg },
       include: {

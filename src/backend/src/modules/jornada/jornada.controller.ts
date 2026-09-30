@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { JornadaService } from './jornada.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
+import { exigirOrganizacion } from '../../common/organizacion';
 
 @ApiTags('jornadas')
 @UseGuards(JwtAuthGuard)
@@ -17,7 +18,7 @@ export class JornadaController {
 
   @Post('entrada')
   entrada(@Usuario() u: UsuarioActual) {
-    return this.jornadas.entrada(u.id, u.organizacionId);
+    return this.jornadas.entrada(u.id, exigirOrganizacion(u));
   }
 
   @Post('salida')

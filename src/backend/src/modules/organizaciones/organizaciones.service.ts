@@ -1,9 +1,15 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { CrearOrganizacionDto } from './dto/crear-organizacion.dto';
 import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto';
 import { PlanSaaS, Rol } from '@prisma/client';
+import { esViolacionUnica, normalizarCorreo, normalizarRut } from '../../common/organizacion';
 
 @Injectable()
 export class OrganizacionesService {
@@ -29,8 +35,8 @@ export class OrganizacionesService {
       include: {
         _count: {
           select: {
-            usuarios: true,
-            proyectos: true,
+            usuarios: { where: { activo: true } },
+            proyectos: { where: { eliminadoEn: null } },
           },
         },
       },
@@ -68,6 +74,7 @@ export class OrganizacionesService {
           orderBy: { creadoEn: 'desc' },
         },
         proyectos: {
+          where: { eliminadoEn: null },
           select: {
             id: true,
             nombre: true,
@@ -78,8 +85,8 @@ export class OrganizacionesService {
         },
         _count: {
           select: {
-            usuarios: true,
-            proyectos: true,
+            usuarios: { where: { activo: true } },
+            proyectos: { where: { eliminadoEn: null } },
           },
         },
       },
@@ -98,6 +105,16 @@ export class OrganizacionesService {
 
   async crear(dto: CrearOrganizacionDto, actorId?: string) {
     const slug = dto.slug.toLowerCase().trim();
+    const rut = dto.rut?.trim() ? normalizarRut(dto.rut) : null;
+    const adminEmail = dto.adminEmail?.trim() ? normalizarCorreo(dto.adminEmail) : null;
+
+    // El administrador inicial va completo o no va: un correo sin clave
+    // dejaria una cuenta imposible de usar.
+    if (Boolean(adminEmail) !== Boolean(dto.adminPassword)) {
+      throw new BadRequestException(
+        'Para crear el administrador inicial se requieren correo y contraseña.',
+      );
+    }
 
     const existeSlug = await this.prisma.organizacion.findUnique({
       where: { slug },
@@ -106,21 +123,21 @@ export class OrganizacionesService {
       throw new ConflictException(`Ya existe una organización con el slug "${slug}".`);
     }
 
-    if (dto.rut && dto.rut.trim().length > 0) {
-      const existeRut = await this.prisma.organizacion.findUnique({
-        where: { rut: dto.rut.trim() },
-      });
+    if (rut) {
+      const existeRut = await this.prisma.organizacion.findUnique({ where: { rut } });
       if (existeRut) {
-        throw new ConflictException(`Ya existe una organización con el RUT "${dto.rut.trim()}".`);
+        throw new ConflictException(`Ya existe una organización con el RUT "${rut}".`);
       }
     }
 
-    if (dto.adminEmail) {
-      const existeEmail = await this.prisma.usuario.findUnique({
-        where: { email: dto.adminEmail.toLowerCase().trim() },
-      });
+    // El correo del admin es unico en toda la plataforma: si ya pertenece a
+    // cualquier cuenta, de esta u otra empresa, no se reutiliza.
+    if (adminEmail) {
+      const existeEmail = await this.prisma.usuario.findUnique({ where: { email: adminEmail } });
       if (existeEmail) {
-        throw new ConflictException(`El correo "${dto.adminEmail}" ya está registrado para otro usuario.`);
+        throw new ConflictException(
+          `El correo "${adminEmail}" ya está registrado en la plataforma. Usa un correo distinto para el administrador.`,
+        );
       }
     }
 
@@ -129,7 +146,7 @@ export class OrganizacionesService {
         data: {
           nombre: dto.nombre.trim(),
           slug,
-          rut: dto.rut ? dto.rut.trim() : null,
+          rut,
           plan: dto.plan ?? PlanSaaS.GRATIS,
           maxUsuarios: dto.maxUsuarios ?? 10,
           maxProyectos: dto.maxProyectos ?? 5,
@@ -137,11 +154,11 @@ export class OrganizacionesService {
         },
       });
 
-      if (dto.adminEmail && dto.adminPassword) {
+      if (adminEmail && dto.adminPassword) {
         const hash = await argon2.hash(dto.adminPassword);
         await tx.usuario.create({
           data: {
-            email: dto.adminEmail.toLowerCase().trim(),
+            email: adminEmail,
             hashContrasena: hash,
             nombreCompleto: (dto.adminNombre || 'Administrador').trim(),
             rol: Rol.ADMINISTRADOR,
@@ -162,6 +179,12 @@ export class OrganizacionesService {
       });
 
       return org;
+    }).catch((error) => {
+      // Carrera entre dos altas simultaneas: la base impone la unicidad.
+      if (esViolacionUnica(error)) {
+        throw new ConflictException('El slug, el RUT o el correo del administrador ya están registrados.');
+      }
+      throw error;
     });
   }
 
@@ -173,18 +196,17 @@ export class OrganizacionesService {
       throw new NotFoundException('Organización no encontrada.');
     }
 
-    if (dto.rut && dto.rut.trim() !== org.rut) {
-      const existeRut = await this.prisma.organizacion.findUnique({
-        where: { rut: dto.rut.trim() },
-      });
+    const rut = dto.rut?.trim() ? normalizarRut(dto.rut) : null;
+    if (rut && rut !== org.rut) {
+      const existeRut = await this.prisma.organizacion.findUnique({ where: { rut } });
       if (existeRut && existeRut.id !== id) {
-        throw new ConflictException(`Ya existe una organización con el RUT "${dto.rut.trim()}".`);
+        throw new ConflictException(`Ya existe una organización con el RUT "${rut}".`);
       }
     }
 
     const data: any = {};
     if (dto.nombre !== undefined) data.nombre = dto.nombre.trim();
-    if (dto.rut !== undefined) data.rut = dto.rut ? dto.rut.trim() : null;
+    if (dto.rut !== undefined) data.rut = rut;
     if (dto.plan !== undefined) data.plan = dto.plan;
     if (dto.maxUsuarios !== undefined) data.maxUsuarios = dto.maxUsuarios;
     if (dto.maxProyectos !== undefined) data.maxProyectos = dto.maxProyectos;
@@ -216,8 +238,8 @@ export class OrganizacionesService {
         this.prisma.organizacion.count(),
         this.prisma.organizacion.count({ where: { activo: true } }),
         this.prisma.organizacion.count({ where: { activo: false } }),
-        this.prisma.usuario.count({ where: { rol: { not: Rol.SUPER_ADMIN } } }),
-        this.prisma.proyecto.count(),
+        this.prisma.usuario.count({ where: { rol: { not: Rol.SUPER_ADMIN }, activo: true } }),
+        this.prisma.proyecto.count({ where: { eliminadoEn: null } }),
         this.prisma.organizacion.groupBy({
           by: ['plan'],
           _count: { id: true },

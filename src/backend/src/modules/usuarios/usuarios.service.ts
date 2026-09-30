@@ -9,7 +9,22 @@ import * as argon2 from 'argon2';
 import { obtenerPermisosDeRol, Rol, ROLES_CATALOGO } from '../../common/rbac';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import {
+  esViolacionUnica,
+  exigirOrganizacion,
+  filtroOrganizacion,
+  normalizarCorreo,
+} from '../../common/organizacion';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
+
+/**
+ * El correo identifica a una persona en TODA la plataforma: un correo
+ * registrado en una empresa no puede darse de alta en otra. Asi nadie termina
+ * con dos cuentas iguales e ingresando por error a la empresa equivocada.
+ * El mensaje no revela en que empresa esta registrado.
+ */
+const CORREO_EN_USO = (email: string) =>
+  `El correo ${email} ya está registrado en la plataforma. Cada correo solo puede pertenecer a una cuenta.`;
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
 
 @Injectable()
@@ -25,15 +40,15 @@ export class UsuariosService {
    * Lista todos los usuarios con soporte de filtros por rol, estado y búsqueda por nombre o correo.
    */
   async listarTodos(actor: UsuarioActual, filtros?: { rol?: Rol; activo?: boolean; busqueda?: string }) {
-    const where: any = {};
-
-    if (actor.rol !== 'SUPER_ADMIN') {
-      where.organizacionId = actor.organizacionId;
-      where.rol = { not: 'SUPER_ADMIN' };
-    }
+    const where: any = { ...filtroOrganizacion(actor) };
 
     if (filtros?.rol) {
       where.rol = filtros.rol;
+    }
+
+    // Las cuentas de plataforma nunca aparecen en la nomina de una empresa.
+    if (actor.rol !== 'SUPER_ADMIN') {
+      where.AND = [{ rol: { not: 'SUPER_ADMIN' } }];
     }
 
     if (filtros?.activo !== undefined) {
@@ -79,9 +94,8 @@ export class UsuariosService {
 
   /** Obtiene el detalle de un usuario por su ID. */
   async detalle(actor: UsuarioActual, id: string) {
-    const whereOrg = actor.rol === 'SUPER_ADMIN' || !actor.organizacionId ? {} : { organizacionId: actor.organizacionId };
     const usuario = await this.prisma.usuario.findFirst({
-      where: { id, ...whereOrg },
+      where: { id, ...filtroOrganizacion(actor) },
       select: {
         id: true,
         email: true,
@@ -116,13 +130,12 @@ export class UsuariosService {
       );
     }
 
-    if (actor.rol !== 'SUPER_ADMIN') {
-      if (!actor.organizacionId) {
-        throw new ForbiddenException('Debes pertenecer a una organización para crear usuarios.');
-      }
-
+    // Toda cuenta nace dentro de la empresa de quien la crea. Las cuentas de
+    // una empresa nueva las crea SUPER_ADMIN desde /organizaciones.
+    const organizacionId = exigirOrganizacion(actor);
+    {
       const org = await this.prisma.organizacion.findUnique({
-        where: { id: actor.organizacionId },
+        where: { id: organizacionId },
         include: { _count: { select: { usuarios: { where: { activo: true } } } } },
       });
 
@@ -133,14 +146,14 @@ export class UsuariosService {
       }
     }
 
-    const email = dto.email.toLowerCase().trim();
+    const email = normalizarCorreo(dto.email);
 
     const existente = await this.prisma.usuario.findUnique({
       where: { email },
     });
 
     if (existente) {
-      throw new ConflictException(`Ya existe un usuario registrado con el correo ${email}.`);
+      throw new ConflictException(CORREO_EN_USO(email));
     }
 
     const hashContrasena = await argon2.hash(dto.contrasena);
@@ -154,7 +167,7 @@ export class UsuariosService {
           rol: dto.rol as any,
           zonaHoraria: dto.zonaHoraria || 'America/Santiago',
           activo: true,
-          organizacionId: actor.rol === 'SUPER_ADMIN' ? null : actor.organizacionId,
+          organizacionId,
         },
         select: {
           id: true,
@@ -171,7 +184,7 @@ export class UsuariosService {
       await tx.registroAuditoria.create({
         data: {
           actorId: actor.id,
-          organizacionId: actor.organizacionId ?? undefined,
+          organizacionId,
           accion: 'USUARIO_CREADO',
           tipoEntidad: 'Usuario',
           entidadId: nuevo.id,
@@ -184,6 +197,9 @@ export class UsuariosService {
       });
 
       return nuevo;
+    }).catch((error) => {
+      if (esViolacionUnica(error)) throw new ConflictException(CORREO_EN_USO(email));
+      throw error;
     });
 
     return {
@@ -197,13 +213,11 @@ export class UsuariosService {
    * se hashea nuevamente. Protege contra despojar al único administrador activo.
    */
   async actualizar(actor: UsuarioActual, id: string, dto: ActualizarUsuarioDto) {
-    const existente = await this.prisma.usuario.findUnique({ where: { id } });
+    const existente = await this.prisma.usuario.findFirst({
+      where: { id, ...filtroOrganizacion(actor) },
+    });
     if (!existente) {
-      throw new NotFoundException('El usuario a actualizar no existe.');
-    }
-
-    if (actor.rol !== 'SUPER_ADMIN' && existente.organizacionId !== actor.organizacionId) {
-      throw new ForbiddenException('No tienes permisos para modificar usuarios de otra organización.');
+      throw new NotFoundException('El usuario no existe o no pertenece a tu organización.');
     }
 
     // Regla de salvaguarda: supervisor solo gestiona trabajadores a su cargo
@@ -227,17 +241,20 @@ export class UsuariosService {
         (dto.rol && dto.rol !== 'ADMINISTRADOR'));
 
     if (cambiaraAdmin) {
+      // Se cuenta dentro de la misma empresa: que otra tenga administradores
+      // no impide que esta se quede sin ninguno.
       const otrosAdmins = await this.prisma.usuario.count({
         where: {
           rol: 'ADMINISTRADOR',
           activo: true,
           id: { not: id },
+          organizacionId: existente.organizacionId,
         },
       });
 
       if (otrosAdmins === 0) {
         throw new BadRequestException(
-          'No es posible degradar o desactivar al único administrador activo del sistema.',
+          'No es posible degradar o desactivar al único administrador activo de la organización.',
         );
       }
     }
@@ -245,15 +262,13 @@ export class UsuariosService {
     const data: any = {};
 
     if (dto.email?.trim()) {
-      const nuevoEmail = dto.email.toLowerCase().trim();
+      const nuevoEmail = normalizarCorreo(dto.email);
       if (nuevoEmail !== existente.email) {
         const enUso = await this.prisma.usuario.findUnique({
           where: { email: nuevoEmail },
         });
         if (enUso) {
-          throw new ConflictException(
-            `Ya existe un usuario registrado con el correo ${nuevoEmail}.`,
-          );
+          throw new ConflictException(CORREO_EN_USO(nuevoEmail));
         }
         data.email = nuevoEmail;
       }
@@ -297,6 +312,7 @@ export class UsuariosService {
       await tx.registroAuditoria.create({
         data: {
           actorId: actor.id,
+          organizacionId: existente.organizacionId ?? undefined,
           accion: 'USUARIO_ACTUALIZADO',
           tipoEntidad: 'Usuario',
           entidadId: u.id,
@@ -316,6 +332,9 @@ export class UsuariosService {
       });
 
       return u;
+    }).catch((error) => {
+      if (esViolacionUnica(error)) throw new ConflictException(CORREO_EN_USO(data.email));
+      throw error;
     });
 
     return {
@@ -339,13 +358,11 @@ export class UsuariosService {
       throw new BadRequestException('No puedes eliminar ni desactivar tu propia cuenta.');
     }
 
-    const existente = await this.prisma.usuario.findUnique({ where: { id } });
+    const existente = await this.prisma.usuario.findFirst({
+      where: { id, ...filtroOrganizacion(actor) },
+    });
     if (!existente) {
-      throw new NotFoundException('El usuario no existe.');
-    }
-
-    if (actor.rol !== 'SUPER_ADMIN' && existente.organizacionId !== actor.organizacionId) {
-      throw new ForbiddenException('No tienes permisos para eliminar usuarios de otra organización.');
+      throw new NotFoundException('El usuario no existe o no pertenece a tu organización.');
     }
 
     if (existente.rol === 'ADMINISTRADOR') {
@@ -440,10 +457,9 @@ export class UsuariosService {
 
   /** Trabajadores activos, para poblar el selector del calendario y los reportes. */
   async trabajadores(actor: UsuarioActual, soloId?: string) {
-    const whereOrg = actor.rol === 'SUPER_ADMIN' || !actor.organizacionId ? {} : { organizacionId: actor.organizacionId };
     const filas = await this.prisma.usuario.findMany({
       where: {
-        ...whereOrg,
+        ...filtroOrganizacion(actor),
         rol: { in: ['TRABAJADOR', 'SUPERVISOR'] as any },
         activo: true,
         ...(soloId ? { id: soloId } : {}),

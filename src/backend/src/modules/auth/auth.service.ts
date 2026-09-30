@@ -50,6 +50,12 @@ export class AuthService {
       throw new UnauthorizedException('Cuenta suspendida por el administrador.');
     }
 
+    // Misma invariante que JwtAuthGuard: fuera de SUPER_ADMIN no existe una
+    // cuenta sin empresa, porque no habria contra que acotar sus datos.
+    if (usuario.rol !== 'SUPER_ADMIN' && !usuario.organizacion) {
+      throw new UnauthorizedException('Tu cuenta no esta asociada a ninguna organizacion.');
+    }
+
     if (usuario.organizacion && !usuario.organizacion.activo) {
       throw new UnauthorizedException('Tu organización se encuentra suspendida. Contacta a soporte.');
     }

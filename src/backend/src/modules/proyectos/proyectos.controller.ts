@@ -50,7 +50,7 @@ export class ProyectosController {
     @Usuario() u: UsuarioActual,
     @Body() dto: AgregarMiembroDto,
   ) {
-    return this.proyectos.agregarMiembro(id, u.id, dto.usuarioId);
+    return this.proyectos.agregarMiembro(id, u, dto.usuarioId);
   }
 
   @Delete(':id/miembros/:usuarioId')
@@ -60,7 +60,7 @@ export class ProyectosController {
     @Param('usuarioId') usuarioId: string,
     @Usuario() u: UsuarioActual,
   ) {
-    return this.proyectos.quitarMiembro(id, u.id, usuarioId);
+    return this.proyectos.quitarMiembro(id, u, usuarioId);
   }
 
   /** Elimina un proyecto y todos sus nodos asociados (Solo Administrador / Super Admin). */

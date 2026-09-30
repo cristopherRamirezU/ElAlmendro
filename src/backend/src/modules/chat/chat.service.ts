@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { exigirOrganizacion } from '../../common/organizacion';
 import { ChatGateway } from './chat.gateway';
 import { EnviarMensajeDto } from './dto/enviar-mensaje.dto';
 import { CANAL_GENERAL, ListarMensajesDto } from './dto/listar-mensajes.dto';
@@ -37,7 +38,9 @@ export class ChatService {
    * la restriccion de `usuarios/trabajadores`, que existe para los reportes.
    */
   async contactos(yo: UsuarioActual) {
-    const whereOrg = yo.rol === 'SUPER_ADMIN' || !yo.organizacionId ? {} : { organizacionId: yo.organizacionId };
+    // El chat es siempre interno de una empresa: sin organizacion no hay chat.
+    const orgId = exigirOrganizacion(yo);
+    const whereOrg = { organizacionId: orgId };
     const [usuarios, pendientes, ultimos, ultimoGeneral] = await Promise.all([
       this.prisma.usuario.findMany({
         where: { activo: true, id: { not: yo.id }, ...whereOrg },
@@ -50,30 +53,18 @@ export class ChatService {
         _count: { _all: true },
       }),
       // Ultimo mensaje por contraparte, en una sola consulta.
-      yo.organizacionId
-        ? this.prisma.$queryRaw<UltimoMensajeFila[]>`
-            SELECT DISTINCT ON (contraparte) contraparte, cuerpo, "creadoEn", "emisorId"
-            FROM (
-              SELECT CASE WHEN "emisorId" = ${yo.id}::uuid THEN "receptorId" ELSE "emisorId" END AS contraparte,
-                     cuerpo, "creadoEn", "emisorId"
-              FROM "mensajes_chat"
-              WHERE "receptorId" IS NOT NULL
-                AND "organizacionId" = ${yo.organizacionId}::uuid
-                AND (${yo.id}::uuid = "emisorId" OR ${yo.id}::uuid = "receptorId")
-            ) t
-            ORDER BY contraparte, "creadoEn" DESC
-          `
-        : this.prisma.$queryRaw<UltimoMensajeFila[]>`
-            SELECT DISTINCT ON (contraparte) contraparte, cuerpo, "creadoEn", "emisorId"
-            FROM (
-              SELECT CASE WHEN "emisorId" = ${yo.id}::uuid THEN "receptorId" ELSE "emisorId" END AS contraparte,
-                     cuerpo, "creadoEn", "emisorId"
-              FROM "mensajes_chat"
-              WHERE "receptorId" IS NOT NULL
-                AND (${yo.id}::uuid = "emisorId" OR ${yo.id}::uuid = "receptorId")
-            ) t
-            ORDER BY contraparte, "creadoEn" DESC
-          `,
+      this.prisma.$queryRaw<UltimoMensajeFila[]>`
+        SELECT DISTINCT ON (contraparte) contraparte, cuerpo, "creadoEn", "emisorId"
+        FROM (
+          SELECT CASE WHEN "emisorId" = ${yo.id}::uuid THEN "receptorId" ELSE "emisorId" END AS contraparte,
+                 cuerpo, "creadoEn", "emisorId"
+          FROM "mensajes_chat"
+          WHERE "receptorId" IS NOT NULL
+            AND "organizacionId" = ${orgId}::uuid
+            AND (${yo.id}::uuid = "emisorId" OR ${yo.id}::uuid = "receptorId")
+        ) t
+        ORDER BY contraparte, "creadoEn" DESC
+      `,
       this.prisma.mensajeChat.findFirst({
         where: { receptorId: null, ...whereOrg },
         orderBy: { creadoEn: 'desc' },
@@ -108,7 +99,7 @@ export class ChatService {
   async mensajes(yo: UsuarioActual, dto: ListarMensajesDto) {
     const limite = dto.limite ?? 50;
     const cursor = dto.antes ? { creadoEn: { lt: new Date(dto.antes) } } : {};
-    const whereOrg = yo.rol === 'SUPER_ADMIN' || !yo.organizacionId ? {} : { organizacionId: yo.organizacionId };
+    const whereOrg = { organizacionId: exigirOrganizacion(yo) };
 
     const filtro: Prisma.MensajeChatWhereInput =
       dto.con === CANAL_GENERAL
@@ -138,19 +129,14 @@ export class ChatService {
     const cuerpo = dto.cuerpo.trim();
     if (!cuerpo) throw new BadRequestException('El mensaje no puede estar vacio.');
 
-    let orgId = yo.organizacionId;
-    if (!orgId) {
-      const org = await this.prisma.organizacion.findFirst();
-      orgId = org?.id ?? null;
-    }
-    if (!orgId) throw new BadRequestException('No se encontró organización para el chat.');
+    const orgId = exigirOrganizacion(yo);
 
     if (dto.receptorId) {
       if (dto.receptorId === yo.id) {
         throw new BadRequestException('No puedes enviarte mensajes a ti mismo.');
       }
       const receptor = await this.prisma.usuario.findFirst({
-        where: { id: dto.receptorId, activo: true, ...(yo.rol === 'SUPER_ADMIN' ? {} : { organizacionId: orgId }) },
+        where: { id: dto.receptorId, activo: true, organizacionId: orgId },
         select: { id: true },
       });
       if (!receptor) throw new NotFoundException('El destinatario no existe o no pertenece a tu organización.');
@@ -166,14 +152,14 @@ export class ChatService {
       select: SELECCION_MENSAJE,
     });
 
-    this.gateway.emitirMensaje(mensaje);
+    this.gateway.emitirMensaje(mensaje, orgId);
     return mensaje;
   }
 
   /** Marca como leidos todos los mensajes privados que `emisorId` me envio. */
   async marcarLeidos(yo: UsuarioActual, emisorId: string) {
     const { count } = await this.prisma.mensajeChat.updateMany({
-      where: { emisorId, receptorId: yo.id, leidoEn: null },
+      where: { emisorId, receptorId: yo.id, leidoEn: null, organizacionId: exigirOrganizacion(yo) },
       data: { leidoEn: new Date() },
     });
     if (count > 0) this.gateway.emitirLectura(emisorId, yo.id);
@@ -183,7 +169,7 @@ export class ChatService {
   /** Total de mensajes privados sin leer, para la insignia del menu. */
   async noLeidos(yo: UsuarioActual) {
     const total = await this.prisma.mensajeChat.count({
-      where: { receptorId: yo.id, leidoEn: null },
+      where: { receptorId: yo.id, leidoEn: null, organizacionId: exigirOrganizacion(yo) },
     });
     return { total };
   }

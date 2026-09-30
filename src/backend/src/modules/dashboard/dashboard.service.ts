@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { organizacionDeAlcance } from '../../common/organizacion';
 
 /** US-09 — indicadores del panel del administrador. */
 @Injectable()
@@ -8,7 +9,7 @@ export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
   async resumen(u: UsuarioActual) {
-    const orgId = u.rol === 'SUPER_ADMIN' ? null : u.organizacionId;
+    const orgId = organizacionDeAlcance(u);
     const whereUsuarioOrg = orgId ? { usuario: { organizacionId: orgId } } : {};
     const whereJornadaOrg = orgId ? { organizacionId: orgId } : {};
     const whereActividadOrg = orgId ? { proyecto: { organizacionId: orgId } } : {};

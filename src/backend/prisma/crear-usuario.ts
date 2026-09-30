@@ -8,12 +8,14 @@
  *
  * Uso, desde la raiz del repositorio:
  *
- *   npm run usuario:crear -- <correo> "<nombre completo>" <contrasena> [rol]
+ *   npm run usuario:crear -- <correo> "<nombre completo>" <contrasena> [rol] [slug-organizacion]
  *
- * El rol puede ser TRABAJADOR (por defecto) o ADMINISTRADOR.
+ * El rol puede ser TRABAJADOR (por defecto), SUPERVISOR, ADMINISTRADOR o
+ * SUPER_ADMIN. Salvo SUPER_ADMIN, la cuenta pertenece a una organizacion: si
+ * hay mas de una registrada, su slug es obligatorio (nunca se adivina).
  *
  * Ejemplo:
- *   npm run usuario:crear -- cristopher@timeflow.cl "Cristopher Ramirez" Clave123! ADMINISTRADOR
+ *   npm run usuario:crear -- cristopher@timeflow.cl "Cristopher Ramirez" Clave123! ADMINISTRADOR el-almendro
  */
 import { PrismaClient, Rol } from '@prisma/client';
 import * as argon2 from 'argon2';
@@ -22,12 +24,12 @@ const prisma = new PrismaClient();
 
 function abortar(mensaje: string): never {
   console.error(`\n  ${mensaje}\n`);
-  console.error('  Uso: npm run usuario:crear -- <correo> "<nombre>" <clave> [rol]\n');
+  console.error('  Uso: npm run usuario:crear -- <correo> "<nombre>" <clave> [rol] [slug-organizacion]\n');
   process.exit(1);
 }
 
 async function main() {
-  const [correo, nombre, clave, rolPedido = 'TRABAJADOR'] = process.argv.slice(2);
+  const [correo, nombre, clave, rolPedido = 'TRABAJADOR', slugPedido] = process.argv.slice(2);
 
   if (!correo || !nombre || !clave) {
     abortar('Faltan datos: se necesitan correo, nombre y contrasena.');
@@ -48,13 +50,25 @@ async function main() {
 
   const existente = await prisma.usuario.findUnique({ where: { email } });
   if (existente) {
-    abortar(`Ya existe un usuario con el correo ${email}.`);
+    abortar(`El correo ${email} ya esta registrado en la plataforma (cada correo es una sola cuenta).`);
   }
 
   let organizacionId: string | null = null;
   if (rol !== 'SUPER_ADMIN') {
-    const org = await prisma.organizacion.findFirst();
-    organizacionId = org?.id ?? 'a0000000-0000-0000-0000-000000000001';
+    const organizaciones = await prisma.organizacion.findMany({ select: { id: true, slug: true } });
+    const org = slugPedido
+      ? organizaciones.find((o) => o.slug === slugPedido.toLowerCase().trim())
+      : organizaciones.length === 1
+        ? organizaciones[0]
+        : undefined;
+    if (!org) {
+      abortar(
+        slugPedido
+          ? `No existe la organizacion "${slugPedido}".`
+          : `Indica la organizacion: ${organizaciones.map((o) => o.slug).join(', ')}.`,
+      );
+    }
+    organizacionId = org.id;
   }
 
   const usuario = await prisma.usuario.create({
@@ -69,6 +83,7 @@ async function main() {
 
   await prisma.registroAuditoria.create({
     data: {
+      organizacionId,
       accion: 'USUARIO_CREADO',
       tipoEntidad: 'Usuario',
       entidadId: usuario.id,

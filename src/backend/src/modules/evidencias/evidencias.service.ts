@@ -2,6 +2,12 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AlmacenamientoService } from '../../infra/almacenamiento/almacenamiento.service';
+import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import {
+  asegurarMismaOrganizacion,
+  exigirOrganizacion,
+  filtroActividadOrganizacion,
+} from '../../common/organizacion';
 
 const TAMANO_MAXIMO_BYTES = 25 * 1024 * 1024; // 25 MB
 
@@ -13,9 +19,9 @@ export class EvidenciasService {
     private readonly almacenamiento: AlmacenamientoService,
   ) {}
 
-  async listar(actividadId: string) {
+  async listar(u: UsuarioActual, actividadId: string) {
     return this.prisma.evidencia.findMany({
-      where: { actividadId },
+      where: { actividadId, actividad: filtroActividadOrganizacion(u) },
       orderBy: { subidaEn: 'desc' },
       select: {
         id: true,
@@ -28,14 +34,15 @@ export class EvidenciasService {
     });
   }
 
-  async subir(usuarioId: string, actividadId: string, archivo: Express.Multer.File) {
+  async subir(u: UsuarioActual, actividadId: string, archivo: Express.Multer.File) {
+    const organizacionId = exigirOrganizacion(u);
     if (!archivo) throw new BadRequestException('No se recibio ningun archivo.');
     if (archivo.size > TAMANO_MAXIMO_BYTES) {
       throw new BadRequestException('El archivo supera el limite de 25 MB.');
     }
 
     const actividad = await this.prisma.actividad.findFirst({
-      where: { id: actividadId, eliminadoEn: null },
+      where: { id: actividadId, eliminadoEn: null, proyecto: { organizacionId } },
       select: { id: true, estado: true },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
@@ -46,14 +53,16 @@ export class EvidenciasService {
     }
 
     const sha256 = createHash('sha256').update(archivo.buffer).digest('hex');
-    const clave = `evidencias/${actividadId}/${randomUUID()}-${archivo.originalname}`;
+    // Prefijo por organizacion: los archivos de cada empresa quedan separados
+    // tambien en el bucket, no solo en la base.
+    const clave = `organizaciones/${organizacionId}/evidencias/${actividadId}/${randomUUID()}-${archivo.originalname}`;
 
     await this.almacenamiento.subir(clave, archivo.buffer, archivo.mimetype);
 
     return this.prisma.evidencia.create({
       data: {
         actividadId,
-        subidaPorId: usuarioId,
+        subidaPorId: u.id,
         claveObjeto: clave,
         nombreArchivo: archivo.originalname,
         tipoMime: archivo.mimetype,
@@ -71,9 +80,22 @@ export class EvidenciasService {
     });
   }
 
-  async obtenerParaDescarga(id: string) {
-    const evidencia = await this.prisma.evidencia.findUnique({ where: { id } });
+  async obtenerParaDescarga(u: UsuarioActual, id: string) {
+    const evidencia = await this.prisma.evidencia.findUnique({
+      where: { id },
+      include: {
+        actividad: { select: { proyecto: { select: { organizacionId: true } } } },
+        sesion: {
+          select: { actividad: { select: { proyecto: { select: { organizacionId: true } } } } },
+        },
+      },
+    });
     if (!evidencia) throw new NotFoundException('La evidencia no existe.');
+
+    const organizacionEvidencia =
+      evidencia.actividad?.proyecto.organizacionId ??
+      evidencia.sesion?.actividad.proyecto.organizacionId;
+    asegurarMismaOrganizacion(u, organizacionEvidencia, 'La evidencia no existe.');
 
     const { flujo } = await this.almacenamiento.descargar(evidencia.claveObjeto);
     return { flujo, evidencia };

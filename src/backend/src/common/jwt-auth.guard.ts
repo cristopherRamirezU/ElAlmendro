@@ -3,7 +3,9 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { PrismaService } from '../infra/prisma/prisma.service';
 import { obtenerPermisosDeRol } from './rbac';
+import { UsuarioActual } from './usuario-actual.decorator';
 
 export const COOKIE_ACCESO = 'tf_acceso';
 
@@ -14,30 +16,84 @@ export const COOKIE_ACCESO = 'tf_acceso';
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest<Request>();
     const token = req.cookies?.[COOKIE_ACCESO];
     if (!token) throw new UnauthorizedException('No hay sesion iniciada.');
 
-    try {
-      const carga = await this.jwt.verifyAsync(token, {
-        secret: process.env.JWT_ACCESO_SECRET ?? process.env.JWT_ACCESS_SECRET,
-      });
-      (req as any).usuario = {
-        id: carga.sub,
-        email: carga.email,
-        rol: carga.rol,
-        nombreCompleto: carga.nombre,
-        permisos: obtenerPermisosDeRol(carga.rol),
-        organizacionId: carga.organizacionId ?? null,
-        organizacionNombre: carga.organizacionNombre ?? null,
-        organizacionSlug: carga.organizacionSlug ?? null,
-      };
-      return true;
-    } catch {
-      throw new UnauthorizedException('La sesion expiro. Vuelve a ingresar.');
+    const usuarioId = await verificarToken(this.jwt, token);
+    if (!usuarioId) throw new UnauthorizedException('La sesion expiro. Vuelve a ingresar.');
+
+    (req as any).usuario = await cargarUsuarioVigente(this.prisma, usuarioId);
+    return true;
+  }
+}
+
+/** Devuelve el id del usuario del token, o null si la firma no es valida. */
+export async function verificarToken(jwt: JwtService, token: string): Promise<string | null> {
+  try {
+    const carga = await jwt.verifyAsync(token, {
+      secret: process.env.JWT_ACCESO_SECRET ?? process.env.JWT_ACCESS_SECRET,
+    });
+    return typeof carga?.sub === 'string' ? carga.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Estado vigente del usuario, leido de la base en cada peticion.
+ *
+ * El token solo prueba quien es; rol, organizacion y vigencia se consultan
+ * aqui. Asi suspender una empresa, desactivar una cuenta o cambiar un rol
+ * surte efecto en la siguiente peticion, aunque el token no expire nunca.
+ *
+ * Invariante Multi-SaaS: todo usuario distinto de SUPER_ADMIN sale de aqui
+ * con `organizacionId`. Los servicios pueden confiar en ello.
+ */
+export async function cargarUsuarioVigente(
+  prisma: PrismaService,
+  usuarioId: string,
+): Promise<UsuarioActual> {
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: {
+      id: true,
+      email: true,
+      rol: true,
+      nombreCompleto: true,
+      activo: true,
+      organizacionId: true,
+      organizacion: { select: { nombre: true, slug: true, activo: true } },
+    },
+  });
+
+  if (!usuario || !usuario.activo) {
+    throw new UnauthorizedException('Tu cuenta no esta activa. Vuelve a ingresar.');
+  }
+
+  if (usuario.rol !== 'SUPER_ADMIN') {
+    if (!usuario.organizacionId || !usuario.organizacion) {
+      throw new UnauthorizedException('Tu cuenta no esta asociada a ninguna organizacion.');
+    }
+    if (!usuario.organizacion.activo) {
+      throw new UnauthorizedException('Tu organizacion se encuentra suspendida. Contacta a soporte.');
     }
   }
+
+  return {
+    id: usuario.id,
+    email: usuario.email,
+    rol: usuario.rol,
+    nombreCompleto: usuario.nombreCompleto,
+    permisos: obtenerPermisosDeRol(usuario.rol),
+    organizacionId: usuario.rol === 'SUPER_ADMIN' ? null : usuario.organizacionId,
+    organizacionNombre: usuario.organizacion?.nombre ?? null,
+    organizacionSlug: usuario.organizacion?.slug ?? null,
+  };
 }

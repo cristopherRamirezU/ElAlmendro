@@ -238,6 +238,9 @@ model Actividad {
   orden            Int             @default(0)
   creadoEn         DateTime        @default(now()) @db.Timestamptz(3)
   actualizadoEn    DateTime        @updatedAt @db.Timestamptz(3)
+  // Momento en que la bolsa se guardo en el cofre. Vuelve a null si se saca
+  // para seguir trabajandola. Con creadoEn, delimita la barra del Gantt.
+  completadaEn     DateTime?       @db.Timestamptz(3)
   // Unico borrado logico del sistema (seccion 4.4.1).
   eliminadoEn      DateTime?       @db.Timestamptz(3)
 

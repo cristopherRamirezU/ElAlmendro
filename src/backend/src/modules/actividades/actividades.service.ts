@@ -14,6 +14,10 @@ import {
   CrearSubtareaDto,
 } from './dto/subtarea.dto';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import {
+  exigirOrganizacion,
+  filtroActividadOrganizacion,
+} from '../../common/organizacion';
 
 /** US-03 y US-04 — consulta de actividades y su tiempo acumulado. */
 @Injectable()
@@ -27,9 +31,9 @@ export class ActividadesService {
    * de todas las sesiones de la actividad. Es imposible que un total guardado
    * difiera del detalle, porque no hay total guardado.
    */
-  async mias(usuarioId: string) {
+  async mias(u: UsuarioActual) {
     const actividades = await this.prisma.actividad.findMany({
-      where: { responsableId: usuarioId, eliminadoEn: null },
+      where: { responsableId: u.id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
       orderBy: [{ estado: 'asc' }, { orden: 'asc' }, { creadoEn: 'asc' }],
       include: {
         proyecto: { select: { nombre: true } },
@@ -48,9 +52,9 @@ export class ActividadesService {
     }));
   }
 
-  async detalle(id: string) {
+  async detalle(id: string, u: UsuarioActual) {
     const actividad = await this.prisma.actividad.findFirst({
-      where: { id, eliminadoEn: null },
+      where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
       include: {
         proyecto: { select: { nombre: true } },
         subtareas: { orderBy: { orden: 'asc' } },
@@ -96,7 +100,14 @@ export class ActividadesService {
   }
 
   /** Crea una tarea del mapa de nodos, opcionalmente colgada de otra (US-05). */
-  async crear(usuarioId: string, dto: CrearActividadDto) {
+  async crear(u: UsuarioActual, dto: CrearActividadDto) {
+    // La tarea nace dentro de un proyecto de la propia empresa, nunca de otra.
+    const proyecto = await this.prisma.proyecto.findFirst({
+      where: { id: dto.proyectoId, eliminadoEn: null, organizacionId: exigirOrganizacion(u) },
+      select: { id: true },
+    });
+    if (!proyecto) throw new NotFoundException('El proyecto no existe o no pertenece a tu organizacion.');
+
     if (dto.actividadPadreId) {
       const padre = await this.prisma.actividad.findFirst({
         where: { id: dto.actividadPadreId, proyectoId: dto.proyectoId, eliminadoEn: null },
@@ -110,7 +121,7 @@ export class ActividadesService {
         proyectoId: dto.proyectoId,
         titulo: dto.titulo,
         actividadPadreId: dto.actividadPadreId ?? null,
-        responsableId: usuarioId,
+        responsableId: u.id,
       },
       select: {
         id: true,
@@ -129,9 +140,9 @@ export class ActividadesService {
    * `null`). Rechaza el cambio si crea un ciclo: una tarea no puede terminar
    * colgando de su propio descendiente.
    */
-  async actualizarPadre(id: string, dto: ActualizarActividadDto) {
+  async actualizarPadre(id: string, u: UsuarioActual, dto: ActualizarActividadDto) {
     const actividad = await this.prisma.actividad.findFirst({
-      where: { id, eliminadoEn: null },
+      where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
       select: { id: true, proyectoId: true },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
@@ -188,21 +199,30 @@ export class ActividadesService {
    * mapa y el proyecto en su panel. Si no era miembro del proyecto, se la
    * agrega, para que el equipo del proyecto refleje quien trabaja en el.
    */
-  async reasignar(id: string, actorId: string, dto: ReasignarActividadDto) {
+  async reasignar(id: string, u: UsuarioActual, dto: ReasignarActividadDto) {
+    const actorId = u.id;
     const actividad = await this.prisma.actividad.findFirst({
-      where: { id, eliminadoEn: null },
-      select: { id: true, proyectoId: true, responsableId: true },
+      where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
+      select: {
+        id: true,
+        proyectoId: true,
+        responsableId: true,
+        proyecto: { select: { organizacionId: true } },
+      },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
     if (actividad.responsableId === dto.usuarioId) {
       throw new BadRequestException('Esa persona ya es responsable de la tarea.');
     }
 
-    const nuevo = await this.prisma.usuario.findUnique({
-      where: { id: dto.usuarioId },
+    // El nuevo responsable debe ser de la misma empresa que el proyecto: si no,
+    // se lo haria miembro y veria un proyecto ajeno en su panel.
+    const organizacionId = actividad.proyecto.organizacionId;
+    const nuevo = await this.prisma.usuario.findFirst({
+      where: { id: dto.usuarioId, organizacionId },
       select: { id: true, activo: true },
     });
-    if (!nuevo) throw new NotFoundException('El usuario no existe.');
+    if (!nuevo) throw new NotFoundException('El usuario no existe o no pertenece a tu organizacion.');
     if (!nuevo.activo) throw new BadRequestException('El usuario esta desactivado.');
 
     await this.prisma.$transaction(async (tx) => {
@@ -230,6 +250,7 @@ export class ActividadesService {
       await tx.registroAuditoria.create({
         data: {
           actorId,
+          organizacionId,
           accion: 'ACTIVIDAD_REASIGNADA',
           tipoEntidad: 'Actividad',
           entidadId: id,
@@ -239,7 +260,7 @@ export class ActividadesService {
       });
     });
 
-    return this.detalle(id);
+    return this.detalle(id, u);
   }
 
   // ------------------------------------------------------------- monedas
@@ -255,8 +276,8 @@ export class ActividadesService {
    */
   private async asegurarPuedeEditar(actividadId: string, u: UsuarioActual) {
     const actividad = await this.prisma.actividad.findFirst({
-      where: { id: actividadId, eliminadoEn: null },
-      select: { id: true, responsableId: true },
+      where: { id: actividadId, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
+      select: { id: true, responsableId: true, proyecto: { select: { organizacionId: true } } },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
 
@@ -356,10 +377,18 @@ export class ActividadesService {
     }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.actividad.update({ where: { id }, data: { estado: dto.estado } });
+      // Guardarla fija cuando termino; sacarla del cofre la reabre.
+      await tx.actividad.update({
+        where: { id },
+        data: {
+          estado: dto.estado,
+          completadaEn: dto.estado === 'COMPLETADA' ? new Date() : null,
+        },
+      });
       await tx.registroAuditoria.create({
         data: {
           actorId: u.id,
+          organizacionId: actividad.proyecto.organizacionId,
           accion: 'ACTIVIDAD_CAMBIO_ESTADO',
           tipoEntidad: 'Actividad',
           entidadId: id,
@@ -368,7 +397,7 @@ export class ActividadesService {
       });
     });
 
-    return this.detalle(id);
+    return this.detalle(id, u);
   }
 
   /**
@@ -381,7 +410,7 @@ export class ActividadesService {
     }
 
     const actividad = await this.prisma.actividad.findFirst({
-      where: { id, eliminadoEn: null },
+      where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
       include: {
         proyecto: { select: { id: true, organizacionId: true } },
       },
@@ -389,10 +418,6 @@ export class ActividadesService {
 
     if (!actividad) {
       throw new NotFoundException('La actividad no existe o ya fue eliminada.');
-    }
-
-    if (u.rol !== 'SUPER_ADMIN' && actividad.proyecto.organizacionId !== u.organizacionId) {
-      throw new ForbiddenException('No tienes permisos para eliminar actividades de otra organización.');
     }
 
     // Buscar recursivamente todas las ramas hijas descendientes

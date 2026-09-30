@@ -34,13 +34,13 @@ export class ActividadesController {
   /** Actividades asignadas al trabajador de la sesion. */
   @Get('mias')
   mias(@Usuario() u: UsuarioActual) {
-    return this.actividades.mias(u.id);
+    return this.actividades.mias(u);
   }
 
   /** Crea una tarea nueva, opcionalmente colgada de otra (mapa de nodos). */
   @Post()
   crear(@Usuario() u: UsuarioActual, @Body() dto: CrearActividadDto) {
-    return this.actividades.crear(u.id, dto);
+    return this.actividades.crear(u, dto);
   }
 
   /**
@@ -85,26 +85,30 @@ export class ActividadesController {
   }
 
   @Get(':id')
-  detalle(@Param('id') id: string) {
-    return this.actividades.detalle(id);
+  detalle(@Param('id', ParseUUIDPipe) id: string, @Usuario() u: UsuarioActual) {
+    return this.actividades.detalle(id, u);
   }
 
   /** Reasigna el padre de la tarea en el arbol de nodos. */
   @Patch(':id')
   @ExigirPermisos(PERMISOS.ACTIVIDADES_GESTIONAR)
-  actualizar(@Param('id') id: string, @Body() dto: ActualizarActividadDto) {
-    return this.actividades.actualizarPadre(id, dto);
+  actualizar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Usuario() u: UsuarioActual,
+    @Body() dto: ActualizarActividadDto,
+  ) {
+    return this.actividades.actualizarPadre(id, u, dto);
   }
 
   /** US-06 — deriva la tarea a otra persona (administrador o supervisor). */
   @Patch(':id/responsable')
   @ExigirPermisos(PERMISOS.ACTIVIDADES_GESTIONAR)
   reasignar(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Usuario() u: UsuarioActual,
     @Body() dto: ReasignarActividadDto,
   ) {
-    return this.actividades.reasignar(id, u.id, dto);
+    return this.actividades.reasignar(id, u, dto);
   }
 
   /** Elimina un nodo (actividad) y sus ramas dependientes (Solo Administrador / Super Admin). */

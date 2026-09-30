@@ -10,12 +10,18 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
-import { COOKIE_ACCESO } from '../../common/jwt-auth.guard';
+import {
+  cargarUsuarioVigente,
+  COOKIE_ACCESO,
+  verificarToken,
+} from '../../common/jwt-auth.guard';
+import { PrismaService } from '../../infra/prisma/prisma.service';
 
 /** Datos minimos del usuario que quedan pegados al socket tras autenticarse. */
 interface UsuarioSocket {
   id: string;
   nombreCompleto: string;
+  organizacionId: string;
 }
 
 /** Forma con que viaja un mensaje por el socket (misma que devuelve la API). */
@@ -34,6 +40,10 @@ export interface MensajeEmitido {
  * mientras tenga al menos una pestana conectada. Los mensajes se persisten
  * por HTTP (ChatService) y este gateway solo los difunde, de modo que enviar
  * sigue funcionando aunque el socket este reconectando.
+ *
+ * Multi-SaaS: cada socket entra a la sala de su organizacion y todo lo que
+ * no es privado (canal general, presencia, "escribiendo") se difunde solo en
+ * esa sala. Nunca se usa un emit global: cruzaria datos entre empresas.
  *
  * Eventos servidor -> cliente:
  *   presencia:lista   string[]                       ids en linea al conectar
@@ -55,10 +65,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private readonly registro = new Logger(ChatGateway.name);
 
-  /** usuarioId -> ids de socket abiertos (varias pestanas = varios sockets). */
-  private readonly conexiones = new Map<string, Set<string>>();
+  /** usuarioId -> organizacion e ids de socket abiertos (varias pestanas = varios sockets). */
+  private readonly conexiones = new Map<string, { organizacionId: string; sockets: Set<string> }>();
 
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async handleConnection(cliente: Socket) {
     const usuario = await this.autenticar(cliente);
@@ -68,19 +81,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     cliente.data.usuario = usuario;
-    await cliente.join(this.sala(usuario.id));
+    await cliente.join([this.sala(usuario.id), this.salaOrganizacion(usuario.organizacionId)]);
 
-    let sockets = this.conexiones.get(usuario.id);
-    const recienEntra = !sockets || sockets.size === 0;
-    if (!sockets) {
-      sockets = new Set();
-      this.conexiones.set(usuario.id, sockets);
+    let conexion = this.conexiones.get(usuario.id);
+    const recienEntra = !conexion || conexion.sockets.size === 0;
+    if (!conexion) {
+      conexion = { organizacionId: usuario.organizacionId, sockets: new Set() };
+      this.conexiones.set(usuario.id, conexion);
     }
-    sockets.add(cliente.id);
+    conexion.sockets.add(cliente.id);
 
-    cliente.emit('presencia:lista', this.usuariosEnLinea());
+    cliente.emit('presencia:lista', this.usuariosEnLinea(usuario.organizacionId));
     if (recienEntra) {
-      this.servidor.emit('presencia:cambio', { usuarioId: usuario.id, enLinea: true });
+      this.servidor
+        .to(this.salaOrganizacion(usuario.organizacionId))
+        .emit('presencia:cambio', { usuarioId: usuario.id, enLinea: true });
     }
   }
 
@@ -88,12 +103,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const usuario = cliente.data.usuario as UsuarioSocket | undefined;
     if (!usuario) return;
 
-    const sockets = this.conexiones.get(usuario.id);
-    if (!sockets) return;
-    sockets.delete(cliente.id);
-    if (sockets.size === 0) {
+    const conexion = this.conexiones.get(usuario.id);
+    if (!conexion) return;
+    conexion.sockets.delete(cliente.id);
+    if (conexion.sockets.size === 0) {
       this.conexiones.delete(usuario.id);
-      this.servidor.emit('presencia:cambio', { usuarioId: usuario.id, enLinea: false });
+      this.servidor
+        .to(this.salaOrganizacion(usuario.organizacionId))
+        .emit('presencia:cambio', { usuarioId: usuario.id, enLinea: false });
     }
   }
 
@@ -107,19 +124,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!usuario) return;
     const receptorId = cuerpo?.receptorId ?? null;
     const carga = { usuarioId: usuario.id, receptorId };
-    if (receptorId) this.servidor.to(this.sala(receptorId)).emit('escribiendo', carga);
-    else cliente.broadcast.emit('escribiendo', carga);
+    if (receptorId) {
+      // Solo se avisa a un receptor conectado de la misma organizacion.
+      if (this.conexiones.get(receptorId)?.organizacionId !== usuario.organizacionId) return;
+      this.servidor.to(this.sala(receptorId)).emit('escribiendo', carga);
+    } else {
+      cliente.to(this.salaOrganizacion(usuario.organizacionId)).emit('escribiendo', carga);
+    }
   }
 
   // ------------------------------------------------ usados por ChatService
 
-  emitirMensaje(mensaje: MensajeEmitido) {
+  emitirMensaje(mensaje: MensajeEmitido, organizacionId: string) {
     if (mensaje.receptorId) {
       this.servidor
         .to([this.sala(mensaje.receptorId), this.sala(mensaje.emisorId)])
         .emit('mensaje:nuevo', mensaje);
     } else {
-      this.servidor.emit('mensaje:nuevo', mensaje);
+      this.servidor.to(this.salaOrganizacion(organizacionId)).emit('mensaje:nuevo', mensaje);
     }
   }
 
@@ -127,8 +149,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.servidor.to(this.sala(emisorId)).emit('mensajes:leidos', { porUsuarioId });
   }
 
-  usuariosEnLinea(): string[] {
-    return [...this.conexiones.keys()];
+  /** Ids en linea de una organizacion: la presencia de otras empresas no se expone. */
+  usuariosEnLinea(organizacionId: string): string[] {
+    return [...this.conexiones.entries()]
+      .filter(([, c]) => c.organizacionId === organizacionId)
+      .map(([id]) => id);
   }
 
   estaEnLinea(usuarioId: string): boolean {
@@ -141,6 +166,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return `usuario:${usuarioId}`;
   }
 
+  private salaOrganizacion(organizacionId: string) {
+    return `organizacion:${organizacionId}`;
+  }
+
   /**
    * Misma cookie httpOnly que usa JwtAuthGuard: el navegador la adjunta al
    * handshake porque el socket se abre con `withCredentials`.
@@ -148,13 +177,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private async autenticar(cliente: Socket): Promise<UsuarioSocket | null> {
     const token = leerCookie(cliente.handshake.headers.cookie, COOKIE_ACCESO);
     if (!token) return null;
-    try {
-      const carga = await this.jwt.verifyAsync(token, {
-        secret: process.env.JWT_ACCESO_SECRET ?? process.env.JWT_ACCESS_SECRET,
-      });
-      return { id: carga.sub, nombreCompleto: carga.nombre };
-    } catch {
+    const usuarioId = await verificarToken(this.jwt, token);
+    if (!usuarioId) {
       this.registro.debug(`Socket ${cliente.id} rechazado: token invalido o expirado.`);
+      return null;
+    }
+    try {
+      // Mismas reglas que la API: cuenta activa y empresa no suspendida.
+      const usuario = await cargarUsuarioVigente(this.prisma, usuarioId);
+      if (!usuario.organizacionId) return null; // SUPER_ADMIN no participa del chat.
+      return {
+        id: usuario.id,
+        nombreCompleto: usuario.nombreCompleto,
+        organizacionId: usuario.organizacionId,
+      };
+    } catch {
+      this.registro.debug(`Socket ${cliente.id} rechazado: cuenta u organizacion no vigente.`);
       return null;
     }
   }

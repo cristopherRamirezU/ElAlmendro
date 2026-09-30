@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Res,
@@ -27,8 +28,8 @@ export class EvidenciasController {
   constructor(private readonly evidencias: EvidenciasService) {}
 
   @Get()
-  listar(@Query() dto: ListarEvidenciasDto) {
-    return this.evidencias.listar(dto.actividadId);
+  listar(@Usuario() u: UsuarioActual, @Query() dto: ListarEvidenciasDto) {
+    return this.evidencias.listar(u, dto.actividadId);
   }
 
   @Post()
@@ -38,12 +39,16 @@ export class EvidenciasController {
     @Body() dto: SubirEvidenciaDto,
     @UploadedFile() archivo: Express.Multer.File,
   ) {
-    return this.evidencias.subir(u.id, dto.actividadId, archivo);
+    return this.evidencias.subir(u, dto.actividadId, archivo);
   }
 
   @Get(':id/descargar')
-  async descargar(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
-    const { flujo, evidencia } = await this.evidencias.obtenerParaDescarga(id);
+  async descargar(
+    @Usuario() u: UsuarioActual,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { flujo, evidencia } = await this.evidencias.obtenerParaDescarga(u, id);
     res.set({
       'Content-Type': evidencia.tipoMime,
       'Content-Disposition': `attachment; filename="${encodeURIComponent(evidencia.nombreArchivo)}"`,

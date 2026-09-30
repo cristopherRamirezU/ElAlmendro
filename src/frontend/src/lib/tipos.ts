@@ -47,6 +47,13 @@ export interface NodoActividad {
   /** Monedas (microtareas) de la bolsa y cuantas estan marcadas. */
   monedas: number;
   monedasListas: number;
+  /** Fechas de la carta Gantt (ISO, UTC). */
+  creadoEn?: string;
+  fechaLimite?: string | null;
+  /** Cuando se guardo en el cofre; null mientras sigue abierta. */
+  completadaEn?: string | null;
+  /** Primera vez que se encendio su cronometro. */
+  inicioTrabajoEn?: string | null;
 }
 
 export interface Derivacion {

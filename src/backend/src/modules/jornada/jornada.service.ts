@@ -19,28 +19,16 @@ export class JornadaService {
     });
   }
 
-  async entrada(usuarioId: string, organizacionId?: string | null) {
+  /**
+   * La jornada queda en la organizacion del usuario de la sesion. Nunca se
+   * elige una "por defecto": sin organizacion no hay jornada.
+   */
+  async entrada(usuarioId: string, organizacionId: string) {
     const abierta = await this.actual(usuarioId);
     if (abierta) {
       throw new BadRequestException('Ya tienes una jornada abierta.');
     }
-
-    let orgId = organizacionId;
-    if (!orgId) {
-      const u = await this.prisma.usuario.findUnique({
-        where: { id: usuarioId },
-        select: { organizacionId: true },
-      });
-      orgId = u?.organizacionId ?? null;
-      if (!orgId) {
-        const primeraOrg = await this.prisma.organizacion.findFirst();
-        orgId = primeraOrg?.id ?? null;
-      }
-    }
-
-    if (!orgId) {
-      throw new BadRequestException('No se encontró una organización asociada.');
-    }
+    const orgId = organizacionId;
 
     const jornada = await this.prisma.jornada.create({
       data: { usuarioId, organizacionId: orgId, estado: 'ABIERTA' },
@@ -83,6 +71,7 @@ export class JornadaService {
     await this.prisma.registroAuditoria.create({
       data: {
         actorId: usuarioId,
+        organizacionId: jornada.organizacionId,
         accion: 'JORNADA_CERRADA',
         tipoEntidad: 'Jornada',
         entidadId: jornada.id,
