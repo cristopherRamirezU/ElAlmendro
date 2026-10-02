@@ -4,7 +4,9 @@
  * sean la unica definicion de los datos que cruzan la frontera HTTP.
  */
 
-export * from './rbac';
+// El RBAC vive en el backend (src/common/rbac.ts) y su espejo del frontend
+// (src/lib/rbac.ts), sincronizados por test/rbac-sincronizado.spec.ts.
+// La copia que habia aqui quedo obsoleta y sin uso, por eso se elimino.
 
 export type EstadoActividad =
   | 'PENDIENTE'

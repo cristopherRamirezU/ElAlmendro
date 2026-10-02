@@ -1,10 +1,19 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Marco from '@/components/Marco';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
-import { api, ErrorApi, OrganizacionItem, Usuario } from '@/lib/api';
+import { api, ErrorApi, URL_API, OrganizacionItem, Usuario } from '@/lib/api';
+import { useTienePermiso } from '@/lib/sesion';
+import { PERMISOS } from '@/lib/rbac';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { HorasActividad, HorasTrabajador } from '@/lib/tipos';
 import { duracion } from '@/lib/formato';
@@ -13,6 +22,12 @@ import {
   leerCacheSesionServidor,
   suscribirCacheSesion,
 } from '@/lib/cacheSesion';
+
+const FORMATOS = [
+  { clave: 'csv', texto: 'CSV', titulo: 'Valores separados, para Excel o Sheets' },
+  { clave: 'xlsx', texto: 'Excel', titulo: 'Libro con una hoja por tabla' },
+  { clave: 'pdf', texto: 'PDF', titulo: 'Documento listo para imprimir' },
+];
 
 const RANGOS = [
   { dias: 7, texto: 'Última semana' },
@@ -65,22 +80,32 @@ function ReportesContenido() {
     }
   }, [esSuperAdmin]);
 
-  const cargar = useCallback(async () => {
+  // Un solo rango para la consulta y para los enlaces de descarga, de modo
+  // que el archivo exportado cubra exactamente lo que se ve en pantalla.
+  const rango = useMemo(() => {
     const hasta = new Date();
     const desde = new Date();
     desde.setDate(desde.getDate() - dias);
-
     let q = `desde=${desde.toISOString()}&hasta=${hasta.toISOString()}`;
+    // El filtro de organizacion viaja tambien en la descarga: el archivo
+    // exportado debe cubrir exactamente lo que se ve en pantalla.
     if (esSuperAdmin && orgSeleccionada) {
       q += `&organizacionId=${encodeURIComponent(orgSeleccionada)}`;
     }
+    return q;
+  }, [dias, esSuperAdmin, orgSeleccionada]);
+
+  const puedeExportar = useTienePermiso(PERMISOS.REPORTES_VER_EQUIPO);
+
+  const cargar = useCallback(async () => {
+    const q = rango;
 
     const [trabajadores, actividades] = await Promise.all([
       api.get<HorasTrabajador[]>(`/reportes/horas?${q}`),
       api.get<HorasActividad[]>(`/reportes/actividades?${q}`),
     ]);
     return { trabajadores, actividades };
-  }, [dias, esSuperAdmin, orgSeleccionada]);
+  }, [rango]);
 
   // Clave de cache reactiva al periodo y al inquilino seleccionado
   const claveCache = `reportes:${dias}:${esSuperAdmin ? orgSeleccionada || 'global' : 'org'}`;
@@ -147,6 +172,31 @@ function ReportesContenido() {
               </option>
             ))}
           </select>
+
+          {/*
+            Se ocultan sin el permiso porque la descarga es un <a> normal: un
+            403 se veria como JSON crudo en una pestana nueva, sin aviso. El
+            control real lo hace el guard del backend, esto solo evita
+            ofrecer un boton que va a fallar.
+          */}
+          {puedeExportar && (
+            <div className="flex items-center gap-1 rounded-xl border border-white/15 bg-slate-900 px-2 py-1">
+              <span className="px-1 text-xs text-slate-400">Exportar</span>
+              {FORMATOS.map((f) => (
+                <a
+                  key={f.clave}
+                  // Navegacion GET de primer nivel: la cookie de sesion viaja
+                  // sola (SameSite=Lax), igual que la descarga de evidencias.
+                  href={`${URL_API}/reportes/periodo/exportar?${rango}&formato=${f.clave}`}
+                  download
+                  title={f.titulo}
+                  className="rounded-lg px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-sky-300"
+                >
+                  {f.texto}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       }
     >
