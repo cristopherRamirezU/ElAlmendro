@@ -4,10 +4,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { CrearActividadDto } from './dto/crear-actividad.dto';
 import { ActualizarActividadDto } from './dto/actualizar-actividad.dto';
 import { ReasignarActividadDto } from './dto/reasignar-actividad.dto';
+import { GuardarPosicionesDto, OrientacionMapa } from './dto/guardar-posiciones.dto';
 import {
   ActualizarSubtareaDto,
   CambiarEstadoActividadDto,
@@ -116,12 +118,24 @@ export class ActividadesService {
       if (!padre) throw new BadRequestException('La tarea padre no pertenece a este proyecto.');
     }
 
+    // La tarea nueva queda al final de sus hermanas en el mapa.
+    const ultimaHermana = await this.prisma.actividad.findFirst({
+      where: {
+        proyectoId: dto.proyectoId,
+        actividadPadreId: dto.actividadPadreId ?? null,
+        eliminadoEn: null,
+      },
+      orderBy: { orden: 'desc' },
+      select: { orden: true },
+    });
+
     return this.prisma.actividad.create({
       data: {
         proyectoId: dto.proyectoId,
         titulo: dto.titulo,
         actividadPadreId: dto.actividadPadreId ?? null,
         responsableId: u.id,
+        orden: (ultimaHermana?.orden ?? -1) + 1,
       },
       select: {
         id: true,
@@ -190,6 +204,54 @@ export class ActividadesService {
         posicionNodo: true,
         responsable: { select: { nombreCompleto: true } },
       },
+    });
+  }
+
+  /**
+   * Guarda donde dejo cada nodo quien edito el mapa (administrador o
+   * supervisor): lo ve igual todo el equipo. La posicion es relativa al padre,
+   * para que la rama completa acompane a su padre, y se guarda por separado
+   * para cada orientacion del arbol. Una posicion `null` devuelve el nodo al
+   * acomodo automatico; asi tambien se deshace un movimiento.
+   */
+  async guardarPosiciones(u: UsuarioActual, dto: GuardarPosicionesDto) {
+    const ids = dto.cambios.map((c) => c.id);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('Un mismo nodo aparece dos veces en el cambio.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const actividades = await tx.actividad.findMany({
+        where: { id: { in: ids }, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
+        select: { id: true, proyectoId: true, posicionNodo: true },
+      });
+      if (actividades.length !== ids.length) {
+        throw new NotFoundException('Alguno de los nodos no existe.');
+      }
+      if (new Set(actividades.map((a) => a.proyectoId)).size > 1) {
+        throw new BadRequestException('Solo se pueden mover nodos de un mismo proyecto.');
+      }
+
+      const porId = new Map(actividades.map((a) => [a.id, a]));
+      const guardadas = [];
+      for (const cambio of dto.cambios) {
+        const posiciones = posicionesPorOrientacion(porId.get(cambio.id)!.posicionNodo);
+        if (cambio.posicion) {
+          posiciones[dto.orientacion] = { x: cambio.posicion.x, y: cambio.posicion.y };
+        } else {
+          delete posiciones[dto.orientacion];
+        }
+        guardadas.push(
+          await tx.actividad.update({
+            where: { id: cambio.id },
+            data: {
+              posicionNodo: Object.keys(posiciones).length ? posiciones : Prisma.DbNull,
+            },
+            select: { id: true, posicionNodo: true },
+          }),
+        );
+      }
+      return guardadas;
     });
   }
 
@@ -488,4 +550,22 @@ export class ActividadesService {
       mensaje: `Nodo "${actividad.titulo}" y ${todosDescendientesIds.length - 1} subnodo(s) eliminados exitosamente.`,
     };
   }
+}
+
+type PuntoMapa = { x: number; y: number };
+
+/**
+ * Lee las posiciones guardadas de un nodo, una por orientacion. Cualquier otro
+ * formato (como el `{ x, y }` suelto que dejaba el seed) cuenta como vacio.
+ */
+function posicionesPorOrientacion(valor: Prisma.JsonValue): Partial<Record<OrientacionMapa, PuntoMapa>> {
+  const resultado: Partial<Record<OrientacionMapa, PuntoMapa>> = {};
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return resultado;
+  for (const orientacion of ['horizontal', 'vertical'] as const) {
+    const punto = (valor as Record<string, unknown>)[orientacion] as Partial<PuntoMapa> | undefined;
+    if (punto && typeof punto.x === 'number' && typeof punto.y === 'number') {
+      resultado[orientacion] = { x: punto.x, y: punto.y };
+    }
+  }
+  return resultado;
 }

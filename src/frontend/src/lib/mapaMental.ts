@@ -19,13 +19,22 @@ export const PALETA_PROFUNDIDAD = [
  */
 export type Orientacion = 'horizontal' | 'vertical';
 
+/** Medidas fijas de la burbuja de tarea: el layout reserva justo ese espacio. */
+export const ANCHO_NODO = 220;
+export const ALTO_NODO = 64;
+
 /** Distancia entre niveles y entre hermanos, en cada orientacion. */
 const ESPACIO: Record<Orientacion, { nivel: number; hermano: number }> = {
-  horizontal: { nivel: 250, hermano: 64 },
-  // Las burbujas son anchas (hasta 210 px) y bajas: de arriba a abajo los
-  // hermanos necesitan mas separacion lateral y los niveles menos.
-  vertical: { nivel: 120, hermano: 236 },
+  horizontal: { nivel: ANCHO_NODO + 50, hermano: ALTO_NODO + 24 },
+  // Las burbujas son anchas y bajas: de arriba a abajo los hermanos
+  // necesitan mas separacion lateral y los niveles menos.
+  vertical: { nivel: ALTO_NODO + 56, hermano: ANCHO_NODO + 24 },
 };
+
+/** Hermanas en el orden guardado; a igual orden, la mas antigua primero. */
+function compararHermanas(a: NodoActividad, b: NodoActividad) {
+  return (a.orden ?? 0) - (b.orden ?? 0) || (a.creadoEn ?? '').localeCompare(b.creadoEn ?? '');
+}
 
 export interface NodoMapa {
   id: string;
@@ -65,6 +74,8 @@ export function calcularArbol(
       raicesProyecto.push(a);
     }
   }
+  raicesProyecto.sort(compararHermanas);
+  for (const hijos of hijosPorPadre.values()) hijos.sort(compararHermanas);
 
   const espacio = ESPACIO[orientacion];
   const coordenadas = (profundidad: number, carril: number) =>
@@ -109,4 +120,75 @@ export function calcularArbol(
   }
 
   return { posiciones, posicionRaiz: coordenadas(0, carrilRaiz), raicesProyecto };
+}
+
+export interface Punto {
+  x: number;
+  y: number;
+}
+
+/** Posicion que alguien fijo a mano para el nodo en esta orientacion, si la hay. */
+export function posicionGuardada(a: NodoActividad, orientacion: Orientacion): Punto | null {
+  const punto = a.posicionNodo?.[orientacion] as Partial<Punto> | undefined;
+  return punto && typeof punto.x === 'number' && typeof punto.y === 'number'
+    ? { x: punto.x, y: punto.y }
+    : null;
+}
+
+/** `posicionNodo` con la posicion de una orientacion cambiada (o borrada con `null`). */
+export function conPosicion(
+  a: NodoActividad,
+  orientacion: Orientacion,
+  punto: Punto | null,
+): NodoActividad['posicionNodo'] {
+  const resultado: Record<string, Punto> = {};
+  for (const o of ['horizontal', 'vertical'] as const) {
+    const actual = o === orientacion ? punto : posicionGuardada(a, o);
+    if (actual) resultado[o] = actual;
+  }
+  return Object.keys(resultado).length ? resultado : null;
+}
+
+/**
+ * Posiciones finales del mapa: el acomodo automatico corregido por lo que se
+ * movio a mano. Cada nodo se ubica relativo a su padre (o a la raiz del
+ * proyecto): con el desplazamiento guardado si lo tiene, o con el que le da el
+ * acomodo automatico si no. Asi, al mover un padre lo acompana toda su rama.
+ */
+export function aplicarPosicionesGuardadas(
+  arbol: ArbolCalculado,
+  actividades: NodoActividad[],
+  orientacion: Orientacion,
+): Map<string, NodoMapa> {
+  const porId = new Map(actividades.map((a) => [a.id, a]));
+  const finales = new Map<string, NodoMapa>();
+  const porProfundidad = [...arbol.posiciones.values()].sort((a, b) => a.profundidad - b.profundidad);
+
+  for (const auto of porProfundidad) {
+    const a = porId.get(auto.id)!;
+    const padreId = a.actividadPadreId;
+    const padreAuto = (padreId && arbol.posiciones.get(padreId)) || arbol.posicionRaiz;
+    const padreFinal = (padreId && finales.get(padreId)) || arbol.posicionRaiz;
+    const desplazamiento = posicionGuardada(a, orientacion) ?? {
+      x: auto.x - padreAuto.x,
+      y: auto.y - padreAuto.y,
+    };
+    finales.set(auto.id, {
+      ...auto,
+      x: padreFinal.x + desplazamiento.x,
+      y: padreFinal.y + desplazamiento.y,
+    });
+  }
+  return finales;
+}
+
+/** Desplazamiento a guardar para un nodo soltado en `punto`, relativo a su padre. */
+export function desplazamientoRespectoDelPadre(
+  a: NodoActividad,
+  punto: Punto,
+  finales: Map<string, NodoMapa>,
+  posicionRaiz: Punto,
+): Punto {
+  const padre = (a.actividadPadreId && finales.get(a.actividadPadreId)) || posicionRaiz;
+  return { x: Math.round(punto.x - padre.x), y: Math.round(punto.y - padre.y) };
 }
