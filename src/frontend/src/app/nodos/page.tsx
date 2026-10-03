@@ -4,19 +4,34 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ReactFlow, Background, Controls, Connection, Edge, Node, NodeMouseHandler, useReactFlow,
+  ReactFlow, Background, Controls, Connection, Edge, Node, NodeMouseHandler, OnNodeDrag, OnNodesChange, useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Marco from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
 import PanelTarea from '@/components/nodos/PanelTarea';
+import { llenadoReal } from '@/components/tesoro/llenado';
 import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
-import { calcularArbol, Orientacion } from '@/lib/mapaMental';
+import {
+  aplicarPosicionesGuardadas,
+  calcularArbol,
+  conPosicion,
+  desplazamientoRespectoDelPadre,
+  Orientacion,
+  posicionGuardada,
+  Punto,
+} from '@/lib/mapaMental';
 import { useSesion } from '@/lib/sesion';
 
 const RAIZ = 'raiz-proyecto';
+
+/** Un movimiento del mapa: que posicion queda en cada nodo (`null` = automatica). */
+interface CambioPosiciones {
+  orientacion: Orientacion;
+  cambios: { id: string; posicion: Punto | null }[];
+}
 
 /**
  * Reencuadra el mapa cuando cambia su forma (expandir, colapsar, recargar,
@@ -77,6 +92,13 @@ function Nodos() {
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
   const [tareaSeleccionada, setTareaSeleccionada] = useState<string | null>(tareaParam);
 
+  // Modo edicion: cada burbuja se deja donde se suelta y queda asi para todo
+  // el equipo. Mientras se arrastra, `arrastre` lleva su posicion provisional;
+  // `historial` guarda como deshacer cada movimiento (boton o Ctrl+Z).
+  const [editando, setEditando] = useState(false);
+  const [arrastre, setArrastre] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [historial, setHistorial] = useState<CambioPosiciones[]>([]);
+
   // Si entra a /nodos sin proyectoId, redirigir automáticamente a la tarea activa o su primer proyecto
   useEffect(() => {
     if (!proyectoId) {
@@ -123,6 +145,7 @@ function Nodos() {
   }, []);
   function cambiarOrientacion(valor: Orientacion) {
     setOrientacion(valor);
+    setArrastre(null);
     try {
       window.localStorage.setItem(CLAVE_ORIENTACION, valor);
     } catch {
@@ -222,15 +245,19 @@ function Nodos() {
     });
   }
 
-  const { nodos, aristas } = useMemo(() => {
-    const { posiciones, posicionRaiz, raicesProyecto } = calcularArbol(
-      actividades,
-      expandidoRaiz,
-      expandido,
-      orientacion,
-    );
-    const porId = new Map(actividades.map((a) => [a.id, a]));
+  // Acomodo automatico y, encima, lo que se movio a mano en esta orientacion.
+  const arbol = useMemo(
+    () => calcularArbol(actividades, expandidoRaiz, expandido, orientacion),
+    [actividades, expandidoRaiz, expandido, orientacion],
+  );
+  const finales = useMemo(
+    () => aplicarPosicionesGuardadas(arbol, actividades, orientacion),
+    [arbol, actividades, orientacion],
+  );
 
+  const { nodos, aristas } = useMemo(() => {
+    const { posicionRaiz, raicesProyecto } = arbol;
+    const porId = new Map(actividades.map((a) => [a.id, a]));
     const nodos: Node[] = [];
     const aristas: Edge[] = [];
 
@@ -243,26 +270,28 @@ function Nodos() {
         onAlternar: alternarRaiz,
         onAgregarHija: (titulo: string) => agregarTarea(titulo),
       };
-      nodos.push({ id: RAIZ, type: 'raiz', position: posicionRaiz, data: datosRaiz });
+      nodos.push({ id: RAIZ, type: 'raiz', position: posicionRaiz, data: datosRaiz, draggable: false });
     }
 
-    for (const pos of posiciones.values()) {
+    for (const pos of finales.values()) {
       const a = porId.get(pos.id)!;
       const datos: DatosNodoTarea = {
         titulo: a.titulo,
         estado: a.estado,
         color: pos.color,
+        llenado: llenadoReal(a),
         tieneHijos: pos.tieneHijos,
         expandido: expandido.has(a.id),
         orientacion,
         responsableNombre: a.responsable?.nombreCompleto,
         esMiTarea: a.responsableId === sesionActual?.id,
+        editando,
         onAlternar: () => alternarNodo(a.id),
         onAgregarHija: (titulo: string) => agregarTarea(titulo, a.id),
       };
       nodos.push({ id: a.id, type: 'tarea', position: { x: pos.x, y: pos.y }, data: datos });
 
-      const padreId = a.actividadPadreId && posiciones.has(a.actividadPadreId) ? a.actividadPadreId : null;
+      const padreId = a.actividadPadreId && finales.has(a.actividadPadreId) ? a.actividadPadreId : null;
       if (padreId) {
         aristas.push({
           id: `${padreId}-${a.id}`,
@@ -283,7 +312,166 @@ function Nodos() {
     }
 
     return { nodos, aristas };
-  }, [actividades, nombreProyecto, expandidoRaiz, expandido, orientacion, agregarTarea, sesionActual]);
+  }, [
+    actividades, arbol, finales, nombreProyecto, expandidoRaiz, expandido, orientacion,
+    agregarTarea, sesionActual, editando,
+  ]);
+
+  /** Ramas de cada tarea: al arrastrar un padre lo acompanan sus descendientes. */
+  const descendientes = useCallback(
+    (id: string) => {
+      const hijosPorPadre = new Map<string, string[]>();
+      for (const a of actividades) {
+        if (!a.actividadPadreId) continue;
+        hijosPorPadre.set(a.actividadPadreId, [...(hijosPorPadre.get(a.actividadPadreId) ?? []), a.id]);
+      }
+      const resultado = new Set<string>();
+      const pendientes = [...(hijosPorPadre.get(id) ?? [])];
+      while (pendientes.length) {
+        const actual = pendientes.pop()!;
+        resultado.add(actual);
+        pendientes.push(...(hijosPorPadre.get(actual) ?? []));
+      }
+      return resultado;
+    },
+    [actividades],
+  );
+
+  // La burbuja arrastrada sigue al puntero y su rama visible la acompana.
+  const nodosVisibles = useMemo(() => {
+    if (!arrastre) return nodos;
+    const origen = finales.get(arrastre.id);
+    if (!origen) return nodos;
+    const dx = arrastre.x - origen.x;
+    const dy = arrastre.y - origen.y;
+    const rama = descendientes(arrastre.id);
+    return nodos.map((n) =>
+      n.id === arrastre.id || rama.has(n.id)
+        ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } }
+        : n,
+    );
+  }, [nodos, arrastre, finales, descendientes]);
+
+  /**
+   * Aplica un movimiento al instante y lo guarda para todo el equipo. Si el
+   * servidor lo rechaza, se recarga el mapa tal como quedo guardado.
+   */
+  const aplicarCambios = useCallback(
+    (cambio: CambioPosiciones) => {
+      const porId = new Map(cambio.cambios.map((c) => [c.id, c.posicion]));
+      setActividades((prev) =>
+        prev.map((a) =>
+          porId.has(a.id)
+            ? { ...a, posicionNodo: conPosicion(a, cambio.orientacion, porId.get(a.id)!) }
+            : a,
+        ),
+      );
+      return api.patch('/actividades/posiciones', cambio).catch((err) => {
+        setAviso(err instanceof ErrorApi ? err.message : 'No se pudo guardar la posición.');
+        cargar().catch(() => undefined);
+        throw err;
+      });
+    },
+    [cargar],
+  );
+
+  /** Mueve nodos dejando anotado como volver atras. */
+  const mover = useCallback(
+    (cambios: CambioPosiciones['cambios']) => {
+      const porId = new Map(actividades.map((a) => [a.id, a]));
+      const inverso: CambioPosiciones = {
+        orientacion,
+        cambios: cambios.map((c) => ({
+          id: c.id,
+          posicion: posicionGuardada(porId.get(c.id)!, orientacion),
+        })),
+      };
+      setHistorial((h) => [...h.slice(-49), inverso]);
+      aplicarCambios({ orientacion, cambios }).catch(() =>
+        setHistorial((h) => h.filter((x) => x !== inverso)),
+      );
+    },
+    [actividades, orientacion, aplicarCambios],
+  );
+
+  const deshacer = useCallback(() => {
+    const ultimo = historial[historial.length - 1];
+    if (!ultimo) return;
+    setHistorial((h) => h.slice(0, -1));
+    aplicarCambios(ultimo).catch(() => undefined);
+  }, [historial, aplicarCambios]);
+
+  /** Devuelve todos los nodos de esta orientacion al acomodo automatico. */
+  const hayMovidos = actividades.some((a) => posicionGuardada(a, orientacion));
+  function restablecer() {
+    const movidos = actividades.filter((a) => posicionGuardada(a, orientacion));
+    if (movidos.length) mover(movidos.map((a) => ({ id: a.id, posicion: null })));
+  }
+
+  // Ctrl+Z (o Cmd+Z) deshace el ultimo movimiento mientras se edita, salvo que
+  // se este escribiendo en un campo.
+  useEffect(() => {
+    if (!editando) return;
+    function alTeclear(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+      const objetivo = e.target as HTMLElement | null;
+      if (objetivo?.closest('input, textarea, [contenteditable="true"]')) return;
+      e.preventDefault();
+      deshacer();
+    }
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [editando, deshacer]);
+
+  // El historial es de este proyecto: no se arrastra a otro.
+  useEffect(() => setHistorial([]), [proyectoId]);
+
+  /*
+   * Medidas de cada burbuja segun React Flow. Como los nodos se rearman en cada
+   * cambio, sin devolverle sus medidas React Flow los oculta hasta volver a
+   * medirlos, y el encuadre puede dejar fuera a los que aun no se midieron.
+   */
+  const [medidas, setMedidas] = useState<Record<string, { width: number; height: number }>>({});
+  const alCambiarNodos: OnNodesChange = useCallback((cambios) => {
+    setMedidas((prev) => {
+      let siguiente = prev;
+      for (const c of cambios) {
+        if (c.type !== 'dimensions' || !c.dimensions) continue;
+        const actual = prev[c.id];
+        if (actual?.width === c.dimensions.width && actual?.height === c.dimensions.height) continue;
+        if (siguiente === prev) siguiente = { ...prev };
+        siguiente[c.id] = c.dimensions;
+      }
+      return siguiente;
+    });
+  }, []);
+  const nodosFlow = useMemo(
+    () => nodosVisibles.map((n) => (medidas[n.id] ? { ...n, measured: medidas[n.id] } : n)),
+    [nodosVisibles, medidas],
+  );
+
+  const alArrastrar: OnNodeDrag = useCallback((_evento, nodo) => {
+    setArrastre({ id: nodo.id, x: nodo.position.x, y: nodo.position.y });
+  }, []);
+
+  /** Al soltar una burbuja queda exactamente donde se dejo. */
+  const alSoltar: OnNodeDrag = useCallback(
+    (_evento, nodo) => {
+      setArrastre(null);
+      const a = actividades.find((x) => x.id === nodo.id);
+      const origen = finales.get(nodo.id);
+      if (!a || !origen) return;
+      if (Math.abs(nodo.position.x - origen.x) < 1 && Math.abs(nodo.position.y - origen.y) < 1) return;
+      mover([{ id: a.id, posicion: desplazamientoRespectoDelPadre(a, nodo.position, finales, arbol.posicionRaiz) }]);
+    },
+    [actividades, finales, arbol, mover],
+  );
+
+  function alternarEdicion() {
+    setEditando((v) => !v);
+    setArrastre(null);
+  }
+
 
   if (!proyectoId) {
     if (buscandoProyecto) {
@@ -356,34 +544,75 @@ function Nodos() {
         <section className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
             <p className="text-xs text-slate-400">Sentido del arbol</p>
-            <div className="flex rounded-lg border border-white/10 bg-slate-950/60 p-0.5" role="radiogroup">
-              {ORIENTACIONES.map((o) => (
+            <div className="flex items-center gap-2">
+              {!esTrabajador && (
                 <button
-                  key={o.valor}
-                  role="radio"
-                  aria-checked={orientacion === o.valor}
-                  title={o.titulo}
-                  onClick={() => cambiarOrientacion(o.valor)}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
-                    orientacion === o.valor
-                      ? 'bg-sky-500/20 font-semibold text-sky-200'
-                      : 'text-slate-400 hover:text-slate-200'
+                  aria-pressed={editando}
+                  onClick={alternarEdicion}
+                  title="Arrastra las tareas y déjalas donde quieras"
+                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+                    editando
+                      ? 'border-amber-400/50 bg-amber-500/20 font-semibold text-amber-200'
+                      : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span aria-hidden>{o.icono}</span>
-                  {o.texto}
+                  <span aria-hidden>✥</span>
+                  {editando ? 'Listo' : 'Editar mapa'}
                 </button>
-              ))}
+              )}
+              {editando && (
+                <>
+                  <button
+                    onClick={deshacer}
+                    disabled={historial.length === 0}
+                    title="Deshacer el último movimiento (Ctrl+Z)"
+                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <span aria-hidden>↶</span>
+                    Deshacer
+                  </button>
+                  <button
+                    onClick={restablecer}
+                    disabled={!hayMovidos}
+                    title="Devolver todos los nodos al acomodo automático en esta orientación"
+                    className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Restablecer
+                  </button>
+                </>
+              )}
+              <div className="flex rounded-lg border border-white/10 bg-slate-950/60 p-0.5" role="radiogroup">
+                {ORIENTACIONES.map((o) => (
+                  <button
+                    key={o.valor}
+                    role="radio"
+                    aria-checked={orientacion === o.valor}
+                    title={o.titulo}
+                    onClick={() => cambiarOrientacion(o.valor)}
+                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
+                      orientacion === o.valor
+                        ? 'bg-sky-500/20 font-semibold text-sky-200'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <span aria-hidden>{o.icono}</span>
+                    {o.texto}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           <div style={{ height: '32rem' }}>
             <ReactFlow
-              nodes={nodos}
+              nodes={nodosFlow}
               edges={aristas}
+              onNodesChange={alCambiarNodos}
               nodeTypes={TIPOS_NODO}
               onConnect={esTrabajador ? undefined : alConectar}
               onNodeClick={alHacerClicEnNodo}
-              nodesDraggable={false}
+              nodesDraggable={editando}
+              onNodeDrag={alArrastrar}
+              onNodeDragStop={alSoltar}
               fitView
               fitViewOptions={{ padding: 0.3 }}
               proOptions={{ hideAttribution: true }}
@@ -397,7 +626,9 @@ function Nodos() {
             </ReactFlow>
           </div>
           <p className="border-t border-white/10 px-4 py-2 text-[11px] text-slate-500">
-            {esTrabajador
+            {editando
+              ? 'Modo edición: arrastra cualquier tarea y suéltala donde quieras; su rama la acompaña y el mapa queda así para todo el equipo. "Deshacer" (o Ctrl+Z) revierte el último movimiento y "Restablecer" vuelve al acomodo automático.'
+              : esTrabajador
               ? 'Haz clic en el círculo del borde de una burbuja para desplegar tareas, pasa el mouse sobre ella para agregarle una nueva, o haz clic en cualquier tarea para ver su detalle, cronometrar o subir evidencias.'
               : 'Haz clic en el círculo del borde de una burbuja para desplegar sus tareas, pasa el mouse sobre ella para agregarle una nueva, o arrastra desde su borde hacia otra para unirlas. Con el selector de arriba eliges si el árbol crece hacia la derecha o hacia abajo.'}
           </p>

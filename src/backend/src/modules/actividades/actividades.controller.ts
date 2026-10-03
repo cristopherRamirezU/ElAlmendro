@@ -14,6 +14,7 @@ import { ActividadesService } from './actividades.service';
 import { CrearActividadDto } from './dto/crear-actividad.dto';
 import { ActualizarActividadDto } from './dto/actualizar-actividad.dto';
 import { ReasignarActividadDto } from './dto/reasignar-actividad.dto';
+import { GuardarPosicionesDto } from './dto/guardar-posiciones.dto';
 import {
   ActualizarSubtareaDto,
   CambiarEstadoActividadDto,
@@ -41,6 +42,17 @@ export class ActividadesController {
   @Post()
   crear(@Usuario() u: UsuarioActual, @Body() dto: CrearActividadDto) {
     return this.actividades.crear(u, dto);
+  }
+
+  /**
+   * Guarda donde quedaron los nodos movidos en el mapa (modo edicion). Va
+   * antes de las rutas con ':id' para que "posiciones" no se tome como
+   * identificador.
+   */
+  @Patch('posiciones')
+  @ExigirPermisos(PERMISOS.ACTIVIDADES_GESTIONAR)
+  guardarPosiciones(@Usuario() u: UsuarioActual, @Body() dto: GuardarPosicionesDto) {
+    return this.actividades.guardarPosiciones(u, dto);
   }
 
   /**

@@ -74,7 +74,7 @@ export class NodosService {
               },
             }),
       },
-      orderBy: [{ actividadPadreId: 'asc' }, { orden: 'asc' }],
+      orderBy: [{ actividadPadreId: 'asc' }, { orden: 'asc' }, { creadoEn: 'asc' }],
       select: {
         id: true,
         titulo: true,
@@ -82,6 +82,7 @@ export class NodosService {
         prioridad: true,
         actividadPadreId: true,
         posicionNodo: true,
+        orden: true,
         responsableId: true,
         responsable: { select: { id: true, nombreCompleto: true } },
         // Fechas de la carta Gantt: nace, vence y se guarda en el cofre.

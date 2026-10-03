@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ActividadesService } from '../../../src/modules/actividades/actividades.service';
 import { montarServicio } from '../../utilidades/modulo';
 import { PrismaMock } from '../../utilidades/prisma-mock';
@@ -163,6 +164,122 @@ describe('ActividadesService', () => {
 
       expect(prisma.actividad.findUnique).toHaveBeenCalledTimes(200);
       expect(prisma.actividad.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('crear', () => {
+    it('deja la tarea nueva al final de sus hermanas', async () => {
+      prisma.proyecto.findFirst.mockResolvedValue({ id: 'p1' } as never);
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce({ id: 'padre' } as never) // el padre existe
+        .mockResolvedValueOnce({ orden: 4 } as never); // ultima hermana
+
+      await servicio.crear(ACTOR, {
+        proyectoId: 'p1',
+        titulo: 'Nueva',
+        actividadPadreId: 'padre',
+      });
+
+      expect(prisma.actividad.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ orden: 5 }) }),
+      );
+    });
+
+    it('la primera hija parte en orden 0', async () => {
+      prisma.proyecto.findFirst.mockResolvedValue({ id: 'p1' } as never);
+      prisma.actividad.findFirst.mockResolvedValueOnce(null as never);
+
+      await servicio.crear(ACTOR, { proyectoId: 'p1', titulo: 'Primera' });
+
+      expect(prisma.actividad.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ orden: 0 }) }),
+      );
+    });
+  });
+
+  describe('guardarPosiciones (mapa de nodos en modo edicion)', () => {
+    const nodo = (id: string, posicionNodo: unknown = null, proyectoId = 'p1') => ({
+      id,
+      proyectoId,
+      posicionNodo,
+    });
+    const datosGuardados = () =>
+      prisma.actividad.update.mock.calls.map(([arg]) => [arg.where.id, arg.data.posicionNodo]);
+
+    it('rechaza un nodo repetido sin consultar la base', async () => {
+      await expect(
+        servicio.guardarPosiciones(ACTOR, {
+          orientacion: 'vertical',
+          cambios: [{ id: 'a', posicion: { x: 1, y: 2 } }, { id: 'a', posicion: null }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.actividad.findMany).not.toHaveBeenCalled();
+    });
+
+    it('rechaza un nodo inexistente o de otra organizacion', async () => {
+      prisma.actividad.findMany.mockResolvedValue([nodo('a')] as never);
+
+      await expect(
+        servicio.guardarPosiciones(ACTOR, {
+          orientacion: 'vertical',
+          cambios: [{ id: 'a', posicion: { x: 1, y: 2 } }, { id: 'b', posicion: { x: 3, y: 4 } }],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.actividad.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza mezclar nodos de distintos proyectos', async () => {
+      prisma.actividad.findMany.mockResolvedValue([nodo('a'), nodo('b', null, 'p2')] as never);
+
+      await expect(
+        servicio.guardarPosiciones(ACTOR, {
+          orientacion: 'vertical',
+          cambios: [{ id: 'a', posicion: { x: 1, y: 2 } }, { id: 'b', posicion: { x: 3, y: 4 } }],
+        }),
+      ).rejects.toThrow(/mismo proyecto/i);
+    });
+
+    it('guarda la posicion de la orientacion sin tocar la de la otra', async () => {
+      prisma.actividad.findMany.mockResolvedValue([
+        nodo('a', { horizontal: { x: 10, y: 20 } }),
+      ] as never);
+
+      await servicio.guardarPosiciones(ACTOR, {
+        orientacion: 'vertical',
+        cambios: [{ id: 'a', posicion: { x: -50, y: 120 } }],
+      });
+
+      expect(datosGuardados()).toEqual([
+        ['a', { horizontal: { x: 10, y: 20 }, vertical: { x: -50, y: 120 } }],
+      ]);
+    });
+
+    it('descarta el formato suelto { x, y } que dejaba el seed', async () => {
+      prisma.actividad.findMany.mockResolvedValue([nodo('a', { x: 320, y: 140 })] as never);
+
+      await servicio.guardarPosiciones(ACTOR, {
+        orientacion: 'horizontal',
+        cambios: [{ id: 'a', posicion: { x: 5, y: 6 } }],
+      });
+
+      expect(datosGuardados()).toEqual([['a', { horizontal: { x: 5, y: 6 } }]]);
+    });
+
+    it('con posicion null borra solo esa orientacion, y vacia el campo si no queda nada', async () => {
+      prisma.actividad.findMany.mockResolvedValue([
+        nodo('a', { horizontal: { x: 1, y: 1 }, vertical: { x: 2, y: 2 } }),
+        nodo('b', { vertical: { x: 3, y: 3 } }),
+      ] as never);
+
+      await servicio.guardarPosiciones(ACTOR, {
+        orientacion: 'vertical',
+        cambios: [{ id: 'a', posicion: null }, { id: 'b', posicion: null }],
+      });
+
+      expect(datosGuardados()).toEqual([
+        ['a', { horizontal: { x: 1, y: 1 } }],
+        ['b', Prisma.DbNull],
+      ]);
     });
   });
 

@@ -41,7 +41,14 @@ export interface NodoActividad {
   estado: string;
   prioridad: string;
   actividadPadreId: string | null;
-  posicionNodo: { x: number; y: number } | null;
+  /**
+   * Donde dejo el nodo quien edito el mapa, relativo a su padre y por
+   * orientacion: `{ horizontal?: {x, y}, vertical?: {x, y} }`. Se lee con
+   * `posicionGuardada` (lib/mapaMental), que descarta cualquier otro formato.
+   */
+  posicionNodo: Record<string, unknown> | null;
+  /** Lugar entre sus hermanas en el mapa de nodos. */
+  orden: number;
   responsableId?: string;
   responsable: { id?: string; nombreCompleto: string };
   /** Monedas (microtareas) de la bolsa y cuantas estan marcadas. */
