@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Actividad, api, ErrorApi, Evidencia, Sesion, Subtarea, URL_API } from '@/lib/api';
 import { cronometro, duracion } from '@/lib/formato';
 import BolsaOro from './BolsaOro';
+import { llenadoDeBolsa, porcentajeLlenado } from './llenado';
 
 /**
  * El panel de una bolsa: su llenado, el cronometro, las acciones y la lista
@@ -161,14 +162,9 @@ export default function ContenidoBolsa({
   const monedas = actividad?.subtareas ?? [];
   const listas = monedas.filter((m) => m.completada).length;
   const guardada = actividad?.estado === 'COMPLETADA';
-  // Sin monedas, el llenado lo marca el estado de la tarea.
-  const llenado = guardada
-    ? 1
-    : monedas.length > 0
-      ? listas / monedas.length
-      : actividad?.estado === 'EN_PROGRESO'
-        ? 0.45
-        : 0.08;
+  const llenado = actividad
+    ? llenadoDeBolsa({ estado: actividad.estado, monedas: monedas.length, monedasListas: listas })
+    : 0;
   const enEstaBolsa = sesion?.actividad.id === bolsaId;
   const corriendo = enEstaBolsa && sesion?.estado === 'ACTIVA';
   const todoListo = monedas.length > 0 && listas === monedas.length;
@@ -253,7 +249,7 @@ export default function ContenidoBolsa({
         <div ref={bolsaRef}>
           <BolsaOro llenado={llenado} tamano={104} guardada={guardada} />
         </div>
-        <p className="mt-1 text-2xl font-bold text-amber-300">{Math.round(llenado * 100)}%</p>
+        <p className="mt-1 text-2xl font-bold text-amber-300">{porcentajeLlenado(llenado)}%</p>
         <p className="text-[11px] text-slate-400">
           {monedas.length > 0
             ? `${listas} / ${monedas.length} monedas`

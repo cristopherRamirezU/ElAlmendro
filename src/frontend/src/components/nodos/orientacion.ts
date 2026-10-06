@@ -1,4 +1,5 @@
-import { Position } from '@xyflow/react';
+import { useEffect } from 'react';
+import { Position, useUpdateNodeInternals } from '@xyflow/react';
 import type { Orientacion } from '@/lib/mapaMental';
 
 /**
@@ -19,4 +20,18 @@ export function disposicionNodo(orientacion: Orientacion) {
     trazoFlecha: horizontal ? 'm9 6 6 6-6 6' : 'm6 9 6 6 6-6',
     claseFlechaExpandida: horizontal ? 'rotate-90' : 'rotate-180',
   };
+}
+
+/**
+ * React Flow mide las manillas de un nodo solo cuando el nodo cambia de
+ * tamano. Al girar el arbol las manillas pasan de los costados a arriba y
+ * abajo sin que la burbuja cambie de medida, asi que las aristas seguian
+ * saliendo de donde estaban antes y se cruzaban. Esto le pide volver a
+ * medirlas cada vez que cambia la orientacion.
+ */
+export function useManillasSegunOrientacion(id: string, orientacion: Orientacion) {
+  const actualizar = useUpdateNodeInternals();
+  useEffect(() => {
+    actualizar(id);
+  }, [id, orientacion, actualizar]);
 }
