@@ -7,6 +7,7 @@ import { PERMISOS } from '@/lib/rbac';
 import { useSesion, useTienePermiso } from '@/lib/sesion';
 import ResponsableTarea from './ResponsableTarea';
 import BolsaOro from '@/components/tesoro/BolsaOro';
+import { llenadoDeBolsa, porcentajeLlenado } from '@/components/tesoro/llenado';
 import { useTesoro } from '@/lib/tesoro';
 
 /**
@@ -129,14 +130,11 @@ export default function PanelTarea({
   // El servidor exige respaldo para cerrar como completada; aqui se avisa
   // antes de intentarlo, porque despues ya no se pueden adjuntar archivos.
   const hayRespaldo = evidencias.length > 0;
-  // Sin monedas el llenado lo marca el estado de la tarea.
-  const llenadoBolsa = terminada
-    ? 1
-    : actividad.subtareas.length > 0
-      ? monedasListas / actividad.subtareas.length
-      : actividad.estado === 'EN_PROGRESO'
-        ? 0.45
-        : 0.08;
+  const llenadoBolsa = llenadoDeBolsa({
+    estado: actividad.estado,
+    monedas: actividad.subtareas.length,
+    monedasListas,
+  });
 
   return (
     <div>
@@ -191,7 +189,7 @@ export default function PanelTarea({
         <BolsaOro llenado={llenadoBolsa} tamano={56} guardada={terminada} />
         <span className="min-w-0 flex-1">
           <span className="block text-lg font-bold text-amber-300">
-            {Math.round(llenadoBolsa * 100)}%
+            {porcentajeLlenado(llenadoBolsa)}%
           </span>
           <span className="block text-[11px] text-slate-400">
             {actividad.subtareas.length > 0

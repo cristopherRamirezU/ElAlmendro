@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -11,7 +11,7 @@ import Marco from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
 import PanelTarea from '@/components/nodos/PanelTarea';
-import { llenadoReal } from '@/components/tesoro/llenado';
+import { llenadoDeBolsa } from '@/components/tesoro/llenado';
 import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
 import {
@@ -24,6 +24,7 @@ import {
   Punto,
 } from '@/lib/mapaMental';
 import { useSesion } from '@/lib/sesion';
+import { useTesoro } from '@/lib/tesoro';
 
 const RAIZ = 'raiz-proyecto';
 
@@ -158,6 +159,10 @@ function Nodos() {
     setTareaSeleccionada(nodo.id);
   }, []);
 
+  // La tarea de la URL se enfoca una sola vez: si se repitiera en cada recarga
+  // del mapa, el panel saltaria de vuelta a ella cada vez que algo cambia.
+  const tareaEnfocada = useRef<string | null>(null);
+
   const cargar = useCallback(async () => {
     if (!proyectoId) return;
     const d = await api.get<{ actividades: NodoActividad[]; derivaciones: Derivacion[] }>(
@@ -168,7 +173,8 @@ function Nodos() {
     setCargas((c) => c + 1);
 
     // Si hay una tarea en el parametro de la URL, seleccionarla y expandir su linaje
-    if (tareaParam) {
+    if (tareaParam && tareaEnfocada.current !== tareaParam) {
+      tareaEnfocada.current = tareaParam;
       const encontrada = d.actividades.find((a) => a.id === tareaParam);
       if (encontrada) {
         setTareaSeleccionada(encontrada.id);
@@ -193,6 +199,15 @@ function Nodos() {
       else setAviso('No se pudo conectar con el servidor.');
     });
   }, [cargar, router]);
+
+  // Las monedas se marcan en la bolsa flotante (u otra ventana), que no pasa
+  // por el panel: sin esto el porcentaje del nodo quedaba desfasado hasta
+  // recargar la pagina.
+  const { version: versionTesoro } = useTesoro();
+  useEffect(() => {
+    if (versionTesoro === 0) return;
+    cargar().catch(() => undefined);
+  }, [versionTesoro, cargar]);
 
   const agregarTarea = useCallback(
     async (titulo: string, actividadPadreId?: string) => {
@@ -279,7 +294,7 @@ function Nodos() {
         titulo: a.titulo,
         estado: a.estado,
         color: pos.color,
-        llenado: llenadoReal(a),
+        llenado: llenadoDeBolsa(a),
         tieneHijos: pos.tieneHijos,
         expandido: expandido.has(a.id),
         orientacion,

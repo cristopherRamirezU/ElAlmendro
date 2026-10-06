@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { Handle, type NodeProps } from '@xyflow/react';
-import type { Orientacion } from '@/lib/mapaMental';
-import { disposicionNodo } from './orientacion';
+import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
+import { disposicionNodo, useManillasSegunOrientacion } from './orientacion';
 
 export interface DatosNodoRaiz {
   nombre: string;
@@ -18,11 +18,14 @@ export interface DatosNodoRaiz {
 /**
  * Burbuja central del mapa mental: el proyecto del que cuelgan las tareas.
  * Parte siempre colapsada — hay que desplegarla para ver las tareas de
- * primer nivel, igual que cualquier otro nodo del arbol.
+ * primer nivel, igual que cualquier otro nodo del arbol. Mide lo mismo que
+ * una tarea: el layout la ubica como a una mas, y si fuera de otro tamano
+ * quedaria descentrada respecto de sus hijas y las aristas saldrian chuecas.
  */
-export default function NodoRaiz({ data }: NodeProps) {
+export default function NodoRaiz({ id, data }: NodeProps) {
   const d = data as DatosNodoRaiz;
   const disposicion = disposicionNodo(d.orientacion);
+  useManillasSegunOrientacion(id, d.orientacion);
   const [agregando, setAgregando] = useState(false);
   const [texto, setTexto] = useState('');
 
@@ -34,16 +37,18 @@ export default function NodoRaiz({ data }: NodeProps) {
   }
 
   return (
-    <div className="group relative">
+    <div className="group relative" style={{ width: ANCHO_NODO, height: ALTO_NODO }}>
       <div
-        className="flex max-w-[220px] items-center justify-center rounded-xl px-5 py-3.5 text-center shadow-xl"
+        className="flex h-full w-full items-center justify-center rounded-xl px-5 py-2 text-center shadow-xl"
         style={{
           background: 'linear-gradient(135deg, #0369a1, #4338ca)',
           border: '1px solid rgba(56,189,248,0.6)',
           boxShadow: '0 6px 24px rgba(56,189,248,.35)',
         }}
       >
-        <span className="text-sm font-bold leading-snug text-white">{d.nombre}</span>
+        <span className="line-clamp-2 text-sm font-bold leading-snug text-white" title={d.nombre}>
+          {d.nombre}
+        </span>
         <Handle
           type="source"
           position={disposicion.salida}

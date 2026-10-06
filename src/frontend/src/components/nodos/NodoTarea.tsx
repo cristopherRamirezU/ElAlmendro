@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Handle, type NodeProps } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
-import { disposicionNodo } from './orientacion';
+import { porcentajeLlenado } from '@/components/tesoro/llenado';
+import { disposicionNodo, useManillasSegunOrientacion } from './orientacion';
 
 const COLOR_ESTADO: Record<string, string> = {
   PENDIENTE: '#38bdf8',
@@ -16,7 +17,7 @@ const COLOR_ESTADO: Record<string, string> = {
 
 /** Tramo del saco de oro segun su llenado: color, nombre y si brilla. */
 function tramoSaco(llenado: number) {
-  const porcentaje = llenado > 0 ? Math.max(1, Math.round(Math.min(llenado, 1) * 100)) : 0;
+  const porcentaje = porcentajeLlenado(llenado);
   if (porcentaje === 0) return { porcentaje, etiqueta: 'vacío', color: '#64748b', brillo: 0 };
   if (porcentaje <= 40) return { porcentaje, etiqueta: 'iniciando', color: '#d97706', brillo: 0 };
   if (porcentaje <= 80) return { porcentaje, etiqueta: 'avanzado', color: '#facc15', brillo: 10 };
@@ -49,9 +50,10 @@ export interface DatosNodoTarea {
  * boton circular del borde despliega o repliega sus hijas, igual que en el
  * mapa mental de referencia — parte siempre colapsado.
  */
-export default function NodoTarea({ data }: NodeProps) {
+export default function NodoTarea({ id, data }: NodeProps) {
   const d = data as DatosNodoTarea;
   const disposicion = disposicionNodo(d.orientacion);
+  useManillasSegunOrientacion(id, d.orientacion);
   const tramo = tramoSaco(d.llenado ?? 0);
   const [agregando, setAgregando] = useState(false);
   const [texto, setTexto] = useState('');
