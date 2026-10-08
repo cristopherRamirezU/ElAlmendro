@@ -351,85 +351,48 @@ export default function Panel() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {proyectos.map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => setSeleccionado(p.id)}
-                  className={`group flex cursor-pointer flex-col justify-between rounded-2xl border bg-slate-900/60 p-4 backdrop-blur transition hover:bg-slate-900 ${
-                    seleccionado === p.id
-                      ? 'border-sky-400/50 ring-2 ring-sky-400/20'
-                      : 'border-white/10'
-                  }`}
-                >
-                  <div>
-                    <div className="mb-1 flex items-start justify-between gap-2">
-                      <p className="font-semibold leading-snug text-white">{p.nombre}</p>
-                      <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-300">
-                        {p.totalTareas} {p.totalTareas === 1 ? 'tarea' : 'tareas'}
-                      </span>
-                    </div>
-                    <p className="mb-2 line-clamp-2 text-xs text-slate-500">
-                      {p.descripcion || 'Sin descripción'}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {proyectos.map((p) => {
+                const porcentaje =
+                  p.totalTareas > 0 ? Math.round((p.tareasCompletadas / p.totalTareas) * 100) : 0;
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => setSeleccionado(p.id)}
+                    className={`group flex aspect-square cursor-pointer flex-col items-center justify-between rounded-2xl border bg-slate-900/60 p-3 text-center backdrop-blur transition hover:bg-slate-900 ${
+                      seleccionado === p.id
+                        ? 'border-sky-400/50 ring-2 ring-sky-400/20'
+                        : 'border-white/10'
+                    }`}
+                  >
+                    <p
+                      className="line-clamp-2 text-sm font-semibold leading-snug text-white"
+                      title={p.nombre}
+                    >
+                      {p.nombre}
                     </p>
 
                     {/* El cofre del proyecto: se llena con cada bolsa guardada. */}
-                    <div className="mb-3 flex items-center gap-3">
-                      <Cofre
-                        llenado={p.totalTareas > 0 ? p.tareasCompletadas / p.totalTareas : 0}
-                        tamano={74}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <span className="text-lg font-bold text-amber-300">
-                            {p.totalTareas > 0
-                              ? Math.round((p.tareasCompletadas / p.totalTareas) * 100)
-                              : 0}
-                            %
-                          </span>
-                          <span className="text-[10px] text-slate-500">
-                            {p.tareasCompletadas}/{p.totalTareas} bolsas
-                          </span>
-                        </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
-                            style={{
-                              width: `${
-                                p.totalTareas > 0 ? (p.tareasCompletadas / p.totalTareas) * 100 : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
-                      </div>
+                    <Cofre
+                      llenado={p.totalTareas > 0 ? p.tareasCompletadas / p.totalTareas : 0}
+                      tamano={64}
+                    />
+
+                    <span className="text-xl font-bold text-amber-300">{porcentaje}%</span>
+
+                    <div className="flex w-full items-center justify-center gap-1 border-t border-white/5 pt-2 text-xs text-slate-400 group-hover:text-sky-300">
+                      <span>Ver detalles</span>
+                      <span aria-hidden>→</span>
                     </div>
                   </div>
-
-                  {esTrabajador ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        irATareas(p);
-                      }}
-                      className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 py-2 text-xs font-semibold text-white shadow-sm transition hover:from-sky-400 hover:to-indigo-400"
-                    >
-                      <span>Iniciar tarea / Registrar avance</span>
-                      <span aria-hidden>→</span>
-                    </button>
-                  ) : (
-                    <div className="mt-2 flex items-center justify-between border-t border-white/5 pt-2 text-xs text-slate-400 group-hover:text-slate-200">
-                      <span>Ver detalles</span>
-                      <span>→</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
 
               {/* Crear proyecto: todos los roles. Los trabajadores tienen
                   autonomia para abrir proyectos; lo que no pueden es editarlos. */}
               <button
                 onClick={() => setModalAbierto(true)}
-                className="flex min-h-[7.5rem] flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/15 p-4 text-slate-400 transition hover:border-sky-400/40 hover:text-sky-300"
+                className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/15 p-3 text-slate-400 transition hover:border-sky-400/40 hover:text-sky-300"
               >
                 <span className="text-2xl leading-none">+</span>
                 <span className="text-sm font-medium">Crear proyecto</span>
