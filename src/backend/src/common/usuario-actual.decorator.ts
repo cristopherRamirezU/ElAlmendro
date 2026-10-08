@@ -12,6 +12,8 @@ export interface UsuarioActual {
   organizacionId: string | null;
   organizacionNombre?: string | null;
   organizacionSlug?: string | null;
+  organizacionColor?: string | null;
+  organizacionTema?: string | null;
 }
 
 export const Usuario = createParamDecorator(

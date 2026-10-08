@@ -10,6 +10,7 @@ import { CrearOrganizacionDto } from './dto/crear-organizacion.dto';
 import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto';
 import { PlanSaaS, Rol } from '@prisma/client';
 import { esViolacionUnica, normalizarCorreo, normalizarRut } from '../../common/organizacion';
+import { UsuarioActual } from '../../common/usuario-actual.decorator';
 
 @Injectable()
 export class OrganizacionesService {
@@ -225,6 +226,56 @@ export class OrganizacionesService {
         tipoEntidad: 'Organizacion',
         entidadId: id,
         valorAnterior: { plan: org.plan, activo: org.activo, maxUsuarios: org.maxUsuarios } as any,
+        valorNuevo: data as any,
+      },
+    });
+
+    return actualizada;
+  }
+
+  /**
+   * Autoservicio del Administrador de la empresa: solo su propio nombre y
+   * color, sin el detalle de usuarios ni proyectos que trae `obtenerPorId`
+   * (eso es exclusivo del panel Super Admin).
+   */
+  async obtenerMia(u: UsuarioActual) {
+    if (!u.organizacionId) {
+      throw new BadRequestException('Esta cuenta no pertenece a ninguna organización.');
+    }
+    const org = await this.prisma.organizacion.findUnique({
+      where: { id: u.organizacionId },
+      select: { id: true, nombre: true, colorPrimario: true, temaFondo: true },
+    });
+    if (!org) throw new NotFoundException('Organización no encontrada.');
+    return org;
+  }
+
+  async actualizarColorPropio(
+    u: UsuarioActual,
+    datos: { colorPrimario: string; temaFondo?: string },
+  ) {
+    if (!u.organizacionId) {
+      throw new BadRequestException('Esta cuenta no pertenece a ninguna organización.');
+    }
+
+    const data: { colorPrimario: string; temaFondo?: string } = {
+      colorPrimario: datos.colorPrimario,
+    };
+    if (datos.temaFondo !== undefined) data.temaFondo = datos.temaFondo;
+
+    const actualizada = await this.prisma.organizacion.update({
+      where: { id: u.organizacionId },
+      data,
+      select: { id: true, nombre: true, colorPrimario: true, temaFondo: true },
+    });
+
+    await this.prisma.registroAuditoria.create({
+      data: {
+        actorId: u.id,
+        organizacionId: u.organizacionId,
+        accion: 'ORGANIZACION_COLOR_ACTUALIZADO',
+        tipoEntidad: 'Organizacion',
+        entidadId: u.organizacionId,
         valorNuevo: data as any,
       },
     });

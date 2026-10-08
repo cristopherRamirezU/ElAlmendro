@@ -145,7 +145,7 @@ export default function GanttBolsas({
   const titulo = mayuscula(tituloCrudo);
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur">
+    <div className="rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
       {/* ------------------------------ Barra de control ------------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 p-3">
         <div className="flex items-center gap-1">

@@ -15,9 +15,17 @@ const COLOR_ESTADO: Record<string, string> = {
   CANCELADA: '#64748b',
 };
 
-/** Tramo del saco de oro segun su llenado: color, nombre y si brilla. */
-function tramoSaco(llenado: number) {
+/**
+ * Tramo del saco de oro segun su llenado: color, nombre y si brilla.
+ * Una tarea en progreso se ve amarilla de inmediato, con el mismo estilo
+ * (borde, fondo y brillo) que el verde de completada o el gris de vacía,
+ * en vez de esperar a que el llenado por si solo la tiña.
+ */
+function tramoSaco(llenado: number, estado?: string) {
   const porcentaje = porcentajeLlenado(llenado);
+  if (estado === 'EN_PROGRESO') {
+    return { porcentaje, etiqueta: 'en progreso', color: '#facc15', brillo: 10 };
+  }
   if (porcentaje === 0) return { porcentaje, etiqueta: 'vacío', color: '#64748b', brillo: 0 };
   if (porcentaje <= 40) return { porcentaje, etiqueta: 'iniciando', color: '#d97706', brillo: 0 };
   if (porcentaje <= 80) return { porcentaje, etiqueta: 'avanzado', color: '#facc15', brillo: 10 };
@@ -54,7 +62,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
   const d = data as DatosNodoTarea;
   const disposicion = disposicionNodo(d.orientacion);
   useManillasSegunOrientacion(id, d.orientacion);
-  const tramo = tramoSaco(d.llenado ?? 0);
+  const tramo = tramoSaco(d.llenado ?? 0, d.estado);
   const [agregando, setAgregando] = useState(false);
   const [texto, setTexto] = useState('');
 

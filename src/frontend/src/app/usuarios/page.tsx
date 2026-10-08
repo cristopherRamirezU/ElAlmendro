@@ -7,6 +7,7 @@ import Marco from '@/components/Marco';
 import { api, ErrorApi, RolCatalogoItem, UsuarioItem } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
 import { useSesion } from '@/lib/sesion';
+import { useColorPrimario } from '@/lib/color';
 
 export default function UsuariosPage() {
   return (
@@ -23,6 +24,7 @@ export default function UsuariosPage() {
 function ContenidoUsuarios() {
   const router = useRouter();
   const sesionActual = useSesion();
+  const colorPrimario = useColorPrimario();
 
   // Al estar dentro de Marco, sesionActual ya viene resuelto desde ContextoSesion.Provider
   const esAdmin = sesionActual?.rol === 'ADMINISTRADOR' || sesionActual?.rol === 'SUPER_ADMIN';
@@ -78,7 +80,7 @@ function ContenidoUsuarios() {
   // Si el usuario no tiene permisos para ver este módulo
   if (!puedeVer) {
     return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900/60 p-8 text-center shadow-sm backdrop-blur">
+      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900 p-8 text-center shadow-sm backdrop-blur">
         <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-rose-400 font-bold text-lg">
           ✕
         </div>
@@ -233,7 +235,7 @@ function ContenidoUsuarios() {
       </div>
 
       {/* -------------------- Barra de herramientas y filtros -------------------- */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 backdrop-blur">
         <div className="flex min-w-[18rem] flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus-within:border-sky-400 focus-within:bg-white/10">
           <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -279,7 +281,8 @@ function ContenidoUsuarios() {
           {puedeGestionar && (
             <button
               onClick={() => setModalCrearAbierto(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-sky-400 hover:to-indigo-400"
+              style={{ backgroundColor: colorPrimario }}
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
             >
               <span className="text-base leading-none">+</span>
               <span>Nuevo Usuario</span>
@@ -289,7 +292,7 @@ function ContenidoUsuarios() {
       </div>
 
       {/* -------------------- Tabla de usuarios -------------------- */}
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur">
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
         {cargando ? (
           <div className="py-16 text-center text-sm text-slate-500">
             Cargando nómina de usuarios…
@@ -468,9 +471,9 @@ function TarjetaMetrica({
 
   return (
     <div className={`rounded-2xl border p-4 ${colores[color]}`}>
-      <p className="text-xs font-medium text-slate-400">{etiqueta}</p>
-      <p className="my-1 text-2xl font-bold tracking-tight text-white">{valor}</p>
-      <p className="text-[11px] text-slate-500">{subtexto}</p>
+      <p className="text-xs font-medium text-[var(--tf-texto-tenue)]">{etiqueta}</p>
+      <p className="my-1 text-2xl font-bold tracking-tight text-[var(--tf-texto)]">{valor}</p>
+      <p className="text-[11px] text-[var(--tf-texto-tenue)]">{subtexto}</p>
     </div>
   );
 }
@@ -512,6 +515,7 @@ function ModalCrearUsuario({
   onCerrar: () => void;
   onGuardado: () => Promise<void>;
 }) {
+  const colorPrimario = useColorPrimario();
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -645,7 +649,8 @@ function ModalCrearUsuario({
             <button
               type="submit"
               disabled={enviando}
-              className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:opacity-50"
+              style={{ backgroundColor: colorPrimario }}
+              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
             >
               {enviando ? 'Guardando…' : 'Crear Trabajador'}
             </button>
@@ -671,6 +676,7 @@ function ModalEditarUsuario({
   onCerrar: () => void;
   onGuardado: () => Promise<void>;
 }) {
+  const colorPrimario = useColorPrimario();
   const [nombreCompleto, setNombreCompleto] = useState(usuario.nombreCompleto);
   const [email, setEmail] = useState(usuario.email);
   const [rol, setRol] = useState<Rol>(usuario.rol);
@@ -816,7 +822,8 @@ function ModalEditarUsuario({
             <button
               type="submit"
               disabled={enviando}
-              className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:opacity-50"
+              style={{ backgroundColor: colorPrimario }}
+              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
             >
               {enviando ? 'Guardando…' : 'Guardar Cambios'}
             </button>

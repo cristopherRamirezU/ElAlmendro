@@ -3,7 +3,18 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+import {
+  BarChart3,
+  Calendar,
+  LayoutGrid,
+  LogOut,
+  LucideIcon,
+  MessageCircle,
+  Settings,
+  ShieldCheck,
+  Users,
+  Workflow,
+} from 'lucide-react';
 import { PERMISOS, PermisoCodigo } from '@/lib/rbac';
 import { api, ErrorApi, Jornada, Usuario } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
@@ -12,6 +23,8 @@ import AvisoVersion from './AvisoVersion';
 import { ProveedorChat } from '@/lib/chat';
 import { cerrarSocketChat } from '@/lib/socket';
 import InsigniaChat from '@/components/chat/InsigniaChat';
+import LogoTimeFlow from '@/components/login/LogoTimeFlow';
+import '@/components/login/login.css';
 import {
   guardarCacheSesion,
   leerCacheSesion,
@@ -21,10 +34,13 @@ import {
 } from '@/lib/cacheSesion';
 import { precalentarRutas } from '@/lib/precalentar';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
+import { colorConAlfa, COLOR_PRIMARIO_DEFECTO } from '@/lib/color';
+import { TEMA_FONDO_DEFECTO, useAplicarTemaFondo } from '@/lib/tema';
 
 interface SeccionNav {
   href: string;
   texto: string;
+  icono: LucideIcon;
   permisoRequerido?: PermisoCodigo;
 }
 
@@ -32,37 +48,50 @@ const SECCIONES: SeccionNav[] = [
   {
     href: '/saas-admin',
     texto: 'Consola SaaS',
+    icono: ShieldCheck,
     permisoRequerido: PERMISOS.ORGANIZACIONES_GESTIONAR,
   },
   {
     href: '/panel',
     texto: 'Proyectos',
+    icono: LayoutGrid,
     permisoRequerido: PERMISOS.ACTIVIDADES_VER_PROPIAS,
   },
   {
     href: '/calendario',
     texto: 'Calendario',
+    icono: Calendar,
     permisoRequerido: PERMISOS.CALENDARIO_VER_PROPIO,
   },
   {
     href: '/nodos',
     texto: 'Mapa de nodos',
+    icono: Workflow,
     permisoRequerido: PERMISOS.NODOS_VER_MAPA,
   },
   {
     href: '/reportes',
     texto: 'Reportes',
+    icono: BarChart3,
     permisoRequerido: PERMISOS.REPORTES_VER_EQUIPO,
   },
   {
     href: '/usuarios',
     texto: 'Usuarios y Roles',
+    icono: Users,
     permisoRequerido: PERMISOS.USUARIOS_GESTIONAR,
   },
   {
     href: '/chat',
     texto: 'Chat del equipo',
+    icono: MessageCircle,
     permisoRequerido: PERMISOS.CHAT_USAR,
+  },
+  {
+    href: '/configuracion',
+    texto: 'Configuración',
+    icono: Settings,
+    permisoRequerido: PERMISOS.CONFIGURACION_GESTIONAR,
   },
 ];
 
@@ -94,6 +123,9 @@ export default function Marco({
   const [respondio, setRespondio] = useState(false);
   const listo = usuario !== null || respondio;
   const [avisoJornada, setAvisoJornada] = useState<string | null>(null);
+  const colorPrimario = usuario?.organizacionColor || COLOR_PRIMARIO_DEFECTO;
+  const temaFondo = usuario?.organizacionTema || TEMA_FONDO_DEFECTO;
+  useAplicarTemaFondo(temaFondo);
 
   useEffect(() => {
     let vigente = true;
@@ -151,7 +183,7 @@ export default function Marco({
 
   if (!listo) {
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-400">
+      <main className="grid min-h-screen place-items-center bg-[var(--tf-fondo)] text-sm text-[var(--tf-texto-tenue)]">
         Cargando…
       </main>
     );
@@ -173,73 +205,63 @@ export default function Marco({
   const contenido = (
     <ContextoSesion.Provider value={usuario}>
       <AvisoVersion />
-      <div className="flex min-h-screen bg-slate-950 text-slate-100">
-        <aside className="hidden w-60 shrink-0 flex-col gap-1 border-r border-white/10 bg-slate-900/60 p-4 md:flex">
+      <div
+        className="flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
+        style={{ '--color-primario': colorPrimario } as React.CSSProperties}
+      >
+        <aside className="hidden w-60 shrink-0 flex-col gap-1 bg-[var(--tf-superficie)] p-4 md:flex">
           <div className="mb-4 flex items-center gap-3 px-2 py-2">
-            <Image
-              src="/images/logo-timeflow.png"
-              alt="TimeFlow"
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl object-contain"
-            />
+            <LogoTimeFlow tamano={40} className="h-10 w-10 shrink-0" />
             <div>
-              <p className="font-bold leading-tight text-white">TimeFlow</p>
-              <p className="text-[11px] text-slate-400">Jornada · Actividades</p>
+              <p className="font-bold leading-tight text-[var(--tf-texto)]">TimeFlow</p>
+              <p className="text-[11px] text-[var(--tf-texto-tenue)]">Jornada · Actividades</p>
             </div>
           </div>
 
-          {seccionesVisibles.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition ${
-                activo === s.href
-                  ? 'bg-sky-500/15 font-semibold text-sky-300'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
-            >
-              <span className="flex-1">{s.texto}</span>
-              {s.href === '/chat' && <InsigniaChat />}
-            </Link>
-          ))}
+          {seccionesVisibles.map((s) => {
+            const Icono = s.icono;
+            return (
+              <Link
+                key={s.href}
+                href={s.href}
+                style={
+                  activo === s.href
+                    ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
+                    : undefined
+                }
+                className={`group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
+                  activo === s.href
+                    ? 'font-semibold'
+                    : 'text-[var(--tf-texto-tenue)] hover:translate-x-0.5 hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+                }`}
+              >
+                <Icono
+                  size={18}
+                  className="shrink-0 transition-transform duration-200 group-hover:scale-110"
+                  style={activo === s.href ? { color: colorPrimario } : undefined}
+                />
+                <span className="flex-1">{s.texto}</span>
+                {s.href === '/chat' && <InsigniaChat />}
+              </Link>
+            );
+          })}
 
-          <div className="mt-auto border-t border-white/10 pt-3">
-            <div className="px-3">
-              <p className="truncate text-xs font-medium text-slate-300">
-                {usuario?.nombreCompleto}
-              </p>
-              <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-                <span className="inline-block text-[10px] font-semibold text-sky-400">
-                  {usuario?.rol === 'SUPER_ADMIN'
-                    ? 'Super Admin SaaS'
-                    : usuario?.rol === 'TRABAJADOR'
-                    ? 'Trabajador'
-                    : usuario?.rol === 'SUPERVISOR'
-                    ? 'Supervisor'
-                    : 'Administrador'}
-                </span>
-                {usuario?.organizacionNombre && (
-                  <span className="truncate text-[10px] text-slate-400" title={usuario.organizacionNombre}>
-                    · {usuario.organizacionNombre}
-                  </span>
-                )}
-              </div>
-            </div>
+          <div className="mt-auto border-t border-[var(--tf-borde)] pt-3">
             <button
               onClick={salir}
-              className="mt-2 w-full rounded-xl px-3 py-2 text-left text-sm text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
+              <LogOut size={18} className="shrink-0" />
               Cerrar sesion
             </button>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex flex-wrap items-center gap-3 border-b border-white/10 bg-slate-900/60 px-6 py-4">
+          <header className="flex flex-wrap items-center gap-3 bg-[var(--tf-superficie)] px-6 py-4">
             <div className="min-w-0">
-              <h1 className="truncate font-bold text-white">{titulo}</h1>
-              {subtitulo && <p className="text-xs text-slate-400">{subtitulo}</p>}
+              <h1 className="truncate font-bold text-[var(--tf-texto)]">{titulo}</h1>
+              {subtitulo && <p className="text-xs text-[var(--tf-texto-tenue)]">{subtitulo}</p>}
             </div>
             <div className="ml-auto flex items-center gap-3">
               {avisoJornada && (
@@ -253,7 +275,7 @@ export default function Marco({
                   className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                     jornada
                       ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15'
-                      : 'border-white/10 bg-white/5 text-slate-400 hover:bg-white/10'
+                      : 'border-[var(--tf-borde)] bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)]'
                   }`}
                 >
                   <span
@@ -264,7 +286,8 @@ export default function Marco({
               )}
               {acciones}
               <div
-                className="grid h-9 w-9 place-items-center rounded-full bg-sky-500/15 text-xs font-bold text-sky-300"
+                style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
+                className="grid h-9 w-9 place-items-center rounded-full text-xs font-bold"
                 title={usuario?.nombreCompleto}
               >
                 {iniciales(usuario?.nombreCompleto ?? '')}

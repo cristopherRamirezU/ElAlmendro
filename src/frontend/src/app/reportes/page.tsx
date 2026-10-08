@@ -241,7 +241,7 @@ function ReportesContenido() {
         />
       </div>
 
-      <section className="mb-4 rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur">
+      <section className="mb-4 rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-bold text-white">
             {orgActual ? `Horas por trabajador — ${orgActual.nombre}` : 'Horas por trabajador'}
@@ -299,7 +299,7 @@ function ReportesContenido() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur">
+      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
         <h2 className="mb-4 font-bold text-white">
           {orgActual ? `Horas por actividad — ${orgActual.nombre}` : 'Horas por actividad'}
         </h2>
@@ -319,7 +319,7 @@ function ReportesContenido() {
 
 function Indicador({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+    <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 backdrop-blur">
       <p className="text-xs text-slate-400">{etiqueta}</p>
       {valor === null ? (
         <div className="mt-2 h-6 w-20 animate-pulse rounded-md bg-white/10" />

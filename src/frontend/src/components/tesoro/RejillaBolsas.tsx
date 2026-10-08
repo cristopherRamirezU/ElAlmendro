@@ -96,13 +96,13 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
     <section>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="flex items-center gap-2 font-bold text-white">
+          <h3 className="flex items-center gap-2 font-bold text-[var(--tf-texto)]">
             Las bolsas de este proyecto
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
+            <span className="rounded-full bg-[var(--tf-hover)] px-2 py-0.5 text-[11px] font-semibold text-[var(--tf-texto-tenue)]">
               {actividades.length}
             </span>
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--tf-texto-tenue)]">
             Cada tarea es una bolsa. Llénala con sus monedas y guárdala en el cofre.
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar una bolsa…"
-            className="w-44 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-1.5 text-xs text-white outline-none placeholder:text-slate-500 focus:border-amber-400/50"
+            className="w-44 rounded-xl border border-white/10 bg-slate-950 px-3 py-1.5 text-xs text-white outline-none placeholder:text-slate-500 focus:border-amber-400/50"
           />
           <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
             {guardadas} en el cofre
@@ -127,13 +127,13 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
             className={`rounded-lg px-3 py-1 text-xs transition ${
               filtro === f.clave
                 ? 'bg-amber-500/20 font-semibold text-amber-200'
-                : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
             }`}
           >
             {f.texto}
           </button>
         ))}
-        <div className="ml-auto flex rounded-lg border border-white/10 p-0.5 text-xs" role="tablist">
+        <div className="ml-auto flex rounded-lg border border-[var(--tf-borde)] p-0.5 text-xs" role="tablist">
           {(
             [
               ['gantt', 'Carta Gantt'],
@@ -146,7 +146,9 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
               aria-selected={vista === v}
               onClick={() => elegirVista(v)}
               className={`rounded-md px-2.5 py-1 transition ${
-                vista === v ? 'bg-white/10 font-semibold text-white' : 'text-slate-400 hover:text-slate-200'
+                vista === v
+                  ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
+                  : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
               }`}
             >
               {texto}
@@ -158,11 +160,11 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
       {cargando ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl border border-white/10 bg-white/5" />
+            <div key={i} className="h-28 animate-pulse rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-hover)]" />
           ))}
         </div>
       ) : visibles.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-xs text-slate-500">
+        <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-8 text-center text-xs text-[var(--tf-texto-tenue)]">
           {actividades.length === 0
             ? 'Este proyecto todavía no tiene bolsas. Créalas desde el mapa de nodos.'
             : 'Ninguna bolsa coincide con este filtro.'}
@@ -183,7 +185,7 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
               <button
                 key={a.id}
                 onClick={() => abrirBolsa({ id: a.id, titulo: a.titulo })}
-                className={`flex items-center gap-3 rounded-2xl border bg-slate-900/60 p-3 text-left backdrop-blur transition hover:bg-slate-900 ${
+                className={`flex items-center gap-3 rounded-2xl border bg-slate-900 p-3 text-left backdrop-blur transition hover:bg-slate-900 ${
                   activa
                     ? 'border-amber-400/60 ring-2 ring-amber-400/20'
                     : 'border-white/10 hover:border-amber-400/30'
@@ -206,7 +208,7 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
                   <span className="mt-1 flex items-center gap-2">
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                       <span
-                        className="block h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-500"
+                        className="tf-barra-brillo block h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-500"
                         style={{ width: `${llenado * 100}%` }}
                       />
                     </span>

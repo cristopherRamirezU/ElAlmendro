@@ -64,9 +64,10 @@ export default function Cofre({
         </radialGradient>
       </defs>
 
-      {/* Resplandor del tesoro: crece con el avance. */}
+      {/* Resplandor del tesoro: crece con el avance y pulsa suave sin parar. */}
       {nivel > 0 && (
         <ellipse
+          className="tf-cofre-brillo"
           cx="100"
           cy="68"
           rx={60 * (0.5 + nivel * 0.5)}

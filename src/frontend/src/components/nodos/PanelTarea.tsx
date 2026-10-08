@@ -117,7 +117,7 @@ export default function PanelTarea({
 
   if (!actividad) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 text-sm text-slate-500 backdrop-blur">
+      <div className="rounded-2xl border border-white/10 bg-slate-900 p-5 text-sm text-slate-500 backdrop-blur">
         Cargando tarea…
       </div>
     );

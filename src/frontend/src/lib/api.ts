@@ -94,6 +94,15 @@ export interface Usuario {
   organizacionId?: string | null;
   organizacionNombre?: string | null;
   organizacionSlug?: string | null;
+  organizacionColor?: string | null;
+  organizacionTema?: string | null;
+}
+
+export interface OrganizacionMia {
+  id: string;
+  nombre: string;
+  colorPrimario: string | null;
+  temaFondo: string | null;
 }
 
 export type PlanSaaS = 'GRATIS' | 'PRO' | 'EMPRESA';

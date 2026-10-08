@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ContactoChat, MensajeChat } from '@/lib/api';
 import { diaRelativo, hora, iniciales } from '@/lib/formato';
+import { colorConAlfa, useColorPrimario } from '@/lib/color';
 
 const ROL_TEXTO: Record<string, string> = {
   ADMINISTRADOR: 'Administrador',
@@ -43,6 +44,7 @@ export default function Conversacion({
   onEscribiendo: () => void;
   onVolver: () => void;
 }) {
+  const colorPrimario = useColorPrimario();
   const [borrador, setBorrador] = useState('');
   const [enviando, setEnviando] = useState(false);
   const listaRef = useRef<HTMLDivElement>(null);
@@ -93,12 +95,18 @@ export default function Conversacion({
           ‹
         </button>
         {esGeneral ? (
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 text-sm font-bold text-white">
+          <span
+            style={{ backgroundColor: colorPrimario }}
+            className="grid h-9 w-9 place-items-center rounded-full text-sm font-bold text-white"
+          >
             #
           </span>
         ) : (
           <span className="relative">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-sky-500/15 text-xs font-bold text-sky-300">
+            <span
+              style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
+              className="grid h-9 w-9 place-items-center rounded-full text-xs font-bold"
+            >
               {iniciales(contacto.nombreCompleto)}
             </span>
             <span
@@ -163,15 +171,17 @@ export default function Conversacion({
               <div className={`flex ${propio ? 'justify-end' : 'justify-start'} ${mismoAutor ? 'mt-0.5' : 'mt-2.5'}`}>
                 <div className={`max-w-[75%] ${propio ? 'items-end' : 'items-start'} flex flex-col`}>
                   {esGeneral && !propio && !mismoAutor && (
-                    <span className="mb-0.5 px-1 text-[10px] font-semibold text-sky-300">
+                    <span
+                      style={{ color: colorPrimario }}
+                      className="mb-0.5 px-1 text-[10px] font-semibold"
+                    >
                       {m.emisor.nombreCompleto}
                     </span>
                   )}
                   <div
+                    style={propio ? { backgroundColor: colorPrimario } : undefined}
                     className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm leading-snug ${
-                      propio
-                        ? 'rounded-br-md bg-gradient-to-br from-sky-500 to-indigo-500 text-white'
-                        : 'rounded-bl-md bg-white/10 text-slate-100'
+                      propio ? 'rounded-br-md text-white' : 'rounded-bl-md bg-white/10 text-slate-100'
                     }`}
                   >
                     {m.cuerpo}
@@ -179,7 +189,10 @@ export default function Conversacion({
                   <span className="mt-0.5 flex items-center gap-1 px-1 text-[10px] text-slate-500">
                     {hora(m.creadoEn)}
                     {propio && !esGeneral && (
-                      <span className={m.leidoEn ? 'text-sky-300' : ''} title={m.leidoEn ? 'Leido' : 'Enviado'}>
+                      <span
+                        style={m.leidoEn ? { color: colorPrimario } : undefined}
+                        title={m.leidoEn ? 'Leido' : 'Enviado'}
+                      >
                         {m.leidoEn ? '✓✓' : '✓'}
                       </span>
                     )}
@@ -221,7 +234,8 @@ export default function Conversacion({
         <button
           type="submit"
           disabled={!borrador.trim() || enviando}
-          className="h-10 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ backgroundColor: colorPrimario }}
+          className="h-10 rounded-xl px-4 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Enviar
         </button>

@@ -13,6 +13,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { OrganizacionesService } from './organizaciones.service';
 import { CrearOrganizacionDto } from './dto/crear-organizacion.dto';
 import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto';
+import { ActualizarColorDto } from './dto/actualizar-color.dto';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermisosGuard } from '../../common/guards/permisos.guard';
 import { ExigirPermisos } from '../../common/decorators/permisos.decorator';
@@ -29,6 +30,27 @@ export class OrganizacionesController {
   @ExigirPermisos(PERMISOS.ORGANIZACIONES_VER)
   async metricas() {
     return this.organizacionesService.obtenerMetricasGlobales();
+  }
+
+  /**
+   * Autoservicio: el Administrador de una empresa lee y personaliza su propia
+   * organización desde Configuración, sin el permiso SaaS-wide de gestionar
+   * organizaciones ajenas. Declaradas antes de ':id' para que "mia" no se
+   * interprete como un identificador.
+   */
+  @Get('mia')
+  @ExigirPermisos(PERMISOS.CONFIGURACION_GESTIONAR)
+  async obtenerMia(@Usuario() usuario: UsuarioActual) {
+    return this.organizacionesService.obtenerMia(usuario);
+  }
+
+  @Patch('mia/color')
+  @ExigirPermisos(PERMISOS.CONFIGURACION_GESTIONAR)
+  async actualizarColorPropio(
+    @Body() dto: ActualizarColorDto,
+    @Usuario() usuario: UsuarioActual,
+  ) {
+    return this.organizacionesService.actualizarColorPropio(usuario, dto);
   }
 
   @Get()

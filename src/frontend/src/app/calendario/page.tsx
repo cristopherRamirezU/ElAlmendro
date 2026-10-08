@@ -183,7 +183,7 @@ function Calendario() {
             onCambio={(id) => navegar({ trabajador: id })}
           />
 
-          <div className="flex overflow-hidden rounded-xl border border-white/15">
+          <div className="flex overflow-hidden rounded-xl border border-[var(--tf-borde)]">
             {VISTAS.map((v) => (
               <button
                 key={v.valor}
@@ -192,7 +192,7 @@ function Calendario() {
                 className={`px-3 py-1.5 text-sm transition ${
                   vista === v.valor
                     ? 'bg-sky-500/15 font-semibold text-sky-300'
-                    : 'text-slate-400 hover:bg-white/5'
+                    : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]'
                 }`}
               >
                 {v.texto}
@@ -204,23 +204,23 @@ function Calendario() {
             <button
               onClick={() => mover(-1)}
               aria-label={vista === 'semana' ? 'Semana anterior' : 'Mes anterior'}
-              className="rounded-lg border border-white/15 px-2.5 py-1 text-sm text-slate-300 hover:bg-white/5"
+              className="rounded-lg border border-[var(--tf-borde)] px-2.5 py-1 text-sm text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]"
             >
               ‹
             </button>
-            <span className="min-w-44 text-center text-sm font-semibold text-slate-200 first-letter:uppercase">
+            <span className="min-w-44 text-center text-sm font-semibold text-[var(--tf-texto)] first-letter:uppercase">
               {vista === 'semana' ? rotulo(semana) : ancla.toFormat('LLLL yyyy', { locale: 'es' })}
             </span>
             <button
               onClick={() => mover(1)}
               aria-label={vista === 'semana' ? 'Semana siguiente' : 'Mes siguiente'}
-              className="rounded-lg border border-white/15 px-2.5 py-1 text-sm text-slate-300 hover:bg-white/5"
+              className="rounded-lg border border-[var(--tf-borde)] px-2.5 py-1 text-sm text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]"
             >
               ›
             </button>
             <button
               onClick={() => navegar({ ancla: hoyLocal() })}
-              className="rounded-lg border border-white/15 px-2.5 py-1 text-sm text-slate-300 hover:bg-white/5"
+              className="rounded-lg border border-[var(--tf-borde)] px-2.5 py-1 text-sm text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]"
             >
               Hoy
             </button>
@@ -234,7 +234,7 @@ function Calendario() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur">
+      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
         <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-400">
           <span>
             Total del mes: <strong className="font-mono text-white">{duracion(totalMes)}</strong>

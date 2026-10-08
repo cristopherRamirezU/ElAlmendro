@@ -127,7 +127,7 @@ export default function SaasAdminPage() {
         {/* Tarjetas Métricas */}
         {metricas && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 backdrop-blur-xl">
+            <div className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur-xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Organizaciones</p>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-white">{metricas.totalOrganizaciones}</span>
@@ -143,7 +143,7 @@ export default function SaasAdminPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 backdrop-blur-xl">
+            <div className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur-xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Usuarios en la Plataforma</p>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-sky-400">{metricas.totalUsuarios}</span>
@@ -152,7 +152,7 @@ export default function SaasAdminPage() {
               <p className="mt-3 text-xs text-slate-400">Excluye cuentas Super Admin</p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 backdrop-blur-xl">
+            <div className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur-xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Proyectos Activos</p>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-indigo-400">{metricas.totalProyectos}</span>
@@ -161,7 +161,7 @@ export default function SaasAdminPage() {
               <p className="mt-3 text-xs text-slate-400">Distribuidos entre clientes</p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 backdrop-blur-xl">
+            <div className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur-xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Distribución de Planes</p>
               <div className="mt-2 space-y-1">
                 <div className="flex justify-between text-xs">
@@ -182,7 +182,7 @@ export default function SaasAdminPage() {
         )}
 
         {/* Barra de Filtros y Búsqueda */}
-        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 sm:flex-row sm:items-center sm:justify-between">
           <form onSubmit={manejarBuscar} className="relative flex-1">
             <input
               type="text"
@@ -221,7 +221,7 @@ export default function SaasAdminPage() {
         </div>
 
         {/* Tabla de Organizaciones */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 backdrop-blur-xl">
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-white/10 bg-slate-950/40 uppercase tracking-wider text-slate-400">

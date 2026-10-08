@@ -11,6 +11,7 @@ import RejillaBolsas from '@/components/tesoro/RejillaBolsas';
 import { api, ErrorApi, ProgresoPersonalItem, ProyectoItem, Sesion } from '@/lib/api';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { useSesion } from '@/lib/sesion';
+import { colorConAlfa, useColorPrimario } from '@/lib/color';
 
 function formatearHoras(segundos: number): string {
   if (!segundos || segundos <= 0) return '0h 0m';
@@ -23,6 +24,7 @@ function formatearHoras(segundos: number): string {
 export default function Panel() {
   const router = useRouter();
   const usuario = useSesion();
+  const colorPrimario = useColorPrimario();
 
   const esTrabajador = usuario?.rol === 'TRABAJADOR';
   const esSupervisor = usuario?.rol === 'SUPERVISOR';
@@ -104,7 +106,7 @@ export default function Panel() {
       {aviso && (
         <p
           role="alert"
-          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300"
+          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300 shadow-sm"
         >
           {aviso}
         </p>
@@ -112,7 +114,7 @@ export default function Panel() {
 
       {/* -------------------- Banner de sesión activa para trabajador -------------------- */}
       {esTrabajador && sesionActiva && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 backdrop-blur">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 shadow-sm backdrop-blur">
           <div
             onClick={() => {
               if (sesionActiva.actividad.proyectoId) {
@@ -215,19 +217,19 @@ export default function Panel() {
             Resumen Operativo de Supervisión
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+            <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-sm backdrop-blur">
               <p className="text-xs text-slate-400">Proyectos Asignados / Supervisados</p>
               <p className="mt-1 text-2xl font-bold text-white">{proyectos.length}</p>
               <p className="mt-1 text-[11px] text-slate-500">Bajo supervisión activa</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+            <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-sm backdrop-blur">
               <p className="text-xs text-slate-400">Total Tareas del Equipo</p>
               <p className="mt-1 text-2xl font-bold text-sky-400">
                 {proyectos.reduce((acc, p) => acc + p.totalTareas, 0)}
               </p>
               <p className="mt-1 text-[11px] text-slate-500">Distribuidas en proyectos</p>
             </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 backdrop-blur">
+            <div className="flex flex-col justify-between rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 shadow-sm backdrop-blur">
               <div>
                 <p className="text-xs font-semibold text-sky-300">Mapa de Nodos y Reportes</p>
                 <p className="mt-1 text-xs text-slate-300">
@@ -254,17 +256,17 @@ export default function Panel() {
       )}
 
       {/* -------------------- Proyectos y bolsas, en dos pestañas -------------------- */}
-      <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-white/10">
+      <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-[var(--tf-borde)]">
         <button
           onClick={() => setPestana('proyectos')}
           className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${
             pestana === 'proyectos'
-              ? 'border-sky-400 font-semibold text-white'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-sky-400 font-semibold text-[var(--tf-texto)]'
+              : 'border-transparent text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
           }`}
         >
           {esTrabajador ? 'Mis Proyectos' : 'Proyectos del Sistema'}
-          <span className="ml-2 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
+          <span className="ml-2 rounded-full bg-[var(--tf-hover)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--tf-texto-tenue)]">
             {proyectos.length}
           </span>
         </button>
@@ -273,8 +275,8 @@ export default function Panel() {
           onClick={() => setPestana('bolsas')}
           className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm transition ${
             pestana === 'bolsas'
-              ? 'border-amber-400 font-semibold text-white'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-amber-400 font-semibold text-[var(--tf-texto)]'
+              : 'border-transparent text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
           }`}
         >
           Bolsas del proyecto
@@ -285,7 +287,7 @@ export default function Panel() {
           )}
         </button>
 
-        <p className="ml-auto hidden pb-2 text-xs text-slate-400 sm:block">
+        <p className="ml-auto hidden pb-2 text-xs text-[var(--tf-texto-tenue)] sm:block">
           {pestana === 'proyectos'
             ? esTrabajador
               ? 'Proyectos donde tienes asignaciones'
@@ -316,8 +318,8 @@ export default function Panel() {
             </aside>
           </div>
         ) : (
-          <div className="mb-6 rounded-2xl border border-dashed border-white/15 p-12 text-center">
-            <p className="text-sm text-slate-400">
+          <div className="mb-6 rounded-2xl border border-dashed border-[var(--tf-borde)] p-12 text-center">
+            <p className="text-sm text-[var(--tf-texto-tenue)]">
               Elige primero un proyecto para ver sus bolsas.
             </p>
             <button
@@ -333,12 +335,12 @@ export default function Panel() {
       <div className={`flex-col gap-4 lg:flex-row ${pestana === 'proyectos' ? 'flex' : 'hidden'}`}>
         <section className="min-w-0 flex-1">
           {cargando ? (
-            <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-slate-500">
+            <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
               Cargando proyectos…
             </p>
           ) : proyectos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/15 p-12 text-center">
-              <p className="text-sm font-medium text-slate-400">
+            <div className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-12 text-center">
+              <p className="text-sm font-medium text-[var(--tf-texto-tenue)]">
                 {esTrabajador
                   ? 'No tienes proyectos asignados con tareas activas por el momento.'
                   : 'No hay proyectos registrados.'}
@@ -359,10 +361,16 @@ export default function Panel() {
                   <div
                     key={p.id}
                     onClick={() => setSeleccionado(p.id)}
-                    className={`group flex aspect-square cursor-pointer flex-col items-center justify-between rounded-2xl border bg-slate-900/60 p-3 text-center backdrop-blur transition hover:bg-slate-900 ${
+                    style={
                       seleccionado === p.id
-                        ? 'border-sky-400/50 ring-2 ring-sky-400/20'
-                        : 'border-white/10'
+                        ? ({
+                            borderColor: colorConAlfa(colorPrimario, 0.5),
+                            '--tw-ring-color': colorConAlfa(colorPrimario, 0.2),
+                          } as React.CSSProperties)
+                        : undefined
+                    }
+                    className={`group flex aspect-square cursor-pointer flex-col items-center justify-between rounded-2xl border bg-slate-900 p-3 text-center shadow-sm backdrop-blur transition hover:bg-slate-900 hover:shadow-md ${
+                      seleccionado === p.id ? 'ring-2' : 'border-white/10'
                     }`}
                   >
                     <p
@@ -382,13 +390,13 @@ export default function Panel() {
                       <span className="text-xl font-bold text-amber-300">{porcentaje}%</span>
                       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
+                          className="tf-barra-brillo h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
                           style={{ width: `${porcentaje}%` }}
                         />
                       </div>
                     </div>
 
-                    <div className="flex w-full items-center justify-center gap-1 border-t border-white/5 pt-2 text-xs text-slate-400 group-hover:text-sky-300">
+                    <div className="flex w-full items-center justify-center gap-1 border-t border-white/5 pt-2 text-xs text-slate-400 group-hover:text-[var(--color-primario)]">
                       <span>Ver detalles</span>
                       <span aria-hidden>→</span>
                     </div>
@@ -400,7 +408,7 @@ export default function Panel() {
                   autonomia para abrir proyectos; lo que no pueden es editarlos. */}
               <button
                 onClick={() => setModalAbierto(true)}
-                className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-white/15 p-3 text-slate-400 transition hover:border-sky-400/40 hover:text-sky-300"
+                className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[var(--tf-borde)] p-3 text-[var(--tf-texto-tenue)] transition hover:border-sky-400/40 hover:text-sky-300"
               >
                 <span className="text-2xl leading-none">+</span>
                 <span className="text-sm font-medium">Crear proyecto</span>
@@ -410,7 +418,7 @@ export default function Panel() {
         </section>
 
         {proyecto && (
-          <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur lg:w-96">
+          <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-sm backdrop-blur lg:w-96">
             <div className="mb-4 flex items-start justify-between gap-3">
               <h2 className="font-bold leading-snug text-white">{proyecto.nombre}</h2>
               <div className="flex shrink-0 items-center gap-2">
@@ -482,7 +490,8 @@ export default function Panel() {
             </button>
             <button
               onClick={() => irATareas(proyecto)}
-              className="mt-2 w-full rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 py-2.5 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400"
+              style={{ backgroundColor: colorPrimario }}
+              className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
             >
               {esTrabajador ? 'Iniciar tarea / Registrar avance' : 'Ir al mapa de nodos'}
             </button>
@@ -530,7 +539,7 @@ function TarjetaMetrica({
   icono: string;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur">
+    <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-sm backdrop-blur">
       <div className="flex items-center justify-between">
         <span className="text-xs text-slate-400">{etiqueta}</span>
         <span className="text-base">{icono}</span>
@@ -559,6 +568,7 @@ function ModalCrearProyecto({
   onCerrar: () => void;
   onCreado: () => Promise<void>;
 }) {
+  const colorPrimario = useColorPrimario();
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -635,7 +645,8 @@ function ModalCrearProyecto({
             <button
               type="submit"
               disabled={enviando}
-              className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:opacity-50"
+              style={{ backgroundColor: colorPrimario }}
+              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
             >
               {enviando ? 'Creando…' : 'Crear proyecto'}
             </button>
@@ -659,6 +670,7 @@ function ModalEditarProyecto({
   onEliminar?: () => Promise<void>;
   onGuardado: () => Promise<void>;
 }) {
+  const colorPrimario = useColorPrimario();
   const [nombre, setNombre] = useState(proyecto.nombre);
   const [descripcion, setDescripcion] = useState(proyecto.descripcion ?? '');
   const [enviando, setEnviando] = useState(false);
@@ -747,7 +759,8 @@ function ModalEditarProyecto({
               <button
                 type="submit"
                 disabled={enviando}
-                className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-5 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400 disabled:opacity-50"
+                style={{ backgroundColor: colorPrimario }}
+                className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
               >
                 {enviando ? 'Guardando…' : 'Guardar cambios'}
               </button>

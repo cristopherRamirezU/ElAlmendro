@@ -249,7 +249,7 @@ function Chat() {
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur md:grid-cols-[19rem_1fr]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-sm md:grid-cols-[19rem_1fr]">
         <div className={`min-h-0 border-white/10 md:border-r ${verListaMovil ? 'flex' : 'hidden md:flex'} flex-col`}>
           <ListaContactos
             contactos={contactosConPresencia}

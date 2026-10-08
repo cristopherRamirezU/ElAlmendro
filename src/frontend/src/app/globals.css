@@ -1,9 +1,80 @@
 @import "tailwindcss";
 
+/*
+ * Variables de tema de fondo (Configuración > Apariencia). El valor por
+ * defecto en :root es "oscuro-medianoche", el tema original de TimeFlow, asi
+ * que una empresa que no eligio tema ve exactamente lo de siempre.
+ */
 :root {
+  --tf-fondo: #020617;
+  --tf-superficie: rgba(15, 23, 42, 0.6);
+  --tf-texto: #f1f5f9;
+  --tf-texto-tenue: #94a3b8;
+  --tf-borde: rgba(255, 255, 255, 0.1);
+  --tf-hover: rgba(255, 255, 255, 0.05);
   color-scheme: dark;
 }
 
+:root[data-tema="oscuro-grafito"] {
+  --tf-fondo: #0a0a0a;
+  --tf-superficie: rgba(39, 39, 42, 0.6);
+  --tf-texto: #fafafa;
+  --tf-texto-tenue: #a1a1aa;
+  --tf-borde: rgba(255, 255, 255, 0.08);
+  --tf-hover: rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+
+:root[data-tema="claro-nube"] {
+  --tf-fondo: #dbeefc;
+  --tf-superficie: rgba(186, 222, 250, 0.65);
+  --tf-texto: #000000;
+  --tf-texto-tenue: rgba(0, 0, 0, 0.6);
+  --tf-borde: rgba(0, 0, 0, 0.12);
+  --tf-hover: rgba(0, 0, 0, 0.06);
+  color-scheme: light;
+}
+
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  background-color: var(--tf-fondo);
+  color: var(--tf-texto);
+  @apply antialiased;
+}
+
+/*
+ * Animaciones de tesoro: brillo del cofre y destello de las barras de
+ * progreso, con el mismo espiritu pausado del logo animado del login.
+ */
+.tf-cofre-brillo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tf-pulso-cofre 3.2s ease-in-out infinite;
+}
+
+.tf-barra-brillo {
+  position: relative;
+  overflow: hidden;
+}
+.tf-barra-brillo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.6) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: tf-brillo-barra 2.6s ease-in-out infinite;
+}
+
+@keyframes tf-pulso-cofre {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.1); }
+}
+@keyframes tf-brillo-barra {
+  0% { transform: translateX(-100%); }
+  60%, 100% { transform: translateX(100%); }
+}
+
+/* Quien pide menos movimiento ve el cofre y las barras quietos. */
+@media (prefers-reduced-motion: reduce) {
+  .tf-cofre-brillo { animation: none; }
+  .tf-barra-brillo::after { display: none; }
 }

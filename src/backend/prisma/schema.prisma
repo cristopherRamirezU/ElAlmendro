@@ -97,6 +97,13 @@ model Organizacion {
   maxUsuarios   Int       @default(10)
   maxProyectos  Int       @default(5)
   activo        Boolean   @default(true)
+  // Color de marca de la empresa, en hexadecimal ("#0ea5e9"). Nulo usa el
+  // celeste por defecto de TimeFlow. Lo elige el Administrador de la empresa
+  // desde Configuracion; tiñe sidebar, avatar y botones principales.
+  colorPrimario String?
+  // Tema de fondo (oscuro-medianoche | oscuro-grafito | claro-nube | claro-arena).
+  // Null usa oscuro-medianoche, el tema original de TimeFlow.
+  temaFondo     String?
   creadoEn      DateTime  @default(now()) @db.Timestamptz(3)
   actualizadoEn DateTime  @updatedAt @db.Timestamptz(3)
 

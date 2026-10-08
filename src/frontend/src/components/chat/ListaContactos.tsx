@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { ContactoChat, ResumenMensaje } from '@/lib/api';
 import { CANAL_GENERAL } from '@/lib/chat';
 import { hora, iniciales } from '@/lib/formato';
+import { colorConAlfa, useColorPrimario } from '@/lib/color';
 
 const ROL_TEXTO: Record<string, string> = {
   ADMINISTRADOR: 'Administrador',
@@ -29,6 +30,7 @@ export default function ListaContactos({
   totalEnLinea: number;
   onElegir: (id: string) => void;
 }) {
+  const colorPrimario = useColorPrimario();
   const [filtro, setFiltro] = useState('');
 
   const { enLinea, desconectados } = useMemo(() => {
@@ -69,16 +71,23 @@ export default function ListaContactos({
         {!filtro && (
           <button
             onClick={() => onElegir(CANAL_GENERAL)}
+            style={seleccion === CANAL_GENERAL ? { backgroundColor: colorConAlfa(colorPrimario, 0.15) } : undefined}
             className={`mb-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
-              seleccion === CANAL_GENERAL ? 'bg-sky-500/15' : 'hover:bg-white/5'
+              seleccion === CANAL_GENERAL ? '' : 'hover:bg-white/5'
             }`}
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 text-sm font-bold text-white">
+            <span
+              style={{ backgroundColor: colorPrimario }}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
+            >
               #
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-2">
-                <span className={`truncate text-sm font-semibold ${seleccion === CANAL_GENERAL ? 'text-sky-200' : 'text-white'}`}>
+                <span
+                  style={seleccion === CANAL_GENERAL ? { color: colorPrimario } : undefined}
+                  className={`truncate text-sm font-semibold ${seleccion === CANAL_GENERAL ? '' : 'text-white'}`}
+                >
                   Canal general
                 </span>
                 {ultimoGeneral && (
@@ -144,17 +153,24 @@ function FilaContacto({
   activo: boolean;
   onElegir: (id: string) => void;
 }) {
+  const colorPrimario = useColorPrimario();
   return (
     <button
       onClick={() => onElegir(c.id)}
+      style={activo ? { backgroundColor: colorConAlfa(colorPrimario, 0.15) } : undefined}
       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition ${
-        activo ? 'bg-sky-500/15' : 'hover:bg-white/5'
+        activo ? '' : 'hover:bg-white/5'
       }`}
     >
       <span className="relative shrink-0">
         <span
+          style={
+            c.enLinea
+              ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
+              : undefined
+          }
           className={`grid h-9 w-9 place-items-center rounded-full text-xs font-bold ${
-            c.enLinea ? 'bg-sky-500/15 text-sky-300' : 'bg-white/5 text-slate-400'
+            c.enLinea ? '' : 'bg-white/5 text-slate-400'
           }`}
         >
           {iniciales(c.nombreCompleto)}
@@ -168,7 +184,10 @@ function FilaContacto({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline justify-between gap-2">
-          <span className={`truncate text-sm ${c.noLeidos > 0 ? 'font-bold text-white' : activo ? 'font-semibold text-sky-200' : 'font-medium text-slate-200'}`}>
+          <span
+            style={activo && c.noLeidos === 0 ? { color: colorPrimario } : undefined}
+            className={`truncate text-sm ${c.noLeidos > 0 ? 'font-bold text-white' : activo ? 'font-semibold' : 'font-medium text-slate-200'}`}
+          >
             {c.nombreCompleto}
           </span>
           {c.ultimoMensaje && (

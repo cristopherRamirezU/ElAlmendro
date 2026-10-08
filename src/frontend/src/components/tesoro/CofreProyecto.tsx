@@ -70,7 +70,7 @@ export default function CofreProyecto({
 
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
+          className="tf-barra-brillo h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
           style={{ width: `${porcentaje}%` }}
         />
       </div>

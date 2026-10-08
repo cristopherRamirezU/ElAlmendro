@@ -25,6 +25,7 @@ import {
 } from '@/lib/mapaMental';
 import { useSesion } from '@/lib/sesion';
 import { useTesoro } from '@/lib/tesoro';
+import { useColorPrimario } from '@/lib/color';
 
 const RAIZ = 'raiz-proyecto';
 
@@ -73,6 +74,7 @@ export default function Pagina() {
 function Nodos() {
   const router = useRouter();
   const sesionActual = useSesion();
+  const colorPrimario = useColorPrimario();
   const esTrabajador = sesionActual?.rol === 'TRABAJADOR';
   const esSupervisor = sesionActual?.rol === 'SUPERVISOR';
   const esAdmin = sesionActual?.rol === 'ADMINISTRADOR';
@@ -492,7 +494,7 @@ function Nodos() {
     if (buscandoProyecto) {
       return (
         <Marco activo="/nodos" titulo="Mapa de nodos" subtitulo="Localizando tu tarea en curso...">
-          <div className="grid place-items-center rounded-2xl border border-white/10 bg-slate-900/60 p-16 text-center backdrop-blur">
+          <div className="grid place-items-center rounded-2xl border border-white/10 bg-slate-900 p-16 text-center backdrop-blur">
             <div className="flex flex-col items-center gap-3">
               <span className="relative flex h-5 w-5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -514,7 +516,8 @@ function Nodos() {
           </p>
           <Link
             href="/panel"
-            className="rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:from-sky-400 hover:to-indigo-400"
+            style={{ backgroundColor: colorPrimario }}
+            className="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
           >
             Ir a Proyectos
           </Link>
@@ -556,7 +559,7 @@ function Nodos() {
       )}
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        <section className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur">
+        <section className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
             <p className="text-xs text-slate-400">Sentido del arbol</p>
             <div className="flex items-center gap-2">
@@ -649,7 +652,7 @@ function Nodos() {
           </p>
         </section>
 
-        <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur lg:w-80">
+        <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur lg:w-80">
           {tareaSeleccionada ? (
             <PanelTarea
               key={tareaSeleccionada}

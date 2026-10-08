@@ -69,7 +69,9 @@ export async function cargarUsuarioVigente(
       nombreCompleto: true,
       activo: true,
       organizacionId: true,
-      organizacion: { select: { nombre: true, slug: true, activo: true } },
+      organizacion: {
+        select: { nombre: true, slug: true, activo: true, colorPrimario: true, temaFondo: true },
+      },
     },
   });
 
@@ -95,5 +97,7 @@ export async function cargarUsuarioVigente(
     organizacionId: usuario.rol === 'SUPER_ADMIN' ? null : usuario.organizacionId,
     organizacionNombre: usuario.organizacion?.nombre ?? null,
     organizacionSlug: usuario.organizacion?.slug ?? null,
+    organizacionColor: usuario.organizacion?.colorPrimario ?? null,
+    organizacionTema: usuario.organizacion?.temaFondo ?? null,
   };
 }

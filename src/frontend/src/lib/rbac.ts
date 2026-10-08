@@ -37,6 +37,9 @@ export const PERMISOS = {
 
   // Módulo Chat en vivo
   CHAT_USAR: 'chat:usar',
+
+  // Módulo Configuración (personalización de la empresa)
+  CONFIGURACION_GESTIONAR: 'configuracion:gestionar',
 } as const;
 
 export type PermisoCodigo = (typeof PERMISOS)[keyof typeof PERMISOS];
@@ -64,6 +67,7 @@ export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
     PERMISOS.USUARIOS_VER,
     PERMISOS.USUARIOS_GESTIONAR,
     PERMISOS.CHAT_USAR,
+    PERMISOS.CONFIGURACION_GESTIONAR,
   ],
   SUPERVISOR: [
     PERMISOS.JORNADA_REGISTRAR,
