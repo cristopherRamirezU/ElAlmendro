@@ -378,7 +378,15 @@ export default function Panel() {
                       tamano={64}
                     />
 
-                    <span className="text-xl font-bold text-amber-300">{porcentaje}%</span>
+                    <div className="w-full">
+                      <span className="text-xl font-bold text-amber-300">{porcentaje}%</span>
+                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
+                          style={{ width: `${porcentaje}%` }}
+                        />
+                      </div>
+                    </div>
 
                     <div className="flex w-full items-center justify-center gap-1 border-t border-white/5 pt-2 text-xs text-slate-400 group-hover:text-sky-300">
                       <span>Ver detalles</span>
