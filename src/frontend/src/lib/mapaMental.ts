@@ -23,6 +23,23 @@ export type Orientacion = 'horizontal' | 'vertical';
 export const ANCHO_NODO = 220;
 export const ALTO_NODO = 64;
 
+/**
+ * La insignia del proyecto (nodo principal) es mas grande que una tarea. El
+ * acomodo le reserva el mismo lugar que a una tarea y la dibuja centrada en
+ * ese lugar: asi sigue centrada respecto de sus hijas y las posiciones que se
+ * guardaron a mano (relativas a ese lugar) no cambian.
+ */
+export const ANCHO_RAIZ = 250;
+export const ALTO_RAIZ = 96;
+
+/** Esquina superior izquierda de la insignia a partir del lugar reservado. */
+export function posicionInsignia(lugar: { x: number; y: number }) {
+  return {
+    x: lugar.x - (ANCHO_RAIZ - ANCHO_NODO) / 2,
+    y: lugar.y - (ALTO_RAIZ - ALTO_NODO) / 2,
+  };
+}
+
 /** Distancia entre niveles y entre hermanos, en cada orientacion. */
 const ESPACIO: Record<Orientacion, { nivel: number; hermano: number }> = {
   horizontal: { nivel: ANCHO_NODO + 50, hermano: ALTO_NODO + 24 },

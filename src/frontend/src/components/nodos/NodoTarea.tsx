@@ -7,37 +7,31 @@ import { porcentajeLlenado } from '@/components/tesoro/llenado';
 import { disposicionNodo } from './orientacion';
 import Manillas from './Manillas';
 
-const COLOR_ESTADO: Record<string, string> = {
-  PENDIENTE: '#38bdf8',
-  EN_PROGRESO: '#f59e0b',
-  BLOQUEADA: '#f43f5e',
-  INCONCLUSA: '#f97316',
-  COMPLETADA: '#10b981',
-  CANCELADA: '#64748b',
+/**
+ * Fase de la tarea, con colores tipo semaforo: gris sin empezar, naranjo en
+ * progreso, verde completada. Los estados especiales muestran su nombre:
+ * inconclusa en naranjo (hubo trabajo), bloqueada en rojo y cancelada en gris.
+ * `rgb` tine el degradado, el borde, la sombra y el texto de la fase; `color`,
+ * el punto, el porcentaje y la barra.
+ */
+const FASES: Record<string, { texto: string; rgb: string; color: string }> = {
+  PENDIENTE: { texto: 'Sin empezar', rgb: '148,163,184', color: '#64748b' },
+  EN_PROGRESO: { texto: 'En progreso', rgb: '245,158,11', color: '#f59e0b' },
+  INCONCLUSA: { texto: 'Inconclusa', rgb: '245,158,11', color: '#f59e0b' },
+  COMPLETADA: { texto: 'Completada', rgb: '16,185,129', color: '#10b981' },
+  BLOQUEADA: { texto: 'Bloqueada', rgb: '244,63,94', color: '#f43f5e' },
+  CANCELADA: { texto: 'Cancelada', rgb: '148,163,184', color: '#64748b' },
 };
 
-/**
- * Tramo del saco de oro segun su llenado: color, nombre y si brilla.
- * Una tarea en progreso se ve amarilla de inmediato, con el mismo estilo
- * (borde, fondo y brillo) que el verde de completada o el gris de vacía,
- * en vez de esperar a que el llenado por si solo la tiña.
- */
-function tramoSaco(llenado: number, estado?: string) {
-  const porcentaje = porcentajeLlenado(llenado);
-  if (estado === 'EN_PROGRESO') {
-    return { porcentaje, etiqueta: 'en progreso', color: '#facc15', brillo: 10 };
-  }
-  if (porcentaje === 0) return { porcentaje, etiqueta: 'vacío', color: '#64748b', brillo: 0 };
-  if (porcentaje <= 40) return { porcentaje, etiqueta: 'iniciando', color: '#d97706', brillo: 0 };
-  if (porcentaje <= 80) return { porcentaje, etiqueta: 'avanzado', color: '#facc15', brillo: 10 };
-  return { porcentaje, etiqueta: 'lleno', color: '#10b981', brillo: 16 };
+export function faseDeTarea(estado: string) {
+  return FASES[estado] ?? FASES.PENDIENTE;
 }
 
 export interface DatosNodoTarea {
   titulo: string;
   estado: string;
   color: string;
-  /** Oro reunido en el saco de la tarea, de 0 a 1. */
+  /** Avance de la tarea (sus monedas marcadas), de 0 a 1. */
   llenado: number;
   tieneHijos: boolean;
   expandido: boolean;
@@ -49,6 +43,8 @@ export interface DatosNodoTarea {
   /** Bordes por donde llegan y salen sus lineas (las elige el mapa). */
   ladosEntrada?: Position[];
   ladosSalida?: Position[];
+  /** Durante la entrada al mapa: segundos que espera antes de brotar. */
+  retrasoEntrada?: number;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -56,16 +52,17 @@ export interface DatosNodoTarea {
 
 /**
  * Burbuja de tarea del mapa mental (horizontal o vertical), de medida fija
- * para que el layout nunca las monte. Fondo, borde, brillo y la franja del
- * pie muestran cuanto oro tiene su saco; el punto interior indica el estado
- * real de la tarea, y la profundidad la llevan las aristas y las manillas. El
- * boton circular del borde despliega o repliega sus hijas, igual que en el
- * mapa mental de referencia — parte siempre colapsado.
+ * para que el layout nunca las monte. Fondo, borde, sombra, punto, porcentaje
+ * y barra llevan el color de su fase, que ademas va escrita junto al
+ * responsable; la profundidad la llevan las aristas y las manillas. El boton
+ * circular del borde despliega o repliega sus hijas — parte colapsado.
  */
 export default function NodoTarea({ data }: NodeProps) {
   const d = data as DatosNodoTarea;
   const disposicion = disposicionNodo(d.orientacion);
-  const tramo = tramoSaco(d.llenado ?? 0, d.estado);
+  const fase = faseDeTarea(d.estado);
+  const porcentaje = porcentajeLlenado(d.llenado ?? 0);
+  const entrando = d.retrasoEntrada !== undefined;
   const [agregando, setAgregando] = useState(false);
   const [texto, setTexto] = useState('');
 
@@ -78,8 +75,14 @@ export default function NodoTarea({ data }: NodeProps) {
 
   return (
     <div
-      className={`group relative ${d.editando ? 'cursor-grab active:cursor-grabbing' : ''}`}
-      style={{ width: ANCHO_NODO, height: ALTO_NODO }}
+      className={`group relative ${d.editando ? 'cursor-grab active:cursor-grabbing' : ''} ${entrando ? 'tf-entra-tarea' : ''}`}
+      style={
+        {
+          width: ANCHO_NODO,
+          height: ALTO_NODO,
+          ...(entrando ? { '--tf-retraso': `${d.retrasoEntrada}s` } : {}),
+        } as React.CSSProperties
+      }
     >
       <Manillas
         tipo="entrada"
@@ -90,48 +93,46 @@ export default function NodoTarea({ data }: NodeProps) {
       />
 
       <div
-        className="relative flex h-full w-full flex-col justify-center gap-1.5 overflow-hidden rounded-xl border px-3 pb-2.5 pt-2 shadow-lg backdrop-blur-sm"
-        style={{
-          borderColor: `${tramo.color}99`,
-          background: `${tramo.color}1f`,
-          boxShadow: tramo.brillo ? `0 0 ${tramo.brillo}px ${tramo.color}55` : undefined,
-        }}
+        className="tf-tarea relative flex h-full w-full flex-col gap-[7px] overflow-hidden rounded-xl px-3 pt-[9px]"
+        style={{ '--c': fase.rgb } as React.CSSProperties}
       >
         <div className="flex min-w-0 items-center gap-2" title={d.titulo}>
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ background: COLOR_ESTADO[d.estado] ?? '#94a3b8' }}
-          />
-          <span className="truncate text-xs font-semibold text-white">{d.titulo}</span>
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: fase.color }} />
+          <span className="truncate text-xs font-bold text-white">{d.titulo}</span>
         </div>
 
-        <div className="flex min-w-0 items-center gap-1.5">
-          {d.responsableNombre && (
+        <div className="flex min-w-0 items-center justify-between gap-1.5 text-[10px]">
+          {d.responsableNombre ? (
             <span
-              className={`inline-flex min-w-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] ${
+              className={`min-w-0 truncate rounded-[5px] border px-[7px] py-0.5 font-bold ${
                 d.esMiTarea
-                  ? 'bg-sky-500/30 text-sky-200 border border-sky-400/40 font-semibold'
-                  : 'bg-slate-800/80 text-slate-300 border border-white/10'
+                  ? 'border-sky-300/40 bg-sky-400/30 text-sky-200'
+                  : 'border-white/10 bg-slate-800/80 text-slate-300'
               }`}
+              title={d.responsableNombre}
             >
-              <span>{d.esMiTarea ? '⭐' : '👤'}</span>
-              <span className="truncate">{d.esMiTarea ? 'Tú' : d.responsableNombre}</span>
+              {d.esMiTarea ? 'Tú' : d.responsableNombre}
             </span>
+          ) : (
+            <span />
           )}
+          <span className="shrink-0 font-semibold" style={{ color: `rgb(${fase.rgb})` }}>
+            {fase.texto}
+          </span>
           <span
-            className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums"
-            style={{ color: tramo.color }}
-            title={`Saco ${tramo.etiqueta} · ${tramo.porcentaje}%`}
+            className="shrink-0 font-extrabold tabular-nums"
+            style={{ color: fase.color }}
+            title={`Avance ${porcentaje}%`}
           >
-            💰 {tramo.porcentaje}%
+            {porcentaje}%
           </span>
         </div>
 
-        {/* Franja de llenado pegada al borde inferior: no ocupa fila propia. */}
-        <span className="absolute inset-x-0 bottom-0 h-[3px] bg-white/10">
+        {/* Barra de avance pegada al borde inferior: no ocupa fila propia. */}
+        <span className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-white/[.08]">
           <span
-            className="block h-full transition-[width] duration-300"
-            style={{ width: `${tramo.porcentaje}%`, background: tramo.color }}
+            className="block h-full transition-[width] duration-300 motion-reduce:transition-none"
+            style={{ width: `${porcentaje}%`, background: fase.color }}
           />
         </span>
       </div>
@@ -155,7 +156,7 @@ export default function NodoTarea({ data }: NodeProps) {
         >
           <svg
             viewBox="0 0 24 24"
-            className={`h-3 w-3 transition-transform ${d.expandido ? disposicion.claseFlechaExpandida : ''}`}
+            className={`h-3 w-3 transition-transform motion-reduce:transition-none ${d.expandido ? disposicion.claseFlechaExpandida : ''}`}
             fill="none"
             stroke="currentColor"
             strokeWidth="2.5"
