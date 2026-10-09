@@ -20,6 +20,7 @@ import { api, ErrorApi, Jornada, Usuario } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
 import { ContextoSesion } from '@/lib/sesion';
 import AvisoVersion from './AvisoVersion';
+import ConfirmarSalida from './ConfirmarSalida';
 import { ProveedorChat } from '@/lib/chat';
 import { cerrarSocketChat } from '@/lib/socket';
 import InsigniaChat from '@/components/chat/InsigniaChat';
@@ -164,12 +165,42 @@ export default function Marco({
     }
   }
 
-  async function salir() {
+  // Con la jornada abierta, cerrar o recargar la pestaña pide confirmacion: el
+  // navegador muestra su propio aviso (su texto no se puede personalizar).
+  useEffect(() => {
+    if (!jornada) return;
+    function alSalirDeLaPagina(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+    window.addEventListener('beforeunload', alSalirDeLaPagina);
+    return () => window.removeEventListener('beforeunload', alSalirDeLaPagina);
+  }, [jornada]);
+
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false);
+
+  async function cerrarSesion() {
+    setConfirmandoSalida(false);
     cerrarSocketChat();
     limpiarCacheSesion();
     limpiarBolsaAbierta();
     await api.post('/auth/logout');
     router.replace('/login');
+  }
+
+  /** "Cerrar sesion": con la jornada abierta, primero se ofrece marcar la salida. */
+  function salir() {
+    if (jornada) setConfirmandoSalida(true);
+    else cerrarSesion();
+  }
+
+  async function marcarSalidaYCerrar() {
+    try {
+      await api.post('/jornadas/salida');
+    } catch (err) {
+      throw new Error(err instanceof ErrorApi ? err.message : 'No se pudo marcar la salida.');
+    }
+    await cerrarSesion();
   }
 
   // En desarrollo, compila por adelantado las demas pantallas del menu.
@@ -205,6 +236,13 @@ export default function Marco({
   const contenido = (
     <ContextoSesion.Provider value={usuario}>
       <AvisoVersion />
+      {confirmandoSalida && (
+        <ConfirmarSalida
+          onMarcarYSalir={marcarSalidaYCerrar}
+          onSalirSinMarcar={cerrarSesion}
+          onCancelar={() => setConfirmandoSalida(false)}
+        />
+      )}
       <div
         className="flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
         style={{ '--color-primario': colorPrimario } as React.CSSProperties}
