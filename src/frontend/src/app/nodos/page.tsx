@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ReactFlow, Background, Controls, Connection, Edge, Node, NodeMouseHandler, OnNodeDrag, OnNodesChange, useReactFlow,
+  ReactFlow, Controls, Connection, Edge, Node, NodeMouseHandler, OnNodeDrag, OnNodesChange, useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Marco from '@/components/Marco';
@@ -26,6 +26,11 @@ import {
 import { useSesion } from '@/lib/sesion';
 import { useTesoro } from '@/lib/tesoro';
 import { useColorPrimario } from '@/lib/color';
+import { leerCacheSesion, guardarCacheSesion } from '@/lib/cacheSesion';
+import { FondoMapa, fondoMapaValido } from '@/lib/fondosMapa';
+import { fuenteTitulo } from '@/lib/fuentes';
+import SelectorFondo from '@/components/nodos/SelectorFondo';
+import { DecoracionFondo, estiloFondoMapa, PuntosFondo } from '@/components/nodos/FondoMapa';
 
 const RAIZ = 'raiz-proyecto';
 
@@ -74,6 +79,23 @@ export default function Pagina() {
 function Nodos() {
   const router = useRouter();
   const sesionActual = useSesion();
+
+  // Fondo del mapa: preferencia de cada usuario, guardada en su cuenta. Mientras
+  // se guarda se muestra ya el elegido; si el servidor lo rechaza, vuelve atras.
+  const [fondoElegido, setFondoElegido] = useState<FondoMapa | null>(null);
+  const fondo = fondoElegido ?? fondoMapaValido(sesionActual?.fondoMapa);
+  async function cambiarFondo(nuevo: FondoMapa) {
+    const anterior = fondo;
+    setFondoElegido(nuevo);
+    try {
+      await api.patch('/auth/yo/preferencias', { fondoMapa: nuevo });
+      const cache = leerCacheSesion();
+      if (cache?.usuario) guardarCacheSesion({ ...cache, usuario: { ...cache.usuario, fondoMapa: nuevo } });
+    } catch (err) {
+      setFondoElegido(anterior);
+      setAviso(err instanceof ErrorApi ? err.message : 'No se pudo guardar el fondo del mapa.');
+    }
+  }
   const colorPrimario = useColorPrimario();
   const esTrabajador = sesionActual?.rol === 'TRABAJADOR';
   const esSupervisor = sesionActual?.rol === 'SUPERVISOR';
@@ -561,8 +583,14 @@ function Nodos() {
       <div className="flex flex-col gap-4 lg:flex-row">
         <section className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
           <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
-            <p className="text-xs text-slate-400">Sentido del arbol</p>
+            <h2
+              className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-white`}
+              title={nombreProyecto ?? undefined}
+            >
+              {nombreProyecto}
+            </h2>
             <div className="flex items-center gap-2">
+              <SelectorFondo valor={fondo} onCambiar={cambiarFondo} />
               {!esTrabajador && (
                 <button
                   aria-pressed={editando}
@@ -620,8 +648,10 @@ function Nodos() {
               </div>
             </div>
           </div>
-          <div style={{ height: '32rem' }}>
+          <div className="relative" style={{ height: '32rem', ...estiloFondoMapa(fondo) }}>
+            <DecoracionFondo fondo={fondo} />
             <ReactFlow
+              style={{ background: 'transparent' }}
               nodes={nodosFlow}
               edges={aristas}
               onNodesChange={alCambiarNodos}
@@ -639,17 +669,10 @@ function Nodos() {
               <AjustarVista
                 clave={`${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}
               />
-              <Background color="rgba(255,255,255,0.08)" gap={18} />
+              <PuntosFondo fondo={fondo} />
               <Controls showInteractive={false} />
             </ReactFlow>
           </div>
-          <p className="border-t border-white/10 px-4 py-2 text-[11px] text-slate-500">
-            {editando
-              ? 'Modo edición: arrastra cualquier tarea y suéltala donde quieras; su rama la acompaña y el mapa queda así para todo el equipo. "Deshacer" (o Ctrl+Z) revierte el último movimiento y "Restablecer" vuelve al acomodo automático.'
-              : esTrabajador
-              ? 'Haz clic en el círculo del borde de una burbuja para desplegar tareas, pasa el mouse sobre ella para agregarle una nueva, o haz clic en cualquier tarea para ver su detalle, cronometrar o subir evidencias.'
-              : 'Haz clic en el círculo del borde de una burbuja para desplegar sus tareas, pasa el mouse sobre ella para agregarle una nueva, o arrastra desde su borde hacia otra para unirlas. Con el selector de arriba eliges si el árbol crece hacia la derecha o hacia abajo.'}
-          </p>
         </section>
 
         <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur lg:w-80">

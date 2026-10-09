@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Res, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { AuthService, duracionSesion } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
 import { COOKIE_ACCESO, JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
 
@@ -40,6 +41,13 @@ export class AuthController {
   @Get('yo')
   yo(@Usuario() usuario: UsuarioActual) {
     return usuario;
+  }
+
+  /** Preferencias del propio usuario (por ahora, el fondo del mapa de nodos). */
+  @UseGuards(JwtAuthGuard)
+  @Patch('yo/preferencias')
+  actualizarPreferencias(@Usuario() usuario: UsuarioActual, @Body() dto: ActualizarPreferenciasDto) {
+    return this.auth.actualizarPreferencias(usuario.id, dto);
   }
 }
 

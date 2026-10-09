@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import { obtenerPermisosDeRol } from '../../common/rbac';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
 
 /**
  * Duracion del token de acceso segun JWT_ACCESO_TTL / JWT_ACCESS_TTL
@@ -24,6 +25,15 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
   ) {}
+
+  /** Guarda las preferencias visuales del propio usuario. */
+  async actualizarPreferencias(usuarioId: string, dto: ActualizarPreferenciasDto) {
+    return this.prisma.usuario.update({
+      where: { id: usuarioId },
+      data: { fondoMapa: dto.fondoMapa },
+      select: { fondoMapa: true },
+    });
+  }
 
   /**
    * Verifica las credenciales y emite el token de acceso.
