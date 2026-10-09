@@ -554,12 +554,13 @@ export class ActividadesService {
   }
 
   /**
-   * Elimina un nodo (actividad) y todos sus subnodos descendientes.
-   * Exclusivo para Administrador y Super Admin.
+   * Elimina un nodo (actividad) y todos sus subnodos descendientes. Lo puede
+   * hacer quien tenga el permiso de eliminar tareas (el administrador por su
+   * rol, o un trabajador al que se lo dio) y el Super Admin.
    */
   async eliminar(id: string, u: UsuarioActual) {
-    if (u.rol !== 'ADMINISTRADOR' && u.rol !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('Solo un administrador puede eliminar nodos o tareas.');
+    if (!u.permisos.includes(PERMISOS.ACTIVIDADES_ELIMINAR) && u.rol !== 'SUPER_ADMIN') {
+      throw new ForbiddenException('No tienes permiso para eliminar tareas.');
     }
 
     const actividad = await this.prisma.actividad.findFirst({

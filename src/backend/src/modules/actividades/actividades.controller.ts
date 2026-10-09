@@ -46,12 +46,13 @@ export class ActividadesController {
   }
 
   /**
-   * Guarda donde quedaron los nodos movidos en el mapa (modo edicion). Va
-   * antes de las rutas con ':id' para que "posiciones" no se tome como
-   * identificador.
+   * Guarda donde quedaron los nodos movidos en el mapa (modo edicion): lo
+   * hace quien tiene permiso para editar el mapa, por su rol o porque el
+   * administrador se lo dio. Va antes de las rutas con ':id' para que
+   * "posiciones" no se tome como identificador.
    */
   @Patch('posiciones')
-  @ExigirPermisos(PERMISOS.ACTIVIDADES_GESTIONAR)
+  @ExigirPermisos(PERMISOS.NODOS_EDITAR)
   guardarPosiciones(@Usuario() u: UsuarioActual, @Body() dto: GuardarPosicionesDto) {
     return this.actividades.guardarPosiciones(u, dto);
   }
@@ -134,7 +135,7 @@ export class ActividadesController {
     return this.actividades.reasignar(id, u, dto);
   }
 
-  /** Elimina un nodo (actividad) y sus ramas dependientes (Solo Administrador / Super Admin). */
+  /** Elimina un nodo (actividad) y sus ramas dependientes (permiso actividades:eliminar). */
   @Delete(':id')
   eliminar(
     @Param('id', ParseUUIDPipe) id: string,

@@ -6,7 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { obtenerPermisosDeRol, Rol, ROLES_CATALOGO } from '../../common/rbac';
+import {
+  CODIGOS_PERMISOS_EXTRA,
+  permisosEfectivos,
+  Rol,
+  ROLES_CATALOGO,
+  ROLES_CON_PERMISOS_EXTRA,
+} from '../../common/rbac';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
 import {
@@ -26,6 +32,7 @@ import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 const CORREO_EN_USO = (email: string) =>
   `El correo ${email} ya está registrado en la plataforma. Cada correo solo puede pertenecer a una cuenta.`;
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
+import { ActualizarPermisosUsuarioDto } from './dto/actualizar-permisos-usuario.dto';
 
 @Injectable()
 export class UsuariosService {
@@ -73,6 +80,7 @@ export class UsuariosService {
         zonaHoraria: true,
         activo: true,
         organizacionId: true,
+        permisosExtra: true,
         creadoEn: true,
         actualizadoEn: true,
         _count: {
@@ -88,7 +96,7 @@ export class UsuariosService {
 
     return usuarios.map((u) => ({
       ...u,
-      permisos: obtenerPermisosDeRol(u.rol),
+      permisos: permisosEfectivos(u.rol, u.permisosExtra),
     }));
   }
 
@@ -104,6 +112,7 @@ export class UsuariosService {
         zonaHoraria: true,
         activo: true,
         organizacionId: true,
+        permisosExtra: true,
         creadoEn: true,
         actualizadoEn: true,
       },
@@ -115,7 +124,7 @@ export class UsuariosService {
 
     return {
       ...usuario,
-      permisos: obtenerPermisosDeRol(usuario.rol),
+      permisos: permisosEfectivos(usuario.rol, usuario.permisosExtra),
     };
   }
 
@@ -204,7 +213,8 @@ export class UsuariosService {
 
     return {
       ...usuario,
-      permisos: obtenerPermisosDeRol(usuario.rol),
+      permisosExtra: [],
+      permisos: permisosEfectivos(usuario.rol, []),
     };
   }
 
@@ -305,6 +315,7 @@ export class UsuariosService {
           rol: true,
           zonaHoraria: true,
           activo: true,
+          permisosExtra: true,
           actualizadoEn: true,
         },
       });
@@ -339,7 +350,62 @@ export class UsuariosService {
 
     return {
       ...actualizado,
-      permisos: obtenerPermisosDeRol(actualizado.rol),
+      permisos: permisosEfectivos(actualizado.rol, actualizado.permisosExtra),
+    };
+  }
+
+  /**
+   * Fija los permisos extra de un trabajador (la lista completa). Solo el
+   * administrador de su misma organizacion puede hacerlo, y solo a
+   * trabajadores: los demas roles ya los tienen por su rol. Rige desde la
+   * siguiente peticion del trabajador, porque los permisos se leen de la base
+   * en cada una.
+   */
+  async actualizarPermisos(actor: UsuarioActual, id: string, dto: ActualizarPermisosUsuarioDto) {
+    if (actor.rol !== 'ADMINISTRADOR') {
+      throw new ForbiddenException(
+        'Solo el administrador de la organización puede asignar permisos extra.',
+      );
+    }
+    const organizacionId = exigirOrganizacion(actor);
+
+    const existente = await this.prisma.usuario.findFirst({
+      where: { id, organizacionId },
+      select: { id: true, rol: true, permisosExtra: true },
+    });
+    if (!existente) {
+      throw new NotFoundException('El usuario no existe o no pertenece a tu organización.');
+    }
+
+    // Quitarlos siempre se puede; darlos, solo a quien su rol se lo permite.
+    if (dto.permisos.length > 0 && !ROLES_CON_PERMISOS_EXTRA.includes(existente.rol as Rol)) {
+      throw new BadRequestException(
+        'Los permisos extra solo se asignan a trabajadores: los demás roles ya los tienen por su rol.',
+      );
+    }
+
+    // Se guardan en el orden del catalogo, sin duplicados.
+    const permisosExtra = CODIGOS_PERMISOS_EXTRA.filter((c) => dto.permisos.includes(c));
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.usuario.update({ where: { id }, data: { permisosExtra } });
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: actor.id,
+          organizacionId,
+          accion: 'USUARIO_PERMISOS',
+          tipoEntidad: 'Usuario',
+          entidadId: id,
+          valorAnterior: { permisosExtra: existente.permisosExtra },
+          valorNuevo: { permisosExtra },
+        },
+      });
+    });
+
+    return {
+      id,
+      permisosExtra,
+      permisos: permisosEfectivos(existente.rol, permisosExtra),
     };
   }
 

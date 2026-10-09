@@ -4,7 +4,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { PrismaService } from '../infra/prisma/prisma.service';
-import { obtenerPermisosDeRol } from './rbac';
+import { permisosEfectivos } from './rbac';
 import { UsuarioActual } from './usuario-actual.decorator';
 
 export const COOKIE_ACCESO = 'tf_acceso';
@@ -49,8 +49,8 @@ export async function verificarToken(jwt: JwtService, token: string): Promise<st
 /**
  * Estado vigente del usuario, leido de la base en cada peticion.
  *
- * El token solo prueba quien es; rol, organizacion y vigencia se consultan
- * aqui. Asi suspender una empresa, desactivar una cuenta o cambiar un rol
+ * El token solo prueba quien es; rol, permisos extra, organizacion y vigencia
+ * se consultan aqui. Asi suspender una empresa, desactivar una cuenta o cambiar un rol
  * surte efecto en la siguiente peticion, aunque el token no expire nunca.
  *
  * Invariante Multi-SaaS: todo usuario distinto de SUPER_ADMIN sale de aqui
@@ -69,6 +69,7 @@ export async function cargarUsuarioVigente(
       nombreCompleto: true,
       activo: true,
       fondoMapa: true,
+      permisosExtra: true,
       organizacionId: true,
       organizacion: {
         select: { nombre: true, slug: true, activo: true, colorPrimario: true, temaFondo: true },
@@ -94,7 +95,7 @@ export async function cargarUsuarioVigente(
     email: usuario.email,
     rol: usuario.rol,
     nombreCompleto: usuario.nombreCompleto,
-    permisos: obtenerPermisosDeRol(usuario.rol),
+    permisos: permisosEfectivos(usuario.rol, usuario.permisosExtra),
     organizacionId: usuario.rol === 'SUPER_ADMIN' ? null : usuario.organizacionId,
     organizacionNombre: usuario.organizacion?.nombre ?? null,
     organizacionSlug: usuario.organizacion?.slug ?? null,

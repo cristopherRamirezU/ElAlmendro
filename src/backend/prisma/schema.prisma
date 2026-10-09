@@ -127,6 +127,9 @@ model Usuario {
   zonaHoraria    String   @default("America/Santiago")
   /// Fondo del mapa de nodos que eligio el usuario (null = gris con puntos).
   fondoMapa      String?
+  /// Permisos que el administrador dio a este trabajador ademas de los de su
+  /// rol (codigos de PERMISOS_EXTRA en common/rbac.ts).
+  permisosExtra  String[] @default([])
   activo         Boolean  @default(true)
   creadoEn       DateTime @default(now()) @db.Timestamptz(3)
   actualizadoEn  DateTime @updatedAt @db.Timestamptz(3)

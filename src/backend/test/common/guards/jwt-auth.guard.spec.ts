@@ -35,6 +35,17 @@ describe('cargarUsuarioVigente (JwtAuthGuard)', () => {
     expect(u.permisos).toContain('actividades:gestionar');
   });
 
+  it('suma los permisos extra que el administrador le dio al trabajador', async () => {
+    const u = await cargar(fila({ permisosExtra: ['nodos:editar'] }));
+    expect(u.permisos).toContain('nodos:editar');
+    expect(u.permisos).not.toContain('actividades:eliminar');
+  });
+
+  it('quitar un permiso extra rige en la siguiente peticion', async () => {
+    const u = await cargar(fila({ permisosExtra: [] }));
+    expect(u.permisos).not.toContain('nodos:editar');
+  });
+
   it('corta al instante una cuenta desactivada', async () => {
     await expect(cargar(fila({ activo: false }))).rejects.toThrow(UnauthorizedException);
   });

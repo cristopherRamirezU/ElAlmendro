@@ -163,7 +163,10 @@ export interface UsuarioItem {
   activo: boolean;
   creadoEn: string;
   actualizadoEn?: string;
+  /** Permisos efectivos: los del rol mas los extra. */
   permisos: PermisoCodigo[];
+  /** Permisos que el administrador le dio ademas de los de su rol. */
+  permisosExtra?: PermisoCodigo[];
   _count?: {
     sesiones: number;
     jornadas: number;

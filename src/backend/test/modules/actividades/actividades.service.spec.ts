@@ -281,6 +281,29 @@ describe('ActividadesService', () => {
     });
   });
 
+  describe('eliminar (permiso actividades:eliminar)', () => {
+    const tarea = { id: 'A', titulo: 'T', proyecto: { id: 'p1', organizacionId: 'org-1' } };
+
+    it('un trabajador sin el permiso no puede', async () => {
+      await expect(servicio.eliminar('A', ACTOR)).rejects.toThrow(ForbiddenException);
+      expect(prisma.actividad.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('un trabajador al que le dieron el permiso si puede', async () => {
+      prisma.actividad.findFirst.mockResolvedValue(tarea as never);
+      prisma.actividad.findMany.mockResolvedValue([] as never);
+      const conPermiso = { ...ACTOR, permisos: ['actividades:eliminar'] } as UsuarioActual;
+
+      const r = await servicio.eliminar('A', conPermiso);
+
+      expect(r.ok).toBe(true);
+      expect(prisma.actividad.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['A'] } },
+        data: { eliminadoEn: expect.any(Date) },
+      });
+    });
+  });
+
   describe('exigirEvidencia', () => {
     it('los adjuntos quitados no cuentan como respaldo', async () => {
       prisma.evidencia.count.mockResolvedValue(0 as never);

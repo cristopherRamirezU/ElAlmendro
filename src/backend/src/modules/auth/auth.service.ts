@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
 import * as argon2 from 'argon2';
-import { obtenerPermisosDeRol } from '../../common/rbac';
+import { permisosEfectivos } from '../../common/rbac';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
@@ -70,7 +70,7 @@ export class AuthService {
       throw new UnauthorizedException('Tu organización se encuentra suspendida. Contacta a soporte.');
     }
 
-    const permisos = obtenerPermisosDeRol(usuario.rol);
+    const permisos = permisosEfectivos(usuario.rol, usuario.permisosExtra);
 
     const token = await this.jwt.signAsync(
       {

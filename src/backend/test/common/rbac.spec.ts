@@ -1,8 +1,10 @@
 import {
   PERMISOS,
+  PERMISOS_EXTRA,
   ROLES_PERMISOS,
   ROLES_CATALOGO,
   obtenerPermisosDeRol,
+  permisosEfectivos,
   Rol,
 } from '../../src/common/rbac';
 
@@ -85,6 +87,59 @@ describe('rbac', () => {
       const huerfanos = Object.values(PERMISOS).filter((p) => !asignados.has(p));
 
       expect(huerfanos).toEqual([]);
+    });
+  });
+
+  describe('permisos del mapa y de eliminar tareas', () => {
+    it('editar el mapa lo tienen por rol administrador y supervisor (como antes)', () => {
+      expect(ROLES_PERMISOS.ADMINISTRADOR).toContain(PERMISOS.NODOS_EDITAR);
+      expect(ROLES_PERMISOS.SUPERVISOR).toContain(PERMISOS.NODOS_EDITAR);
+      expect(ROLES_PERMISOS.TRABAJADOR).not.toContain(PERMISOS.NODOS_EDITAR);
+    });
+
+    it('eliminar tareas lo tiene por rol solo el administrador (como antes)', () => {
+      const conEliminar = (Object.keys(ROLES_PERMISOS) as Rol[]).filter((rol) =>
+        ROLES_PERMISOS[rol].includes(PERMISOS.ACTIVIDADES_ELIMINAR),
+      );
+      expect(conEliminar).toEqual(['ADMINISTRADOR']);
+    });
+  });
+
+  describe('permisosEfectivos', () => {
+    it('un trabajador suma los permisos extra que le dieron', () => {
+      const permisos = permisosEfectivos('TRABAJADOR', [PERMISOS.NODOS_EDITAR]);
+
+      expect(permisos).toEqual([...ROLES_PERMISOS.TRABAJADOR, PERMISOS.NODOS_EDITAR]);
+    });
+
+    it('ignora codigos que no estan en el catalogo de permisos extra', () => {
+      const permisos = permisosEfectivos('TRABAJADOR', [
+        PERMISOS.USUARIOS_GESTIONAR,
+        'inventado:permiso',
+      ]);
+
+      expect(permisos).toEqual([...ROLES_PERMISOS.TRABAJADOR]);
+    });
+
+    it('los extra no rigen si la persona ya no es trabajador', () => {
+      expect(permisosEfectivos('SUPERVISOR', [PERMISOS.ACTIVIDADES_ELIMINAR])).toEqual([
+        ...ROLES_PERMISOS.SUPERVISOR,
+      ]);
+    });
+
+    it('sin extras devuelve exactamente los del rol', () => {
+      expect(permisosEfectivos('TRABAJADOR', [])).toEqual([...ROLES_PERMISOS.TRABAJADOR]);
+      expect(permisosEfectivos('TRABAJADOR', null)).toEqual([...ROLES_PERMISOS.TRABAJADOR]);
+    });
+
+    it('no altera la matriz de roles', () => {
+      permisosEfectivos('TRABAJADOR', [PERMISOS.NODOS_EDITAR]);
+      expect(ROLES_PERMISOS.TRABAJADOR).not.toContain(PERMISOS.NODOS_EDITAR);
+    });
+
+    it('el catalogo de extras solo trae permisos que existen', () => {
+      const existentes = new Set<string>(Object.values(PERMISOS));
+      expect(PERMISOS_EXTRA.every((p) => existentes.has(p.codigo))).toBe(true);
     });
   });
 
