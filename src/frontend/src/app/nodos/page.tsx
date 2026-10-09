@@ -117,6 +117,9 @@ function Nodos() {
   const puedeAsignar = useTienePermiso(PERMISOS.ACTIVIDADES_GESTIONAR);
   // Mientras el menu del nodo principal esta abierto, el resto del mapa se desenfoca.
   const [raizEnfocada, setRaizEnfocada] = useState(false);
+  // Editar el mapa lo da el rol (administrador, supervisor) o un permiso extra
+  // que el administrador le dio a un trabajador.
+  const puedeEditarMapa = useTienePermiso(PERMISOS.NODOS_EDITAR);
 
   const parametros = useSearchParams();
   const proyectoId = parametros.get('proyectoId');
@@ -684,7 +687,7 @@ function Nodos() {
             </h2>
             <div className="flex items-center gap-2">
               <SelectorFondo valor={fondo} onCambiar={cambiarFondo} />
-              {!esTrabajador && (
+              {puedeEditarMapa && (
                 <button
                   aria-pressed={editando}
                   onClick={alternarEdicion}

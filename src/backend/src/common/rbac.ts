@@ -19,6 +19,7 @@ export const PERMISOS = {
   ACTIVIDADES_VER_PROPIAS: 'actividades:ver_propias',
   ACTIVIDADES_VER_TODAS: 'actividades:ver_todas',
   ACTIVIDADES_GESTIONAR: 'actividades:gestionar',
+  ACTIVIDADES_ELIMINAR: 'actividades:eliminar',
 
   // Módulo Calendario
   CALENDARIO_VER_PROPIO: 'calendario:ver_propio',
@@ -30,6 +31,8 @@ export const PERMISOS = {
 
   // Módulo Nodos
   NODOS_VER_MAPA: 'nodos:ver_mapa',
+  /** Modo edicion del mapa: mover nodos, deshacer y restablecer posiciones. */
+  NODOS_EDITAR: 'nodos:editar',
 
   // Módulo Usuarios (RBAC)
   USUARIOS_VER: 'usuarios:ver',
@@ -59,11 +62,13 @@ export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
     PERMISOS.ACTIVIDADES_VER_PROPIAS,
     PERMISOS.ACTIVIDADES_VER_TODAS,
     PERMISOS.ACTIVIDADES_GESTIONAR,
+    PERMISOS.ACTIVIDADES_ELIMINAR,
     PERMISOS.CALENDARIO_VER_PROPIO,
     PERMISOS.CALENDARIO_VER_EQUIPO,
     PERMISOS.REPORTES_VER_EQUIPO,
     PERMISOS.DASHBOARD_VER_RESUMEN,
     PERMISOS.NODOS_VER_MAPA,
+    PERMISOS.NODOS_EDITAR,
     PERMISOS.USUARIOS_VER,
     PERMISOS.USUARIOS_GESTIONAR,
     PERMISOS.CHAT_USAR,
@@ -80,6 +85,7 @@ export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
     PERMISOS.REPORTES_VER_EQUIPO,
     PERMISOS.DASHBOARD_VER_RESUMEN,
     PERMISOS.NODOS_VER_MAPA,
+    PERMISOS.NODOS_EDITAR,
     PERMISOS.CHAT_USAR,
   ],
   TRABAJADOR: [
@@ -130,5 +136,50 @@ export const ROLES_CATALOGO: readonly RolDetalle[] = [
 export function obtenerPermisosDeRol(rol?: string | null): PermisoCodigo[] {
   if (!rol || !(rol in ROLES_PERMISOS)) return [];
   return [...ROLES_PERMISOS[rol as Rol]];
+}
+
+export interface PermisoExtraDetalle {
+  codigo: PermisoCodigo;
+  nombre: string;
+  descripcion: string;
+}
+
+/**
+ * Permisos que el administrador puede dar a un trabajador ademas de los de su
+ * rol. Cualquier otro codigo guardado se ignora.
+ */
+export const PERMISOS_EXTRA: readonly PermisoExtraDetalle[] = [
+  {
+    codigo: PERMISOS.NODOS_EDITAR,
+    nombre: 'Editar el mapa',
+    descripcion: 'Usar el modo edición del mapa de nodos: mover tareas, deshacer y restablecer posiciones.',
+  },
+  {
+    codigo: PERMISOS.ACTIVIDADES_ELIMINAR,
+    nombre: 'Eliminar tareas',
+    descripcion: 'Eliminar una tarea del mapa junto con todas sus subtareas.',
+  },
+];
+
+export const CODIGOS_PERMISOS_EXTRA: readonly PermisoCodigo[] = PERMISOS_EXTRA.map((p) => p.codigo);
+
+/** Roles que pueden recibir permisos extra; los demas ya los tienen por su rol. */
+export const ROLES_CON_PERMISOS_EXTRA: readonly Rol[] = ['TRABAJADOR'];
+
+/**
+ * Permisos con que opera un usuario: los de su rol mas los extra que le dio el
+ * administrador. Los extra solo rigen mientras su rol pueda recibirlos: si el
+ * trabajador cambia de rol quedan guardados, pero sin efecto.
+ */
+export function permisosEfectivos(
+  rol?: string | null,
+  extras?: readonly string[] | null,
+): PermisoCodigo[] {
+  const permisos = obtenerPermisosDeRol(rol);
+  if (!extras?.length || !ROLES_CON_PERMISOS_EXTRA.includes(rol as Rol)) return permisos;
+  for (const codigo of CODIGOS_PERMISOS_EXTRA) {
+    if (extras.includes(codigo) && !permisos.includes(codigo)) permisos.push(codigo);
+  }
+  return permisos;
 }
 

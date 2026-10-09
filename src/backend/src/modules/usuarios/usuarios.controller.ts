@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -18,6 +19,7 @@ import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
 import { UsuariosService } from './usuarios.service';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto';
+import { ActualizarPermisosUsuarioDto } from './dto/actualizar-permisos-usuario.dto';
 
 @ApiTags('usuarios')
 @UseGuards(JwtAuthGuard, PermisosGuard)
@@ -95,6 +97,20 @@ export class UsuariosController {
     @Body() dto: ActualizarUsuarioDto,
   ) {
     return this.usuarios.actualizar(u, id, dto);
+  }
+
+  /**
+   * Permisos extra de un trabajador, además de los de su rol (editar el mapa,
+   * eliminar tareas). Solo el administrador de la misma organización.
+   */
+  @Patch(':id/permisos')
+  @ExigirPermisos(PERMISOS.USUARIOS_GESTIONAR)
+  actualizarPermisos(
+    @Usuario() u: UsuarioActual,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ActualizarPermisosUsuarioDto,
+  ) {
+    return this.usuarios.actualizarPermisos(u, id, dto);
   }
 
   /**

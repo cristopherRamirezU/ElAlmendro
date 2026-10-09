@@ -249,6 +249,96 @@ describe('UsuariosService', () => {
     });
   });
 
+  describe('actualizarPermisos (permisos extra por trabajador)', () => {
+    it('el administrador se los da a un trabajador de su organizacion, queda auditado', async () => {
+      prisma.usuario.findFirst.mockResolvedValue({
+        id: 'usuario-9',
+        rol: 'TRABAJADOR',
+        permisosExtra: [],
+      } as never);
+
+      const r = await servicio.actualizarPermisos(ADMIN, 'usuario-9', {
+        permisos: ['actividades:eliminar', 'nodos:editar'],
+      });
+
+      // Se guardan en el orden del catalogo.
+      expect(prisma.usuario.update).toHaveBeenCalledWith({
+        where: { id: 'usuario-9' },
+        data: { permisosExtra: ['nodos:editar', 'actividades:eliminar'] },
+      });
+      expect(prisma.usuario.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'usuario-9', organizacionId: 'org-1' } }),
+      );
+      expect(prisma.registroAuditoria.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accion: 'USUARIO_PERMISOS',
+          valorAnterior: { permisosExtra: [] },
+          valorNuevo: { permisosExtra: ['nodos:editar', 'actividades:eliminar'] },
+        }),
+      });
+      expect(r.permisos).toEqual(expect.arrayContaining(['nodos:editar', 'actividades:eliminar']));
+    });
+
+    it('una lista vacia se los quita', async () => {
+      prisma.usuario.findFirst.mockResolvedValue({
+        id: 'usuario-9',
+        rol: 'TRABAJADOR',
+        permisosExtra: ['nodos:editar'],
+      } as never);
+
+      const r = await servicio.actualizarPermisos(ADMIN, 'usuario-9', { permisos: [] });
+
+      expect(prisma.usuario.update).toHaveBeenCalledWith({
+        where: { id: 'usuario-9' },
+        data: { permisosExtra: [] },
+      });
+      expect(r.permisos).not.toContain('nodos:editar');
+    });
+
+    it('un supervisor no puede asignarlos', async () => {
+      await expect(
+        servicio.actualizarPermisos(SUPERVISOR, 'usuario-9', { permisos: ['nodos:editar'] }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.usuario.update).not.toHaveBeenCalled();
+    });
+
+    it('un usuario de otra organizacion responde como inexistente', async () => {
+      prisma.usuario.findFirst.mockResolvedValue(null as never);
+
+      await expect(
+        servicio.actualizarPermisos(ADMIN, 'ajeno', { permisos: ['nodos:editar'] }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('solo se dan a trabajadores: a un supervisor no', async () => {
+      prisma.usuario.findFirst.mockResolvedValue({
+        id: 'sup-2',
+        rol: 'SUPERVISOR',
+        permisosExtra: [],
+      } as never);
+
+      await expect(
+        servicio.actualizarPermisos(ADMIN, 'sup-2', { permisos: ['actividades:eliminar'] }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.usuario.update).not.toHaveBeenCalled();
+    });
+
+    it('a quien ya no es trabajador igual se le pueden quitar los que le quedaron', async () => {
+      prisma.usuario.findFirst.mockResolvedValue({
+        id: 'sup-2',
+        rol: 'SUPERVISOR',
+        permisosExtra: ['actividades:eliminar'],
+      } as never);
+
+      await servicio.actualizarPermisos(ADMIN, 'sup-2', { permisos: [] });
+
+      expect(prisma.usuario.update).toHaveBeenCalledWith({
+        where: { id: 'sup-2' },
+        data: { permisosExtra: [] },
+      });
+    });
+  });
+
   describe('desactivar', () => {
     it('nadie puede desactivarse a si mismo', async () => {
       await expect(servicio.desactivar(ADMIN, ADMIN.id)).rejects.toThrow(

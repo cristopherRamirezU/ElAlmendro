@@ -43,11 +43,14 @@ export default function PanelTarea({
   const tituloAdjuntos = useRef<HTMLParagraphElement>(null);
   const puedeGestionar = useTienePermiso(PERMISOS.ACTIVIDADES_GESTIONAR);
   const usuarioActual = useSesion();
-  const esAdmin = usuarioActual?.rol === 'ADMINISTRADOR' || usuarioActual?.rol === 'SUPER_ADMIN';
+  // Eliminar tareas: el administrador por su rol, o un trabajador al que se le
+  // dio el permiso extra.
+  const tienePermisoEliminar = useTienePermiso(PERMISOS.ACTIVIDADES_ELIMINAR);
+  const puedeEliminarNodo = tienePermisoEliminar || usuarioActual?.rol === 'SUPER_ADMIN';
   const { abrirBolsa, version } = useTesoro();
 
   async function handleEliminarNodo() {
-    if (!esAdmin || !actividad) return;
+    if (!puedeEliminarNodo || !actividad) return;
     const confirmar = window.confirm(
       `¿Estás seguro de que deseas eliminar el nodo "${actividad.titulo}" y todas sus subtareas/ramas hijas?\n\nEsta acción es irreversible y finalizará cualquier cronómetro activo.`,
     );
@@ -180,10 +183,11 @@ export default function PanelTarea({
       <div className="mb-3 flex items-start justify-between gap-3">
         <h2 className="font-bold leading-snug text-white">{actividad.titulo}</h2>
         <div className="flex shrink-0 items-center gap-1.5">
-          {esAdmin && (
+          {puedeEliminarNodo && (
             <button
               onClick={handleEliminarNodo}
-              title="Eliminar nodo y subnodos (Solo Administrador)"
+              title="Eliminar nodo y subnodos"
+              aria-label="Eliminar nodo y subnodos"
               className="grid h-7 w-7 place-items-center rounded-full border border-rose-500/40 text-rose-400 transition hover:bg-rose-500/10"
             >
               🗑️
@@ -487,8 +491,8 @@ export default function PanelTarea({
         )}
       </div>
 
-      {/* ------------------------------ Eliminación de nodo (Solo Administrador) */}
-      {esAdmin && (
+      {/* ------------------------------ Eliminación de nodo (permiso actividades:eliminar) */}
+      {puedeEliminarNodo && (
         <div className="mt-8 border-t border-white/10 pt-4">
           <button
             onClick={handleEliminarNodo}

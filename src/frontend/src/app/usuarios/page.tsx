@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PERMISOS, Rol, ROLES_CATALOGO } from '@/lib/rbac';
+import {
+  PermisoCodigo,
+  PERMISOS,
+  PERMISOS_EXTRA,
+  Rol,
+  ROLES_CATALOGO,
+  ROLES_CON_PERMISOS_EXTRA,
+} from '@/lib/rbac';
 import Marco from '@/components/Marco';
 import { api, ErrorApi, RolCatalogoItem, UsuarioItem } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
@@ -342,6 +349,16 @@ function ContenidoUsuarios() {
                         <p className="mt-1 text-[11px] text-slate-500">
                           {u.permisos?.length ?? 0} permiso(s) asignado(s)
                         </p>
+                        {ROLES_CON_PERMISOS_EXTRA.includes(u.rol) && (u.permisosExtra?.length ?? 0) > 0 && (
+                          <p
+                            className="mt-1 inline-flex rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300"
+                            title={PERMISOS_EXTRA.filter((p) => u.permisosExtra?.includes(p.codigo))
+                              .map((p) => p.nombre)
+                              .join(', ')}
+                          >
+                            +{u.permisosExtra!.length} extra
+                          </p>
+                        )}
                       </td>
 
                       <td className="px-6 py-4">
@@ -685,12 +702,23 @@ function ModalEditarUsuario({
   const [zonaHoraria, setZonaHoraria] = useState(usuario.zonaHoraria || 'America/Santiago');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Permisos extra: solo el administrador los asigna, y solo a trabajadores.
+  const extrasOriginales = usuario.permisosExtra ?? [];
+  const [extras, setExtras] = useState<PermisoCodigo[]>(extrasOriginales);
+  const muestraExtras = rolOperador === 'ADMINISTRADOR' && ROLES_CON_PERMISOS_EXTRA.includes(rol);
+  const extrasCambiaron =
+    extras.length !== extrasOriginales.length || extras.some((p) => !extrasOriginales.includes(p));
+
+  function alternarExtra(codigo: PermisoCodigo) {
+    setExtras((prev) => (prev.includes(codigo) ? prev.filter((p) => p !== codigo) : [...prev, codigo]));
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setEnviando(true);
 
+    let datosGuardados = false;
     try {
       const cuerpo: any = {
         nombreCompleto,
@@ -705,9 +733,16 @@ function ModalEditarUsuario({
       }
 
       await api.patch(`/usuarios/${usuario.id}`, cuerpo);
+      datosGuardados = true;
+      if (muestraExtras && extrasCambiaron) {
+        await api.patch(`/usuarios/${usuario.id}/permisos`, { permisos: extras });
+      }
       await onGuardado();
     } catch (err) {
-      setError(err instanceof ErrorApi ? err.message : 'No se pudo actualizar el usuario.');
+      const motivo = err instanceof ErrorApi ? err.message : 'No se pudo actualizar el usuario.';
+      setError(
+        datosGuardados ? `Los datos se guardaron, pero no los permisos extra: ${motivo}` : motivo,
+      );
     } finally {
       setEnviando(false);
     }
@@ -795,6 +830,36 @@ function ModalEditarUsuario({
               Usuario Activo (permite iniciar sesión en la plataforma)
             </label>
           </div>
+
+          {muestraExtras && (
+            <fieldset className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <legend className="px-1 text-xs font-semibold text-slate-300">Permisos extra</legend>
+              <p className="mb-2 text-[11px] leading-relaxed text-slate-400">
+                Además de los de su rol de trabajador. Rigen desde su próxima acción en la aplicación.
+              </p>
+              <div className="space-y-2">
+                {PERMISOS_EXTRA.map((p) => (
+                  <label
+                    key={p.codigo}
+                    htmlFor={`extra-${p.codigo}`}
+                    className="flex cursor-pointer items-start gap-3 rounded-lg p-1.5 transition hover:bg-white/5"
+                  >
+                    <input
+                      type="checkbox"
+                      id={`extra-${p.codigo}`}
+                      checked={extras.includes(p.codigo)}
+                      onChange={() => alternarExtra(p.codigo)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded-sm text-sky-500 focus:ring-sky-400"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-slate-200">{p.nombre}</span>
+                      <span className="block text-[11px] leading-relaxed text-slate-400">{p.descripcion}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           <div>
             <label className="mb-1 block text-xs font-semibold text-slate-300">
