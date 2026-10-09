@@ -18,13 +18,16 @@ import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
 import {
   ALTO_NODO,
+  ALTO_RAIZ,
   ANCHO_NODO,
+  ANCHO_RAIZ,
   aplicarPosicionesGuardadas,
   calcularArbol,
   conPosicion,
   desplazamientoRespectoDelPadre,
   Orientacion,
   posicionGuardada,
+  posicionInsignia,
   Punto,
 } from '@/lib/mapaMental';
 import { Caja, ladosEnfrentados } from '@/lib/rutasAristas';
@@ -60,6 +63,14 @@ function AjustarVista({ clave }: { clave: string }) {
   return null;
 }
 const TIPOS_NODO = { raiz: NodoRaiz, tarea: NodoTarea };
+/**
+ * Ritmo de la entrada (segundos, como en el diseno): cada linea empieza a
+ * dibujarse en RETRASO_LINEA, cada tarea brota en RETRASO_TAREA, y la
+ * siguiente espera PASO_ENTRADA mas que la anterior.
+ */
+const RETRASO_LINEA = 0.45;
+const RETRASO_TAREA = 0.75;
+const PASO_ENTRADA = 0.18;
 /**
  * Encuadre automatico. Con pocos nodos (o solo el principal) React Flow
  * acercaba hasta el doble, y el menu del nodo principal quedaba cortado por
@@ -132,8 +143,9 @@ function Nodos() {
   const [cargas, setCargas] = useState(0);
   const [buscandoProyecto, setBuscandoProyecto] = useState(!proyectoId);
 
-  // El arbol parte colapsado o expande la raiz si ya se solicita una tarea
-  const [expandidoRaiz, setExpandidoRaiz] = useState(Boolean(tareaParam));
+  // Al abrir el proyecto se despliegan solas las tareas de primer nivel (las
+  // subtareas no: cada rama parte colapsada).
+  const [expandidoRaiz, setExpandidoRaiz] = useState(true);
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
   const [tareaSeleccionada, setTareaSeleccionada] = useState<string | null>(tareaParam);
 
@@ -333,15 +345,41 @@ function Nodos() {
     [arbol, actividades, orientacion],
   );
 
+  /*
+   * Entrada al mapa: primero aparece la insignia y despues, una por una, cada
+   * tarea de primer nivel con su linea. Ocurre una vez al abrir el proyecto,
+   * no cada vez que se despliega algo. `entrada` da el turno de cada tarea.
+   */
+  const [entrada, setEntrada] = useState<Map<string, number> | null>(null);
+  const proyectoAnimado = useRef<string | null>(null);
+  useEffect(() => {
+    if (!proyectoId || cargas === 0 || proyectoAnimado.current === proyectoId) return;
+    proyectoAnimado.current = proyectoId;
+    setEntrada(new Map(arbol.raicesProyecto.map((a, i) => [a.id, i])));
+  }, [proyectoId, cargas, arbol.raicesProyecto]);
+  useEffect(() => {
+    if (!entrada) return;
+    const id = window.setTimeout(() => setEntrada(null), (RETRASO_TAREA + entrada.size * PASO_ENTRADA + 0.8) * 1000);
+    return () => window.clearTimeout(id);
+  }, [entrada]);
+
   const { nodos, aristas } = useMemo(() => {
     const { posicionRaiz, raicesProyecto } = arbol;
     const porId = new Map(actividades.map((a) => [a.id, a]));
     const nodos: Node[] = [];
     const aristas: Edge[] = [];
+    /** Segundos que espera una tarea de primer nivel (o su linea) en la entrada. */
+    const turnoEntrada = (id: string, base: number) => {
+      const turno = entrada?.get(id);
+      return turno === undefined ? undefined : base + turno * PASO_ENTRADA;
+    };
 
     if (nombreProyecto) {
       const datosRaiz: DatosNodoRaiz = {
         nombre: nombreProyecto,
+        totalTareas: actividades.length,
+        completadas: actividades.filter((a) => a.estado === 'COMPLETADA').length,
+        entrando: entrada !== null,
         tieneHijos: raicesProyecto.length > 0,
         expandido: expandidoRaiz,
         orientacion,
@@ -355,7 +393,7 @@ function Nodos() {
       nodos.push({
         id: RAIZ,
         type: 'raiz',
-        position: posicionRaiz,
+        position: posicionInsignia(posicionRaiz),
         data: datosRaiz,
         draggable: false,
         focusable: false,
@@ -376,6 +414,7 @@ function Nodos() {
         responsableNombre: a.responsable?.nombreCompleto,
         esMiTarea: a.responsableId === sesionActual?.id,
         editando,
+        retrasoEntrada: turnoEntrada(a.id, RETRASO_TAREA),
         onAlternar: () => alternarNodo(a.id),
         onAgregarHija: (titulo: string) => agregarTarea(titulo, a.id),
       };
@@ -391,12 +430,19 @@ function Nodos() {
           style: { stroke: pos.color, strokeWidth: 2, opacity: 0.55 },
         });
       } else if (pos.profundidad === 1 && nombreProyecto) {
+        const retrasoLinea = turnoEntrada(a.id, RETRASO_LINEA);
         aristas.push({
           id: `${RAIZ}-${a.id}`,
           source: RAIZ,
           target: a.id,
           type: 'mapa',
-          style: { stroke: pos.color, strokeWidth: 2.5, opacity: 0.7 },
+          className: retrasoLinea !== undefined ? 'tf-arista-entra' : undefined,
+          style: {
+            stroke: pos.color,
+            strokeWidth: 2.5,
+            opacity: 0.7,
+            ...(retrasoLinea !== undefined ? { '--tf-retraso': `${retrasoLinea}s` } : {}),
+          } as React.CSSProperties,
         });
       }
     }
@@ -404,7 +450,7 @@ function Nodos() {
     return { nodos, aristas };
   }, [
     actividades, arbol, finales, nombreProyecto, expandidoRaiz, expandido, orientacion,
-    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando,
+    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando, entrada,
   ]);
 
   /** Ramas de cada tarea: al arrastrar un padre lo acompanan sus descendientes. */
@@ -453,8 +499,8 @@ function Nodos() {
       id: n.id,
       x: n.position.x,
       y: n.position.y,
-      ancho: ANCHO_NODO,
-      alto: ALTO_NODO,
+      ancho: n.id === RAIZ ? ANCHO_RAIZ : ANCHO_NODO,
+      alto: n.id === RAIZ ? ALTO_RAIZ : ALTO_NODO,
     }));
     const porId = new Map(cajas.map((c) => [c.id, c]));
     const datos: DatosAristaMapa = { cajas };

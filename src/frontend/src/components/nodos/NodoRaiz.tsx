@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useReactFlow, type NodeProps, type Position } from '@xyflow/react';
-import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
+import { ALTO_RAIZ, ANCHO_RAIZ, type Orientacion } from '@/lib/mapaMental';
 import { api, PersonaRef } from '@/lib/api';
 import { disposicionNodo } from './orientacion';
 import Manillas from './Manillas';
@@ -10,6 +10,11 @@ import { fuenteTitulo } from '@/lib/fuentes';
 
 export interface DatosNodoRaiz {
   nombre: string;
+  /** Tareas del proyecto (todos los niveles) y cuantas estan completadas. */
+  totalTareas: number;
+  completadas: number;
+  /** Durante la entrada al mapa la insignia aparece primero. */
+  entrando?: boolean;
   tieneHijos: boolean;
   expandido: boolean;
   orientacion: Orientacion;
@@ -31,11 +36,10 @@ export interface DatosNodoRaiz {
 type Modo = 'menu' | 'nueva' | 'para-alguien' | null;
 
 /**
- * Burbuja central del mapa mental: el proyecto del que cuelgan las tareas.
- * Parte siempre colapsada — hay que desplegarla para ver las tareas de
- * primer nivel, igual que cualquier otro nodo del arbol. Mide lo mismo que
- * una tarea: el layout la ubica como a una mas, y si fuera de otro tamano
- * quedaria descentrada respecto de sus hijas y las aristas saldrian chuecas.
+ * Insignia del proyecto: el nodo central del que cuelgan las tareas. Lleva la
+ * etiqueta "PROYECTO", el nombre, cuantas tareas tiene y cuantas estan
+ * completadas, y un anillo con el avance. Es mas grande que una tarea; el
+ * mapa la dibuja centrada en el lugar que el acomodo reserva para ella.
  *
  * Al pasar el mouse, al enfocarla con el teclado o al tocarla se abre un menu
  * para agregar tareas ("Nueva tarea" y, a quien puede asignar, "Tarea para
@@ -62,6 +66,11 @@ export default function NodoRaiz({ data }: NodeProps) {
   const campoResuelto = useRef(false);
   const puedeAgregar = Boolean(d.onAgregarHija || d.onAgregarParaAlguien);
   const abierto = modo !== null;
+  const avance = d.totalTareas > 0 ? Math.round((d.completadas / d.totalTareas) * 100) : 0;
+  // Un nombre corto va grande como en el diseno; uno largo baja de tamano y
+  // usa hasta dos lineas antes de cortarse.
+  const nombreCorto = d.nombre.length <= 10;
+  const tamanoNombre = nombreCorto ? 28 : d.nombre.length <= 22 ? 19 : 16;
 
   // El mapa se desenfoca mientras el menu (o uno de sus formularios) esta abierto.
   const { onEnfoque } = d;
@@ -141,8 +150,8 @@ export default function NodoRaiz({ data }: NodeProps) {
   return (
     <div
       ref={contenedor}
-      className="relative"
-      style={{ width: ANCHO_NODO, height: ALTO_NODO }}
+      className={`relative ${d.entrando ? 'tf-entra-raiz' : ''}`}
+      style={{ width: ANCHO_RAIZ, height: ALTO_RAIZ }}
       onMouseEnter={abrirMenu}
       // Con el mouse, salir del nodo cierra el menu; un formulario a medio
       // escribir se queda hasta que se envie, se cancele o se salga con el foco.
@@ -172,63 +181,75 @@ export default function NodoRaiz({ data }: NodeProps) {
       }}
     >
       <div
-        className="relative flex h-full w-full items-center justify-center rounded-xl px-5 py-2 text-center shadow-xl"
-        style={{
-          background: 'linear-gradient(135deg, #0369a1, #4338ca)',
-          border: '1px solid rgba(56,189,248,0.6)',
-          boxShadow: abierto
-            ? '0 0 0 3px rgba(56,189,248,.35), 0 10px 36px rgba(56,189,248,.55)'
-            : '0 6px 24px rgba(56,189,248,.35)',
-        }}
+        className="tf-insignia-marco h-full w-full"
+        style={abierto ? { boxShadow: '0 0 0 3px rgba(56,189,248,.35), 0 20px 50px -14px rgba(56,189,248,.7)' } : undefined}
       >
-        {/* El nombre es el boton que abre el menu: con Tab, Enter o un toque. */}
+        <div className="tf-insignia-cuerpo flex h-full items-center gap-3.5 px-[18px]">
+          <AnilloAvance porcentaje={avance} />
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-300">Proyecto</p>
+            <p
+              className={`${fuenteTitulo.className} mt-0.5 font-bold leading-[1.05] tracking-[-0.03em] text-white ${
+                nombreCorto ? 'truncate' : 'line-clamp-2 break-words'
+              }`}
+              style={{ fontSize: tamanoNombre }}
+              title={d.nombre}
+            >
+              {d.nombre}
+            </p>
+            <p className="mt-1.5 truncate text-[11px] font-medium text-[#93a3c4]">
+              {d.totalTareas === 0
+                ? 'Sin tareas todavía'
+                : `${d.totalTareas} ${d.totalTareas === 1 ? 'tarea' : 'tareas'} · ${d.completadas} ${
+                    d.completadas === 1 ? 'completada' : 'completadas'
+                  }`}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* La insignia completa es el boton que abre el menu: con Tab, Enter o un toque. */}
+      <button
+        ref={botonNodo}
+        type="button"
+        aria-haspopup={puedeAgregar ? 'true' : undefined}
+        aria-expanded={puedeAgregar ? abierto : undefined}
+        aria-label={puedeAgregar ? `Proyecto ${d.nombre}: agregar tareas` : `Proyecto ${d.nombre}`}
+        // Abre (con un toque en pantallas sin mouse); cerrar es con Escape o al salir.
+        onClick={(e) => {
+          e.stopPropagation();
+          abrirMenu();
+        }}
+        className="absolute inset-0 rounded-[20px] outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+      />
+      <Manillas
+        tipo="salida"
+        principal={disposicion.salida}
+        enUso={d.ladosSalida}
+        className="!h-3 !w-3 !border-2 !border-sky-300 !bg-slate-950"
+      />
+
+      {d.tieneHijos && (
         <button
-          ref={botonNodo}
-          type="button"
-          aria-haspopup={puedeAgregar ? 'true' : undefined}
-          aria-expanded={puedeAgregar ? abierto : undefined}
-          aria-label={puedeAgregar ? `Proyecto ${d.nombre}: agregar tareas` : `Proyecto ${d.nombre}`}
-          // Abre (con un toque en pantallas sin mouse); cerrar es con Escape o al salir.
           onClick={(e) => {
             e.stopPropagation();
-            abrirMenu();
+            d.onAlternar();
           }}
-          className="absolute inset-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-        />
-        <span
-          className={`${fuenteTitulo.className} pointer-events-none line-clamp-2 text-base font-bold leading-snug tracking-[-0.02em] text-white`}
-          title={d.nombre}
+          title={d.expandido ? 'Contraer' : 'Desplegar'}
+          aria-label={d.expandido ? 'Contraer las tareas del proyecto' : 'Desplegar las tareas del proyecto'}
+          className={`absolute ${disposicion.claseBoton} z-10 grid h-6 w-6 place-items-center rounded-full bg-slate-800 text-white ring-1 ring-white/25 hover:bg-slate-700`}
         >
-          {d.nombre}
-        </span>
-        <Manillas
-          tipo="salida"
-          principal={disposicion.salida}
-          enUso={d.ladosSalida}
-          className="!h-3 !w-3 !border-2 !border-sky-300 !bg-slate-950"
-        />
-
-        {d.tieneHijos && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              d.onAlternar();
-            }}
-            title={d.expandido ? 'Contraer' : 'Desplegar'}
-            className={`absolute ${disposicion.claseBoton} z-10 grid h-6 w-6 place-items-center rounded-full bg-slate-800 text-white ring-1 ring-white/25 hover:bg-slate-700`}
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${d.expandido ? disposicion.claseFlechaExpandida : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
           >
-            <svg
-              viewBox="0 0 24 24"
-              className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${d.expandido ? disposicion.claseFlechaExpandida : ''}`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d={disposicion.trazoFlecha} />
-            </svg>
-          </button>
-        )}
-      </div>
+            <path strokeLinecap="round" strokeLinejoin="round" d={disposicion.trazoFlecha} />
+          </svg>
+        </button>
+      )}
 
       {/* pt-2 (y no mt-2): el espacio entre el nodo y el menu sigue siendo parte
           del nodo, asi el mouse puede bajar al menu sin que se cierre. */}
@@ -338,6 +359,37 @@ export default function NodoRaiz({ data }: NodeProps) {
         </form>
       )}
     </div>
+  );
+}
+
+/** Anillo verde con el porcentaje de tareas completadas del proyecto. */
+function AnilloAvance({ porcentaje }: { porcentaje: number }) {
+  const circunferencia = 2 * Math.PI * 18;
+  return (
+    <svg
+      viewBox="0 0 44 44"
+      width="44"
+      height="44"
+      className="shrink-0"
+      role="img"
+      aria-label={`Avance del proyecto: ${porcentaje}%`}
+    >
+      <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(148,163,184,.25)" strokeWidth="4" />
+      <circle
+        cx="22"
+        cy="22"
+        r="18"
+        fill="none"
+        stroke="#34d399"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeDasharray={`${(porcentaje / 100) * circunferencia} ${circunferencia}`}
+        transform="rotate(-90 22 22)"
+      />
+      <text x="22" y="26" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700">
+        {porcentaje}%
+      </text>
+    </svg>
   );
 }
 

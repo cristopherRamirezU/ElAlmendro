@@ -99,6 +99,83 @@ body {
   to { opacity: 1; transform: none; }
 }
 
+/*
+ * Insignia del proyecto (nodo principal): borde de luz celeste, violeta y
+ * verde que gira lento alrededor de un fondo azul profundo.
+ */
+.tf-insignia-marco {
+  position: relative;
+  border-radius: 20px;
+  padding: 1.5px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px -18px rgba(56, 189, 248, 0.55);
+}
+.tf-insignia-marco::before {
+  content: '';
+  position: absolute;
+  inset: -80%;
+  background: conic-gradient(from 0deg, transparent 0 55%, #38bdf8 70%, #a78bfa 82%, #34d399 92%, transparent 100%);
+  animation: tf-gira 8s linear infinite;
+}
+.tf-insignia-cuerpo {
+  position: relative;
+  border-radius: 19px;
+  background: linear-gradient(150deg, #0b1a3a, #0a1024 70%);
+}
+
+/*
+ * Tarea del mapa: fondo oscuro con un degradado del color de su fase (mas
+ * intenso arriba a la izquierda) y una trama de puntos tenue hacia la derecha.
+ * El color llega en --c como "r,g,b".
+ */
+.tf-tarea {
+  border: 1px solid rgba(var(--c), 0.4);
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(var(--c), 0.3), transparent 55%),
+    radial-gradient(90% 130% at 100% 100%, rgba(var(--c), 0.16), transparent 60%),
+    #0d1117;
+  box-shadow: 0 10px 26px -14px rgba(var(--c), 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.tf-tarea::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 7px 7px;
+  -webkit-mask-image: linear-gradient(100deg, transparent 35%, #000 100%);
+  mask-image: linear-gradient(100deg, transparent 35%, #000 100%);
+}
+.tf-tarea > * { position: relative; }
+
+/*
+ * Entrada al mapa: primero aparece la insignia; luego, una por una, cada
+ * linea se dibuja desde ella y su tarea brota desde la izquierda con un
+ * pequeno rebote. El retraso de cada una llega en --tf-retraso.
+ */
+.tf-entra-raiz { animation: tf-raiz-aparece 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.tf-entra-tarea {
+  animation: tf-brota 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: var(--tf-retraso, 0s);
+}
+.tf-arista-entra .react-flow__edge-path {
+  stroke-dasharray: 1600;
+  stroke-dashoffset: 1600;
+  animation: tf-traza 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: var(--tf-retraso, 0s);
+}
+
+@keyframes tf-gira { to { transform: rotate(360deg); } }
+@keyframes tf-raiz-aparece {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tf-brota {
+  from { opacity: 0; transform: translateX(-36px) scale(0.88); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes tf-traza { to { stroke-dashoffset: 0; } }
+
 /* Quien pide menos movimiento ve el cofre y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
   .tf-cofre-brillo { animation: none; }
@@ -106,4 +183,9 @@ body {
   .tf-mapa .react-flow__node,
   .tf-mapa .react-flow__edges { transition: none; }
   .tf-menu-raiz > * { animation: none; }
+  /* El borde de la insignia queda quieto y el mapa aparece directo. */
+  .tf-insignia-marco::before { animation: none; }
+  .tf-entra-raiz,
+  .tf-entra-tarea { animation: none; }
+  .tf-arista-entra .react-flow__edge-path { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
 }
