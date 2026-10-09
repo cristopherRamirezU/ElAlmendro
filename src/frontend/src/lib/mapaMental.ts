@@ -206,6 +206,9 @@ const LADOS_LINEA: readonly LadoLinea[] = ['top', 'right', 'bottom', 'left'];
 export interface LadosFijados {
   salida?: LadoLinea;
   entrada?: LadoLinea;
+  /** Punto del borde (0 a 1) donde se solto cada extremo; sin el, el centro. */
+  salidaPos?: number;
+  entradaPos?: number;
 }
 
 /** Bordes fijados de la linea que llega a la tarea, en esta orientacion. */
@@ -213,8 +216,15 @@ export function ladosGuardados(a: NodoActividad | undefined, orientacion: Orient
   const lados = a?.ladosLinea?.[orientacion] as Record<string, unknown> | undefined;
   const resultado: LadosFijados = {};
   if (!lados || typeof lados !== 'object') return resultado;
-  if (LADOS_LINEA.includes(lados.salida as LadoLinea)) resultado.salida = lados.salida as LadoLinea;
-  if (LADOS_LINEA.includes(lados.entrada as LadoLinea)) resultado.entrada = lados.entrada as LadoLinea;
+  const esPos = (x: unknown): x is number => typeof x === 'number' && x >= 0 && x <= 1;
+  if (LADOS_LINEA.includes(lados.salida as LadoLinea)) {
+    resultado.salida = lados.salida as LadoLinea;
+    if (esPos(lados.salidaPos)) resultado.salidaPos = lados.salidaPos;
+  }
+  if (LADOS_LINEA.includes(lados.entrada as LadoLinea)) {
+    resultado.entrada = lados.entrada as LadoLinea;
+    if (esPos(lados.entradaPos)) resultado.entradaPos = lados.entradaPos;
+  }
   return resultado;
 }
 

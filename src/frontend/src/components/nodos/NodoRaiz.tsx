@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useReactFlow, type NodeProps, type Position } from '@xyflow/react';
+import { useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import { ALTO_RAIZ, ANCHO_RAIZ, type Orientacion } from '@/lib/mapaMental';
 import { api, PersonaRef } from '@/lib/api';
-import { disposicionNodo } from './orientacion';
+import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
 
@@ -20,8 +20,10 @@ export interface DatosNodoRaiz {
   tieneHijos: boolean;
   expandido: boolean;
   orientacion: Orientacion;
-  /** Bordes por donde salen sus lineas (los elige el mapa). */
-  ladosSalida?: Position[];
+  /** Puntos de sus bordes donde nacen sus lineas (los elige el mapa). */
+  anclas?: Ancla[];
+  /** Se esta arrastrando el extremo de una linea: sus bordes lo reciben. */
+  recibiendoExtremo?: boolean;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   /**
@@ -48,8 +50,9 @@ type Modo = 'menu' | 'nueva' | 'para-alguien' | null;
  * alguien"); mientras esta abierto el resto del mapa se desenfoca. Se cierra
  * con Escape o al salir del nodo.
  */
-export default function NodoRaiz({ data }: NodeProps) {
+export default function NodoRaiz({ id, data }: NodeProps) {
   const d = data as DatosNodoRaiz;
+  const actualizarManillas = useUpdateNodeInternals();
   const disposicion = disposicionNodo(d.orientacion);
   const [modo, setModo] = useState<Modo>(null);
   const [texto, setTexto] = useState('');
@@ -154,6 +157,10 @@ export default function NodoRaiz({ data }: NodeProps) {
       ref={contenedor}
       className={`relative ${d.entrando ? 'tf-entra-raiz' : ''}`}
       style={{ width: ANCHO_RAIZ, height: ALTO_RAIZ }}
+      // Al terminar de aparecer (venia achicada), se vuelven a medir sus manillas.
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget) actualizarManillas(id);
+      }}
       onMouseEnter={abrirMenu}
       // Con el mouse, salir del nodo cierra el menu; un formulario a medio
       // escribir se queda hasta que se envie, se cancele o se salga con el foco.
@@ -224,13 +231,7 @@ export default function NodoRaiz({ data }: NodeProps) {
         }}
         className="absolute inset-0 rounded-[20px] outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
       />
-      <Manillas
-        tipo="salida"
-        principal={disposicion.salida}
-        enUso={d.ladosSalida}
-        editable={d.editando}
-        className="!h-3 !w-3 !border-2 !border-sky-300 !bg-slate-950"
-      />
+      <Manillas nodoId={id} anclas={d.anclas} recibiendo={d.recibiendoExtremo} />
 
       {d.tieneHijos && (
         <button

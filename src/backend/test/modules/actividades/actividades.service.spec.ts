@@ -426,6 +426,18 @@ describe('ActividadesService', () => {
       expect(guardado()).toEqual([{ horizontal: { salida: 'right' }, vertical: { entrada: 'left' } }]);
     });
 
+    it('guarda el punto exacto del borde donde se solto el extremo', async () => {
+      prisma.actividad.findMany.mockResolvedValue([tarea('a')] as never);
+
+      await servicio.guardarLados(ACTOR, {
+        orientacion: 'horizontal',
+        cambios: [{ id: 'a', lados: { entrada: 'top', entradaPos: 0.25, salidaPos: 0.8 } }],
+      });
+
+      // Una posicion sin su borde no se guarda.
+      expect(guardado()).toEqual([{ horizontal: { entrada: 'top', entradaPos: 0.25 } }]);
+    });
+
     it('sin extremos la linea vuelve a ser automatica en esa orientacion', async () => {
       prisma.actividad.findMany.mockResolvedValue([
         tarea('a', { horizontal: { salida: 'right' }, vertical: { entrada: 'top' } }),

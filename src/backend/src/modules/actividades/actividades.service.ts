@@ -336,8 +336,14 @@ export class ActividadesService {
       for (const cambio of dto.cambios) {
         const lados = ladosPorOrientacion(porId.get(cambio.id)!.ladosLinea);
         const nuevos: LadosFijados = {};
-        if (cambio.lados?.salida) nuevos.salida = cambio.lados.salida;
-        if (cambio.lados?.entrada) nuevos.entrada = cambio.lados.entrada;
+        if (cambio.lados?.salida) {
+          nuevos.salida = cambio.lados.salida;
+          if (typeof cambio.lados.salidaPos === 'number') nuevos.salidaPos = cambio.lados.salidaPos;
+        }
+        if (cambio.lados?.entrada) {
+          nuevos.entrada = cambio.lados.entrada;
+          if (typeof cambio.lados.entradaPos === 'number') nuevos.entradaPos = cambio.lados.entradaPos;
+        }
         if (Object.keys(nuevos).length) lados[dto.orientacion] = nuevos;
         else delete lados[dto.orientacion];
         guardadas.push(
@@ -691,7 +697,7 @@ export class ActividadesService {
 }
 
 type PuntoMapa = { x: number; y: number };
-type LadosFijados = { salida?: LadoLinea; entrada?: LadoLinea };
+type LadosFijados = { salida?: LadoLinea; entrada?: LadoLinea; salidaPos?: number; entradaPos?: number };
 
 /** Lee los bordes fijados de una linea, por orientacion; lo que no calce se ignora. */
 function ladosPorOrientacion(valor: Prisma.JsonValue): Partial<Record<OrientacionMapa, LadosFijados>> {
@@ -702,8 +708,15 @@ function ladosPorOrientacion(valor: Prisma.JsonValue): Partial<Record<Orientacio
     const lados = (valor as Record<string, unknown>)[orientacion] as Record<string, unknown> | undefined;
     if (!lados || typeof lados !== 'object') continue;
     const fijados: LadosFijados = {};
-    if (esLado(lados.salida)) fijados.salida = lados.salida;
-    if (esLado(lados.entrada)) fijados.entrada = lados.entrada;
+    const esPos = (x: unknown): x is number => typeof x === 'number' && x >= 0 && x <= 1;
+    if (esLado(lados.salida)) {
+      fijados.salida = lados.salida;
+      if (esPos(lados.salidaPos)) fijados.salidaPos = lados.salidaPos;
+    }
+    if (esLado(lados.entrada)) {
+      fijados.entrada = lados.entrada;
+      if (esPos(lados.entradaPos)) fijados.entradaPos = lados.entradaPos;
+    }
     if (Object.keys(fijados).length) resultado[orientacion] = fijados;
   }
   return resultado;
