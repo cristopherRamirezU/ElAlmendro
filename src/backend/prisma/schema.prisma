@@ -137,9 +137,11 @@ model Usuario {
   proyectosPropios      Proyecto[]          @relation("PropietarioProyecto")
   membresias            MiembroProyecto[]
   actividades           Actividad[]         @relation("ResponsableActividad")
+  actividadesCreadas    Actividad[]         @relation("CreadorActividad")
   jornadas              Jornada[]
   sesiones              SesionTrabajo[]
-  evidenciasSubidas     Evidencia[]
+  evidenciasSubidas     Evidencia[]         @relation("EvidenciaSubidaPor")
+  evidenciasEliminadas  Evidencia[]         @relation("EvidenciaEliminadaPor")
   comentarios           Comentario[]
   derivacionesEmitidas  Derivacion[]        @relation("DerivacionDe")
   derivacionesRecibidas Derivacion[]        @relation("DerivacionA")
@@ -240,6 +242,10 @@ model Actividad {
   prioridad        Prioridad       @default(MEDIA)
   responsableId    String          @db.Uuid
   responsable      Usuario         @relation("ResponsableActividad", fields: [responsableId], references: [id])
+  // Quien creo la tarea: puede agregar o editar sus instrucciones (descripcion).
+  // Nulo solo si no se pudo deducir para una tarea antigua.
+  creadoPorId      String?         @db.Uuid
+  creadoPor        Usuario?        @relation("CreadorActividad", fields: [creadoPorId], references: [id], onDelete: SetNull)
   minutosEstimados Int?
   fechaLimite      DateTime?       @db.Timestamptz(3)
   // Coordenadas del nodo en el mapa visual (React Flow) - US-05.
@@ -372,7 +378,7 @@ model Evidencia {
   sesionId      String?        @db.Uuid
   sesion        SesionTrabajo? @relation(fields: [sesionId], references: [id])
   subidaPorId   String         @db.Uuid
-  subidaPor     Usuario        @relation(fields: [subidaPorId], references: [id])
+  subidaPor     Usuario        @relation("EvidenciaSubidaPor", fields: [subidaPorId], references: [id])
   // Key del objeto en el bucket S3 / MinIO.
   claveObjeto   String         @unique
   nombreArchivo String
@@ -380,6 +386,11 @@ model Evidencia {
   tamanoBytes   Int
   sha256        String
   subidaEn      DateTime       @default(now()) @db.Timestamptz(3)
+  // Borrado logico: el adjunto deja de verse y de contar como respaldo, pero
+  // el registro y el archivo quedan para revision (la base prohibe borrarlos).
+  eliminadaEn    DateTime?     @db.Timestamptz(3)
+  eliminadaPorId String?       @db.Uuid
+  eliminadaPor   Usuario?      @relation("EvidenciaEliminadaPor", fields: [eliminadaPorId], references: [id], onDelete: SetNull)
 
   @@index([actividadId])
   @@index([sesionId])

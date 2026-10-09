@@ -287,6 +287,7 @@ async function main() {
           titulo: grupo.titulo,
           descripcion: `Agrupacion de actividades de ${grupo.titulo.toLowerCase()}.`,
           responsableId: admin.id,
+          creadoPorId: admin.id,
           prioridad: Prioridad.ALTA,
           posicionNodo: { x: grupo.x * 320, y: 0 },
         },
@@ -304,6 +305,8 @@ async function main() {
             estado: hija.estado,
             prioridad: hija.prioridad,
             responsableId: hija.responsable,
+            // El plan de ejemplo lo carga el administrador.
+            creadoPorId: admin.id,
             minutosEstimados: hija.estimadas,
             orden: i,
             posicionNodo: { x: grupo.x * 320, y: 140 + i * 110 },

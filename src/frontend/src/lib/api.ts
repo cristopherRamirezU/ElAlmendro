@@ -206,6 +206,8 @@ export interface Actividad {
   proyecto: { nombre: string };
   responsable: { id: string; nombreCompleto: string };
   subtareas: Subtarea[];
+  /** Solo en el detalle: quien creo la tarea o un administrador. */
+  puedeEditarInstrucciones?: boolean;
 }
 
 /** Persona asignable: lo que devuelve /usuarios/trabajadores. */
@@ -228,6 +230,8 @@ export interface Evidencia {
   tamanoBytes: number;
   subidaEn: string;
   subidaPor: { nombreCompleto: string };
+  /** Quien lo subio o un administrador, y solo si la tarea no esta completada. */
+  puedeEliminar: boolean;
 }
 
 export interface Jornada {

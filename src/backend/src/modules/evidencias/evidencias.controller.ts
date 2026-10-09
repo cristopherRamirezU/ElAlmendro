@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -40,6 +41,12 @@ export class EvidenciasController {
     @UploadedFile() archivo: Express.Multer.File,
   ) {
     return this.evidencias.subir(u, dto.actividadId, archivo);
+  }
+
+  /** Quien subio el archivo o un administrador; nunca en una tarea completada. */
+  @Delete(':id')
+  eliminar(@Usuario() u: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
+    return this.evidencias.eliminar(u, id);
   }
 
   @Get(':id/descargar')
