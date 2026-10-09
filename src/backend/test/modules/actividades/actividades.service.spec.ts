@@ -196,6 +196,77 @@ describe('ActividadesService', () => {
       );
     });
 
+    describe('tarea para alguien (responsableId)', () => {
+      const GESTOR = { ...ACTOR, id: 'sup-1', permisos: ['actividades:gestionar'] } as UsuarioActual;
+
+      beforeEach(() => {
+        prisma.proyecto.findFirst.mockResolvedValue({ id: 'p1' } as never);
+        prisma.actividad.findFirst.mockResolvedValueOnce(null as never);
+      });
+
+      it('quien puede asignar la crea ya con responsable y lo suma al proyecto', async () => {
+        prisma.usuario.findFirst.mockResolvedValue({ id: 'u2', activo: true } as never);
+        prisma.miembroProyecto.findUnique.mockResolvedValue(null as never);
+
+        await servicio.crear(GESTOR, { proyectoId: 'p1', titulo: 'Para Ana', responsableId: 'u2' });
+
+        expect(prisma.actividad.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ responsableId: 'u2', creadoPorId: 'sup-1' }),
+          }),
+        );
+        expect(prisma.usuario.findFirst).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { id: 'u2', organizacionId: 'org-1' } }),
+        );
+        expect(prisma.miembroProyecto.create).toHaveBeenCalledWith({
+          data: { proyectoId: 'p1', usuarioId: 'u2' },
+        });
+      });
+
+      it('no duplica la membresia si ya era del proyecto', async () => {
+        prisma.usuario.findFirst.mockResolvedValue({ id: 'u2', activo: true } as never);
+        prisma.miembroProyecto.findUnique.mockResolvedValue({ usuarioId: 'u2' } as never);
+
+        await servicio.crear(GESTOR, { proyectoId: 'p1', titulo: 'Para Ana', responsableId: 'u2' });
+
+        expect(prisma.miembroProyecto.create).not.toHaveBeenCalled();
+      });
+
+      it('sin permiso para asignar no puede crearla para otra persona', async () => {
+        await expect(
+          servicio.crear(ACTOR, { proyectoId: 'p1', titulo: 'X', responsableId: 'u2' }),
+        ).rejects.toThrow(ForbiddenException);
+        expect(prisma.actividad.create).not.toHaveBeenCalled();
+      });
+
+      it('indicarse a si mismo no requiere permiso', async () => {
+        await servicio.crear(ACTOR, { proyectoId: 'p1', titulo: 'Mia', responsableId: USUARIO });
+
+        expect(prisma.actividad.create).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ responsableId: USUARIO }) }),
+        );
+        expect(prisma.usuario.findFirst).not.toHaveBeenCalled();
+      });
+
+      it('rechaza a una persona de otra organizacion', async () => {
+        prisma.usuario.findFirst.mockResolvedValue(null as never);
+
+        await expect(
+          servicio.crear(GESTOR, { proyectoId: 'p1', titulo: 'X', responsableId: 'ajena' }),
+        ).rejects.toThrow(NotFoundException);
+        expect(prisma.actividad.create).not.toHaveBeenCalled();
+      });
+
+      it('rechaza a una persona desactivada', async () => {
+        prisma.usuario.findFirst.mockResolvedValue({ id: 'u3', activo: false } as never);
+
+        await expect(
+          servicio.crear(GESTOR, { proyectoId: 'p1', titulo: 'X', responsableId: 'u3' }),
+        ).rejects.toThrow(/desactivada/);
+        expect(prisma.actividad.create).not.toHaveBeenCalled();
+      });
+    });
+
     it('anota a quien la crea, que ademas queda como responsable', async () => {
       prisma.proyecto.findFirst.mockResolvedValue({ id: 'p1' } as never);
       prisma.actividad.findFirst.mockResolvedValueOnce(null as never);

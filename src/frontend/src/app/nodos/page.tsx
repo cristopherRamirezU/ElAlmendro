@@ -28,7 +28,8 @@ import {
   Punto,
 } from '@/lib/mapaMental';
 import { Caja, ladosEnfrentados } from '@/lib/rutasAristas';
-import { useSesion } from '@/lib/sesion';
+import { useSesion, useTienePermiso } from '@/lib/sesion';
+import { PERMISOS } from '@/lib/rbac';
 import { useTesoro } from '@/lib/tesoro';
 import { useColorPrimario } from '@/lib/color';
 import { leerCacheSesion, guardarCacheSesion } from '@/lib/cacheSesion';
@@ -53,12 +54,18 @@ interface CambioPosiciones {
 function AjustarVista({ clave }: { clave: string }) {
   const { fitView } = useReactFlow();
   useEffect(() => {
-    const id = requestAnimationFrame(() => fitView({ padding: 0.3, duration: 250 }));
+    const id = requestAnimationFrame(() => fitView({ ...ENCUADRE, duration: 250 }));
     return () => cancelAnimationFrame(id);
   }, [clave, fitView]);
   return null;
 }
 const TIPOS_NODO = { raiz: NodoRaiz, tarea: NodoTarea };
+/**
+ * Encuadre automatico. Con pocos nodos (o solo el principal) React Flow
+ * acercaba hasta el doble, y el menu del nodo principal quedaba cortado por
+ * el borde del mapa; mas alla de 1,25x no se acerca solo.
+ */
+const ENCUADRE = { padding: 0.3, maxZoom: 1.25 };
 const TIPOS_ARISTA = { mapa: AristaMapa };
 const CLAVE_ORIENTACION = 'tf_nodos_orientacion';
 
@@ -106,6 +113,10 @@ function Nodos() {
   const esTrabajador = sesionActual?.rol === 'TRABAJADOR';
   const esSupervisor = sesionActual?.rol === 'SUPERVISOR';
   const esAdmin = sesionActual?.rol === 'ADMINISTRADOR';
+  // "Tarea para alguien" asigna trabajo: lo ofrece solo a quien puede asignar.
+  const puedeAsignar = useTienePermiso(PERMISOS.ACTIVIDADES_GESTIONAR);
+  // Mientras el menu del nodo principal esta abierto, el resto del mapa se desenfoca.
+  const [raizEnfocada, setRaizEnfocada] = useState(false);
 
   const parametros = useSearchParams();
   const proyectoId = parametros.get('proyectoId');
@@ -259,6 +270,25 @@ function Nodos() {
     [proyectoId, cargar],
   );
 
+  /**
+   * "Tarea para alguien" desde el nodo principal: la crea ya con responsable.
+   * Devuelve el motivo si el servidor la rechaza, para mostrarlo ahi mismo.
+   */
+  const agregarTareaPara = useCallback(
+    async (titulo: string, responsableId: string): Promise<string | null> => {
+      if (!proyectoId) return 'No hay un proyecto abierto.';
+      try {
+        await api.post('/actividades', { proyectoId, titulo, responsableId });
+        setExpandidoRaiz(true);
+        await cargar();
+        return null;
+      } catch (err) {
+        return err instanceof ErrorApi ? err.message : 'No se pudo crear la tarea.';
+      }
+    },
+    [proyectoId, cargar],
+  );
+
   const alConectar = useCallback(
     async (conexion: Connection) => {
       const origen = conexion.source;
@@ -314,8 +344,20 @@ function Nodos() {
         orientacion,
         onAlternar: alternarRaiz,
         onAgregarHija: (titulo: string) => agregarTarea(titulo),
+        onAgregarParaAlguien: puedeAsignar ? agregarTareaPara : undefined,
+        onEnfoque: setRaizEnfocada,
       };
-      nodos.push({ id: RAIZ, type: 'raiz', position: posicionRaiz, data: datosRaiz, draggable: false });
+      // Siempre por encima de las tareas, para que su menu no quede tapado. No
+      // es enfocable como nodo: el foco lo toma el boton de su nombre.
+      nodos.push({
+        id: RAIZ,
+        type: 'raiz',
+        position: posicionRaiz,
+        data: datosRaiz,
+        draggable: false,
+        focusable: false,
+        zIndex: 2000,
+      });
     }
 
     for (const pos of finales.values()) {
@@ -359,7 +401,7 @@ function Nodos() {
     return { nodos, aristas };
   }, [
     actividades, arbol, finales, nombreProyecto, expandidoRaiz, expandido, orientacion,
-    agregarTarea, sesionActual, editando,
+    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando,
   ]);
 
   /** Ramas de cada tarea: al arrastrar un padre lo acompanan sus descendientes. */
@@ -699,7 +741,10 @@ function Nodos() {
               </div>
             </div>
           </div>
-          <div className="relative" style={{ height: '32rem', ...estiloFondoMapa(fondo) }}>
+          <div
+            className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
+            style={{ height: '32rem', ...estiloFondoMapa(fondo) }}
+          >
             <DecoracionFondo fondo={fondo} />
             <ReactFlow
               style={{ background: 'transparent' }}
@@ -714,7 +759,7 @@ function Nodos() {
               onNodeDrag={alArrastrar}
               onNodeDragStop={alSoltar}
               fitView
-              fitViewOptions={{ padding: 0.3 }}
+              fitViewOptions={ENCUADRE}
               proOptions={{ hideAttribution: true }}
               colorMode="dark"
             >
