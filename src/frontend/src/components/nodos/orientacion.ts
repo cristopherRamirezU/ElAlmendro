@@ -1,11 +1,10 @@
-import { useEffect } from 'react';
-import { Position, useUpdateNodeInternals } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import type { Orientacion } from '@/lib/mapaMental';
 
 /**
- * Donde van los conectores y el boton de desplegar de una burbuja segun el
- * sentido del arbol. En horizontal las hijas cuelgan del borde derecho; en
- * vertical, del borde inferior.
+ * Donde van los conectores principales y el boton de desplegar de una
+ * burbuja segun el sentido del arbol. En horizontal las hijas cuelgan del
+ * borde derecho; en vertical, del borde inferior.
  */
 export function disposicionNodo(orientacion: Orientacion) {
   const horizontal = orientacion === 'horizontal';
@@ -23,15 +22,16 @@ export function disposicionNodo(orientacion: Orientacion) {
 }
 
 /**
- * React Flow mide las manillas de un nodo solo cuando el nodo cambia de
- * tamano. Al girar el arbol las manillas pasan de los costados a arriba y
- * abajo sin que la burbuja cambie de medida, asi que las aristas seguian
- * saliendo de donde estaban antes y se cruzaban. Esto le pide volver a
- * medirlas cada vez que cambia la orientacion.
+ * Cada burbuja tiene una manilla de entrada y otra de salida en cada borde;
+ * las lineas eligen cual usar segun donde quedo el otro nodo. Antes habia solo
+ * las del sentido del arbol y React Flow habia que pedirle volver a medirlas al
+ * girarlo; ahora estan siempre todas, asi que sus medidas no cambian.
  */
-export function useManillasSegunOrientacion(id: string, orientacion: Orientacion) {
-  const actualizar = useUpdateNodeInternals();
-  useEffect(() => {
-    actualizar(id);
-  }, [id, orientacion, actualizar]);
+export const LADOS = [Position.Top, Position.Right, Position.Bottom, Position.Left];
+
+export type TipoManilla = 'entrada' | 'salida';
+
+/** Id de la manilla de un borde, el mismo que usan las aristas. */
+export function idManilla(tipo: TipoManilla, lado: Position) {
+  return `${tipo}-${lado}`;
 }
