@@ -15,6 +15,8 @@ export interface DatosNodoRaiz {
   completadas: number;
   /** Durante la entrada al mapa la insignia aparece primero. */
   entrando?: boolean;
+  /** Modo edicion: sus manillas reciben el extremo de una linea. */
+  editando?: boolean;
   tieneHijos: boolean;
   expandido: boolean;
   orientacion: Orientacion;
@@ -226,6 +228,7 @@ export default function NodoRaiz({ data }: NodeProps) {
         tipo="salida"
         principal={disposicion.salida}
         enUso={d.ladosSalida}
+        editable={d.editando}
         className="!h-3 !w-3 !border-2 !border-sky-300 !bg-slate-950"
       />
 

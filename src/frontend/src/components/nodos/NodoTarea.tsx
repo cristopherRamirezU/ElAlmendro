@@ -88,6 +88,7 @@ export default function NodoTarea({ data }: NodeProps) {
         tipo="entrada"
         principal={disposicion.entrada}
         enUso={d.ladosEntrada}
+        editable={d.editando}
         className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
         style={{ borderColor: d.color }}
       />
@@ -141,6 +142,7 @@ export default function NodoTarea({ data }: NodeProps) {
         tipo="salida"
         principal={disposicion.salida}
         enUso={d.ladosSalida}
+        editable={d.editando}
         className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
         style={{ borderColor: d.color }}
       />

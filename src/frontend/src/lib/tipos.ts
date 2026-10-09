@@ -47,6 +47,8 @@ export interface NodoActividad {
    * `posicionGuardada` (lib/mapaMental), que descarta cualquier otro formato.
    */
   posicionNodo: Record<string, unknown> | null;
+  /** Bordes fijados a mano de la linea que llega a esta tarea, por orientacion. */
+  ladosLinea?: Record<string, unknown> | null;
   /** Lugar entre sus hermanas en el mapa de nodos. */
   orden: number;
   responsableId?: string;

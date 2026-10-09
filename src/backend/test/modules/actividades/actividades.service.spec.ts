@@ -405,6 +405,103 @@ describe('ActividadesService', () => {
     });
   });
 
+  describe('guardarLados (bordes fijados de las lineas)', () => {
+    const tarea = (id: string, ladosLinea: unknown = null, proyectoId = 'p1') => ({
+      id,
+      proyectoId,
+      ladosLinea,
+    });
+    const guardado = () => prisma.actividad.update.mock.calls.map(([arg]) => arg.data.ladosLinea);
+
+    it('fija la llegada en una orientacion sin tocar la otra', async () => {
+      prisma.actividad.findMany.mockResolvedValue([
+        tarea('a', { horizontal: { salida: 'right' } }),
+      ] as never);
+
+      await servicio.guardarLados(ACTOR, {
+        orientacion: 'vertical',
+        cambios: [{ id: 'a', lados: { entrada: 'left' } }],
+      });
+
+      expect(guardado()).toEqual([{ horizontal: { salida: 'right' }, vertical: { entrada: 'left' } }]);
+    });
+
+    it('sin extremos la linea vuelve a ser automatica en esa orientacion', async () => {
+      prisma.actividad.findMany.mockResolvedValue([
+        tarea('a', { horizontal: { salida: 'right' }, vertical: { entrada: 'top' } }),
+      ] as never);
+
+      await servicio.guardarLados(ACTOR, {
+        orientacion: 'vertical',
+        cambios: [{ id: 'a', lados: null }],
+      });
+
+      expect(guardado()).toEqual([{ horizontal: { salida: 'right' } }]);
+    });
+
+    it('si no queda nada fijado, la columna vuelve a quedar vacia', async () => {
+      prisma.actividad.findMany.mockResolvedValue([tarea('a', { vertical: { salida: 'top' } })] as never);
+
+      await servicio.guardarLados(ACTOR, {
+        orientacion: 'vertical',
+        cambios: [{ id: 'a', lados: { salida: null, entrada: null } }],
+      });
+
+      expect(guardado()).toEqual([Prisma.DbNull]);
+    });
+
+    it('ignora valores guardados que no son bordes validos', async () => {
+      prisma.actividad.findMany.mockResolvedValue([
+        tarea('a', { horizontal: { salida: 'diagonal' }, vertical: 'basura' }),
+      ] as never);
+
+      await servicio.guardarLados(ACTOR, {
+        orientacion: 'horizontal',
+        cambios: [{ id: 'a', lados: { entrada: 'bottom' } }],
+      });
+
+      expect(guardado()).toEqual([{ horizontal: { entrada: 'bottom' } }]);
+    });
+
+    it('rechaza una linea repetida sin consultar la base', async () => {
+      await expect(
+        servicio.guardarLados(ACTOR, {
+          orientacion: 'vertical',
+          cambios: [{ id: 'a', lados: null }, { id: 'a', lados: { salida: 'top' } }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.actividad.findMany).not.toHaveBeenCalled();
+    });
+
+    it('rechaza tareas de otra organizacion o inexistentes', async () => {
+      prisma.actividad.findMany.mockResolvedValue([] as never);
+
+      await expect(
+        servicio.guardarLados(ACTOR, {
+          orientacion: 'vertical',
+          cambios: [{ id: 'ajena', lados: { salida: 'top' } }],
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.actividad.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ proyecto: { organizacionId: 'org-1' } }),
+        }),
+      );
+      expect(prisma.actividad.update).not.toHaveBeenCalled();
+    });
+
+    it('rechaza mezclar lineas de distintos proyectos', async () => {
+      prisma.actividad.findMany.mockResolvedValue([tarea('a'), tarea('b', null, 'p2')] as never);
+
+      await expect(
+        servicio.guardarLados(ACTOR, {
+          orientacion: 'vertical',
+          cambios: [{ id: 'a', lados: null }, { id: 'b', lados: null }],
+        }),
+      ).rejects.toThrow(/mismo proyecto/i);
+    });
+  });
+
   describe('guardarPosiciones (mapa de nodos en modo edicion)', () => {
     const nodo = (id: string, posicionNodo: unknown = null, proyectoId = 'p1') => ({
       id,

@@ -16,6 +16,7 @@ import { ActualizarActividadDto } from './dto/actualizar-actividad.dto';
 import { ReasignarActividadDto } from './dto/reasignar-actividad.dto';
 import { ActualizarInstruccionesDto } from './dto/actualizar-instrucciones.dto';
 import { GuardarPosicionesDto } from './dto/guardar-posiciones.dto';
+import { GuardarLadosDto } from './dto/guardar-lados.dto';
 import {
   ActualizarSubtareaDto,
   CambiarEstadoActividadDto,
@@ -55,6 +56,16 @@ export class ActividadesController {
   @ExigirPermisos(PERMISOS.NODOS_EDITAR)
   guardarPosiciones(@Usuario() u: UsuarioActual, @Body() dto: GuardarPosicionesDto) {
     return this.actividades.guardarPosiciones(u, dto);
+  }
+
+  /**
+   * Fija por que borde sale o llega la linea de una tarea (o la devuelve al
+   * modo automatico). Mismo permiso que mover nodos; va antes de ':id'.
+   */
+  @Patch('lados')
+  @ExigirPermisos(PERMISOS.NODOS_EDITAR)
+  guardarLados(@Usuario() u: UsuarioActual, @Body() dto: GuardarLadosDto) {
+    return this.actividades.guardarLados(u, dto);
   }
 
   /**

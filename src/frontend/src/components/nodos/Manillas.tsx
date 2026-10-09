@@ -7,18 +7,22 @@ import { idManilla, LADOS, type TipoManilla } from './orientacion';
 /**
  * Las manillas de un tipo en los cuatro bordes de la burbuja. Solo la del
  * sentido del arbol sirve para unir tareas arrastrando y se ve siempre; las
- * demas aparecen cuando una linea las usa y no se pueden arrastrar.
+ * demas aparecen cuando una linea las usa. En modo edicion (`editable`) todas
+ * se ven, tenues, y reciben el extremo de una linea que se arrastra para
+ * elegir por que borde sale o llega.
  */
 export default function Manillas({
   tipo,
   principal,
   enUso,
+  editable,
   className,
   style,
 }: {
   tipo: TipoManilla;
   principal: Position;
   enUso?: Position[];
+  editable?: boolean;
   className: string;
   style?: CSSProperties;
 }) {
@@ -33,8 +37,8 @@ export default function Manillas({
             id={idManilla(tipo, lado)}
             type={tipo === 'entrada' ? 'target' : 'source'}
             position={lado}
-            isConnectable={esPrincipal}
-            className={`${className} ${visible ? '' : '!pointer-events-none !opacity-0'}`}
+            isConnectable={esPrincipal || editable}
+            className={`${className} ${visible ? '' : editable ? '!opacity-40' : '!pointer-events-none !opacity-0'}`}
             style={style}
           />
         );
