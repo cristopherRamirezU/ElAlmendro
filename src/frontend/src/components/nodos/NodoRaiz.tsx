@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Handle, type NodeProps } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
 import { disposicionNodo, useManillasSegunOrientacion } from './orientacion';
+import { fuenteTitulo } from '@/lib/fuentes';
 
 export interface DatosNodoRaiz {
   nombre: string;
@@ -46,7 +47,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
           boxShadow: '0 6px 24px rgba(56,189,248,.35)',
         }}
       >
-        <span className="line-clamp-2 text-sm font-bold leading-snug text-white" title={d.nombre}>
+        <span className={`${fuenteTitulo.className} line-clamp-2 text-base font-bold leading-snug tracking-[-0.02em] text-white`} title={d.nombre}>
           {d.nombre}
         </span>
         <Handle

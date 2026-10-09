@@ -96,6 +96,8 @@ export interface Usuario {
   organizacionSlug?: string | null;
   organizacionColor?: string | null;
   organizacionTema?: string | null;
+  /** Fondo del mapa de nodos elegido por el usuario (null = el de siempre). */
+  fondoMapa?: string | null;
 }
 
 export interface OrganizacionMia {

@@ -68,6 +68,7 @@ export async function cargarUsuarioVigente(
       rol: true,
       nombreCompleto: true,
       activo: true,
+      fondoMapa: true,
       organizacionId: true,
       organizacion: {
         select: { nombre: true, slug: true, activo: true, colorPrimario: true, temaFondo: true },
@@ -99,5 +100,6 @@ export async function cargarUsuarioVigente(
     organizacionSlug: usuario.organizacion?.slug ?? null,
     organizacionColor: usuario.organizacion?.colorPrimario ?? null,
     organizacionTema: usuario.organizacion?.temaFondo ?? null,
+    fondoMapa: usuario.fondoMapa ?? null,
   };
 }

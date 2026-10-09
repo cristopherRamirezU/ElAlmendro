@@ -125,6 +125,8 @@ model Usuario {
   nombreCompleto String
   rol            Rol      @default(TRABAJADOR)
   zonaHoraria    String   @default("America/Santiago")
+  /// Fondo del mapa de nodos que eligio el usuario (null = gris con puntos).
+  fondoMapa      String?
   activo         Boolean  @default(true)
   creadoEn       DateTime @default(now()) @db.Timestamptz(3)
   actualizadoEn  DateTime @updatedAt @db.Timestamptz(3)
