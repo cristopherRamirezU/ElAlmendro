@@ -73,8 +73,37 @@ body {
   60%, 100% { transform: translateX(100%); }
 }
 
+/*
+ * Mapa de nodos: mientras el menu del nodo principal esta abierto, el resto
+ * del mapa (tareas y lineas) se desenfoca y se atenua para que el nodo quede
+ * al frente.
+ */
+.tf-mapa .react-flow__node,
+.tf-mapa .react-flow__edges {
+  transition: filter 0.25s ease, opacity 0.25s ease;
+}
+.tf-mapa.raiz-enfocada .react-flow__node:not(.react-flow__node-raiz),
+.tf-mapa.raiz-enfocada .react-flow__edges {
+  filter: blur(2.5px);
+  opacity: 0.4;
+}
+
+/* Las opciones del menu del nodo principal entran desde arriba, una tras otra. */
+.tf-menu-raiz > * {
+  animation: tf-menu-raiz-entra 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.tf-menu-raiz > *:nth-child(2) { animation-delay: 0.05s; }
+
+@keyframes tf-menu-raiz-entra {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
 /* Quien pide menos movimiento ve el cofre y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
   .tf-cofre-brillo { animation: none; }
   .tf-barra-brillo::after { display: none; }
+  .tf-mapa .react-flow__node,
+  .tf-mapa .react-flow__edges { transition: none; }
+  .tf-menu-raiz > * { animation: none; }
 }

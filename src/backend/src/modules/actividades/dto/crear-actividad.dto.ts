@@ -12,4 +12,12 @@ export class CrearActividadDto {
   @IsOptional()
   @IsUUID(undefined, { message: 'La tarea padre indicada no es valida.' })
   actividadPadreId?: string;
+
+  /**
+   * "Tarea para alguien": la tarea nace ya asignada a esta persona. Sin el
+   * campo, el responsable es quien la crea.
+   */
+  @IsOptional()
+  @IsUUID(undefined, { message: 'La persona indicada no es valida.' })
+  responsableId?: string;
 }

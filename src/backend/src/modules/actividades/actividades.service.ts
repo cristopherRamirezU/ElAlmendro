@@ -17,6 +17,7 @@ import {
   CrearSubtareaDto,
 } from './dto/subtarea.dto';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { PERMISOS } from '../../common/rbac';
 import {
   exigirOrganizacion,
   filtroActividadOrganizacion,
@@ -114,14 +115,35 @@ export class ActividadesService {
     );
   }
 
-  /** Crea una tarea del mapa de nodos, opcionalmente colgada de otra (US-05). */
+  /**
+   * Crea una tarea del mapa de nodos, opcionalmente colgada de otra (US-05).
+   * Con `responsableId` nace ya asignada a otra persona ("Tarea para
+   * alguien"): eso es asignar trabajo, asi que exige el mismo permiso que
+   * derivar, y la persona debe estar activa y ser de la misma empresa. Si no
+   * era miembro del proyecto, se la agrega, igual que al derivar.
+   */
   async crear(u: UsuarioActual, dto: CrearActividadDto) {
+    const organizacionId = exigirOrganizacion(u);
     // La tarea nace dentro de un proyecto de la propia empresa, nunca de otra.
     const proyecto = await this.prisma.proyecto.findFirst({
-      where: { id: dto.proyectoId, eliminadoEn: null, organizacionId: exigirOrganizacion(u) },
+      where: { id: dto.proyectoId, eliminadoEn: null, organizacionId },
       select: { id: true },
     });
     if (!proyecto) throw new NotFoundException('El proyecto no existe o no pertenece a tu organizacion.');
+
+    const responsableId = dto.responsableId ?? u.id;
+    const paraOtraPersona = responsableId !== u.id;
+    if (paraOtraPersona) {
+      if (!u.permisos.includes(PERMISOS.ACTIVIDADES_GESTIONAR)) {
+        throw new ForbiddenException('No tienes permiso para asignar tareas a otras personas.');
+      }
+      const persona = await this.prisma.usuario.findFirst({
+        where: { id: responsableId, organizacionId },
+        select: { id: true, activo: true },
+      });
+      if (!persona) throw new NotFoundException('La persona no existe o no pertenece a tu organizacion.');
+      if (!persona.activo) throw new BadRequestException('Esa persona esta desactivada.');
+    }
 
     if (dto.actividadPadreId) {
       const padre = await this.prisma.actividad.findFirst({
@@ -142,24 +164,39 @@ export class ActividadesService {
       select: { orden: true },
     });
 
-    return this.prisma.actividad.create({
-      data: {
-        proyectoId: dto.proyectoId,
-        titulo: dto.titulo,
-        actividadPadreId: dto.actividadPadreId ?? null,
-        responsableId: u.id,
-        creadoPorId: u.id,
-        orden: (ultimaHermana?.orden ?? -1) + 1,
-      },
-      select: {
-        id: true,
-        titulo: true,
-        estado: true,
-        prioridad: true,
-        actividadPadreId: true,
-        posicionNodo: true,
-        responsable: { select: { nombreCompleto: true } },
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const creada = await tx.actividad.create({
+        data: {
+          proyectoId: dto.proyectoId,
+          titulo: dto.titulo,
+          actividadPadreId: dto.actividadPadreId ?? null,
+          responsableId,
+          creadoPorId: u.id,
+          orden: (ultimaHermana?.orden ?? -1) + 1,
+        },
+        select: {
+          id: true,
+          titulo: true,
+          estado: true,
+          prioridad: true,
+          actividadPadreId: true,
+          posicionNodo: true,
+          responsable: { select: { nombreCompleto: true } },
+        },
+      });
+
+      if (paraOtraPersona) {
+        const yaMiembro = await tx.miembroProyecto.findUnique({
+          where: { proyectoId_usuarioId: { proyectoId: dto.proyectoId, usuarioId: responsableId } },
+          select: { usuarioId: true },
+        });
+        if (!yaMiembro) {
+          await tx.miembroProyecto.create({
+            data: { proyectoId: dto.proyectoId, usuarioId: responsableId },
+          });
+        }
+      }
+      return creada;
     });
   }
 
