@@ -78,8 +78,9 @@ CREATE TRIGGER tg_auditoria_inmutable
   BEFORE UPDATE OR DELETE ON registros_auditoria
   FOR EACH ROW EXECUTE FUNCTION fn_auditoria_inmutable();
 
--- 9. Las sesiones y evidencias no se eliminan: el borrado logico existe solo
---    en actividades. La evidencia debe permanecer disponible para revision.
+-- 9. Las sesiones y evidencias no se eliminan. El borrado logico existe en
+--    actividades (eliminadoEn) y en evidencias (eliminadaEn, al quitar un
+--    adjunto): la evidencia debe permanecer disponible para revision.
 CREATE OR REPLACE FUNCTION fn_prohibir_borrado() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'Los registros de % no pueden eliminarse.', TG_TABLE_NAME;

@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ActividadesService } from '../../../src/modules/actividades/actividades.service';
 import { montarServicio } from '../../utilidades/modulo';
@@ -193,6 +193,120 @@ describe('ActividadesService', () => {
 
       expect(prisma.actividad.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ orden: 0 }) }),
+      );
+    });
+
+    it('anota a quien la crea, que ademas queda como responsable', async () => {
+      prisma.proyecto.findFirst.mockResolvedValue({ id: 'p1' } as never);
+      prisma.actividad.findFirst.mockResolvedValueOnce(null as never);
+
+      await servicio.crear(ACTOR, { proyectoId: 'p1', titulo: 'Mia' });
+
+      expect(prisma.actividad.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ creadoPorId: USUARIO, responsableId: USUARIO }),
+        }),
+      );
+    });
+  });
+
+  describe('exigirEvidencia', () => {
+    it('los adjuntos quitados no cuentan como respaldo', async () => {
+      prisma.evidencia.count.mockResolvedValue(0 as never);
+
+      await expect(servicio.exigirEvidencia('A')).rejects.toThrow(BadRequestException);
+      expect(prisma.evidencia.count).toHaveBeenCalledWith({
+        where: { actividadId: 'A', eliminadaEn: null },
+      });
+    });
+  });
+
+  describe('actualizarInstrucciones', () => {
+    const tarea = (creadoPorId: string | null) => ({
+      id: 'A',
+      descripcion: 'antes',
+      creadoPorId,
+      proyecto: { organizacionId: 'org-1' },
+    });
+    const ADMIN = { ...ACTOR, id: 'admin-1', rol: 'ADMINISTRADOR' } as UsuarioActual;
+
+    beforeEach(() => {
+      prisma.$queryRaw.mockResolvedValue([] as never);
+    });
+
+    it('quien creo la tarea puede editarlas; se guardan sin espacios sobrantes', async () => {
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce(tarea(USUARIO) as never)
+        .mockResolvedValueOnce({ id: 'A', creadoPorId: USUARIO } as never);
+
+      const resultado = await servicio.actualizarInstrucciones('A', ACTOR, {
+        instrucciones: '  Revisar el contrato  ',
+      });
+
+      expect(prisma.actividad.update).toHaveBeenCalledWith({
+        where: { id: 'A' },
+        data: { descripcion: 'Revisar el contrato' },
+      });
+      expect(resultado.puedeEditarInstrucciones).toBe(true);
+    });
+
+    it('el administrador tambien puede, aunque no la haya creado', async () => {
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce(tarea('otro') as never)
+        .mockResolvedValueOnce({ id: 'A', creadoPorId: 'otro' } as never);
+
+      await servicio.actualizarInstrucciones('A', ADMIN, { instrucciones: 'x' });
+
+      expect(prisma.actividad.update).toHaveBeenCalled();
+    });
+
+    it('rechaza a quien no la creo ni es administrador', async () => {
+      prisma.actividad.findFirst.mockResolvedValueOnce(tarea('otro') as never);
+
+      await expect(
+        servicio.actualizarInstrucciones('A', ACTOR, { instrucciones: 'x' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.actividad.update).not.toHaveBeenCalled();
+    });
+
+    it('una tarea sin creador conocido solo la edita el administrador', async () => {
+      prisma.actividad.findFirst.mockResolvedValueOnce(tarea(null) as never);
+
+      await expect(
+        servicio.actualizarInstrucciones('A', ACTOR, { instrucciones: 'x' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('un texto vacio quita las instrucciones y queda auditado', async () => {
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce(tarea(USUARIO) as never)
+        .mockResolvedValueOnce({ id: 'A', creadoPorId: USUARIO } as never);
+
+      await servicio.actualizarInstrucciones('A', ACTOR, { instrucciones: '   ' });
+
+      expect(prisma.actividad.update).toHaveBeenCalledWith({
+        where: { id: 'A' },
+        data: { descripcion: null },
+      });
+      expect(prisma.registroAuditoria.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accion: 'ACTIVIDAD_INSTRUCCIONES',
+          valorAnterior: { descripcion: 'antes' },
+          valorNuevo: { descripcion: null },
+        }),
+      });
+    });
+
+    it('no encuentra tareas de otra organizacion', async () => {
+      prisma.actividad.findFirst.mockResolvedValueOnce(null as never);
+
+      await expect(
+        servicio.actualizarInstrucciones('A', ACTOR, { instrucciones: 'x' }),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.actividad.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ proyecto: { organizacionId: 'org-1' } }),
+        }),
       );
     });
   });

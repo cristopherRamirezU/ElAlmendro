@@ -1,18 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { Actividad, api, Evidencia, ErrorApi, Sesion, URL_API } from '@/lib/api';
 import { cronometro, duracion, ESTADOS, PRIORIDADES } from '@/lib/formato';
 import { PERMISOS } from '@/lib/rbac';
 import { useSesion, useTienePermiso } from '@/lib/sesion';
 import ResponsableTarea from './ResponsableTarea';
+import InstruccionesTarea from './InstruccionesTarea';
 import BolsaOro from '@/components/tesoro/BolsaOro';
 import { llenadoDeBolsa, porcentajeLlenado } from '@/components/tesoro/llenado';
 import { useTesoro } from '@/lib/tesoro';
 
 /**
- * Detalle de una tarea del mapa de nodos: cronometraje (comenzar, pausar,
- * reanudar, terminar) y evidencias adjuntas. Ocupa el lugar de
+ * Detalle de una tarea del mapa de nodos: instrucciones, cronometraje
+ * (comenzar, pausar, reanudar, terminar) y evidencias adjuntas. Ocupa el lugar de
  * "Derivaciones" mientras hay una tarea seleccionada.
  */
 export default function PanelTarea({
@@ -33,7 +35,12 @@ export default function PanelTarea({
   const [nota, setNota] = useState('');
   const [subiendo, setSubiendo] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Adjunto que se esta por eliminar: la fila pide confirmacion ahi mismo.
+  const [porEliminar, setPorEliminar] = useState<string | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [avisoAdjuntos, setAvisoAdjuntos] = useState<string | null>(null);
   const inputArchivo = useRef<HTMLInputElement>(null);
+  const tituloAdjuntos = useRef<HTMLParagraphElement>(null);
   const puedeGestionar = useTienePermiso(PERMISOS.ACTIVIDADES_GESTIONAR);
   const usuarioActual = useSesion();
   const esAdmin = usuarioActual?.rol === 'ADMINISTRADOR' || usuarioActual?.rol === 'SUPER_ADMIN';
@@ -71,6 +78,8 @@ export default function PanelTarea({
     setCerrando(false);
     setNota('');
     setAviso(null);
+    setPorEliminar(null);
+    setAvisoAdjuntos(null);
     cargar().catch(() => setAviso('No se pudo cargar la tarea.'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actividadId]);
@@ -112,6 +121,36 @@ export default function PanelTarea({
     } finally {
       setSubiendo(false);
       if (inputArchivo.current) inputArchivo.current.value = '';
+    }
+  }
+
+  /** Desiste de eliminar: el foco vuelve al boton de basurero de esa fila. */
+  function cancelarEliminar(id: string) {
+    setPorEliminar(null);
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLButtonElement>(`[data-eliminar-adjunto="${id}"]`)?.focus(),
+    );
+  }
+
+  /** Elimina un adjunto ya confirmado; si el servidor lo rechaza, dice por que. */
+  async function eliminarAdjunto(id: string) {
+    setAvisoAdjuntos(null);
+    setEliminando(true);
+    try {
+      await api.delete(`/evidencias/${id}`);
+      setPorEliminar(null);
+      setEvidencias(await api.get<Evidencia[]>(`/evidencias?actividadId=${actividadId}`));
+      // La fila desaparece: el foco pasa al titulo de la lista en vez de perderse.
+      requestAnimationFrame(() => tituloAdjuntos.current?.focus());
+    } catch (err) {
+      setAvisoAdjuntos(err instanceof ErrorApi ? err.message : 'No se pudo eliminar el archivo.');
+      // Si algo cambio mientras tanto (p. ej. la tarea se completo en otra
+      // ventana), el panel completo se pone al dia y la fila vuelve a su estado.
+      setPorEliminar(null);
+      cargar().catch(() => undefined);
+      requestAnimationFrame(() => tituloAdjuntos.current?.focus());
+    } finally {
+      setEliminando(false);
     }
   }
 
@@ -204,9 +243,7 @@ export default function PanelTarea({
         </span>
       </button>
 
-      {actividad.descripcion && (
-        <p className="mb-4 text-sm leading-relaxed text-slate-300">{actividad.descripcion}</p>
-      )}
+      <InstruccionesTarea actividad={actividad} onGuardadas={setActividad} />
 
       {aviso && (
         <p role="alert" className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
@@ -347,7 +384,11 @@ export default function PanelTarea({
       {/* ------------------------------ evidencias */}
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          <p
+            ref={tituloAdjuntos}
+            tabIndex={-1}
+            className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 outline-none"
+          >
             Archivos adjuntos
           </p>
           {!terminada && (
@@ -370,27 +411,78 @@ export default function PanelTarea({
           />
         </div>
 
+        {avisoAdjuntos && (
+          <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            {avisoAdjuntos}
+          </p>
+        )}
+
         {evidencias.length === 0 ? (
           <p className="rounded-xl border border-dashed border-white/15 p-4 text-center text-xs text-slate-500">
             {terminada ? 'Tarea completada sin archivos adjuntos.' : 'Sin archivos adjuntos.'}
           </p>
         ) : (
           <ul className="flex flex-col gap-1.5">
-            {evidencias.map((ev) => (
-              <li key={ev.id}>
-                <a
-                  href={`${URL_API}/evidencias/${ev.id}/descargar`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:bg-white/10"
+            {evidencias.map((ev) =>
+              porEliminar === ev.id ? (
+                <li
+                  key={ev.id}
+                  className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape' && !eliminando) cancelarEliminar(ev.id);
+                  }}
                 >
-                  <span className="truncate">{ev.nombreArchivo}</span>
-                  <span className="ml-auto shrink-0 text-[10px] text-slate-500">
-                    {(ev.tamanoBytes / 1024).toFixed(0)} KB
-                  </span>
-                </a>
-              </li>
-            ))}
+                  <p className="mb-2 text-rose-200">
+                    ¿Eliminar <span className="font-semibold break-all">{ev.nombreArchivo}</span>? No se puede deshacer.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => eliminarAdjunto(ev.id)}
+                      disabled={eliminando}
+                      className="flex-1 rounded-lg bg-rose-600 py-1.5 font-semibold text-white transition hover:bg-rose-500 disabled:opacity-50"
+                    >
+                      {eliminando ? 'Eliminando…' : 'Eliminar'}
+                    </button>
+                    <button
+                      autoFocus
+                      onClick={() => cancelarEliminar(ev.id)}
+                      disabled={eliminando}
+                      className="flex-1 rounded-lg border border-white/15 py-1.5 font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </li>
+              ) : (
+                <li key={ev.id} className="flex items-stretch gap-1.5">
+                  <a
+                    href={`${URL_API}/evidencias/${ev.id}/descargar`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-200 transition hover:bg-white/10"
+                  >
+                    <span className="truncate">{ev.nombreArchivo}</span>
+                    <span className="ml-auto shrink-0 text-[10px] text-slate-500">
+                      {(ev.tamanoBytes / 1024).toFixed(0)} KB
+                    </span>
+                  </a>
+                  {ev.puedeEliminar && !terminada && (
+                    <button
+                      onClick={() => {
+                        setAvisoAdjuntos(null);
+                        setPorEliminar(ev.id);
+                      }}
+                      data-eliminar-adjunto={ev.id}
+                      aria-label={`Eliminar ${ev.nombreArchivo}`}
+                      title="Eliminar archivo"
+                      className="grid w-8 shrink-0 place-items-center rounded-lg border border-white/10 text-slate-400 transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-300"
+                    >
+                      <Trash2 size={14} aria-hidden />
+                    </button>
+                  )}
+                </li>
+              ),
+            )}
           </ul>
         )}
       </div>

@@ -14,6 +14,7 @@ import { ActividadesService } from './actividades.service';
 import { CrearActividadDto } from './dto/crear-actividad.dto';
 import { ActualizarActividadDto } from './dto/actualizar-actividad.dto';
 import { ReasignarActividadDto } from './dto/reasignar-actividad.dto';
+import { ActualizarInstruccionesDto } from './dto/actualizar-instrucciones.dto';
 import { GuardarPosicionesDto } from './dto/guardar-posiciones.dto';
 import {
   ActualizarSubtareaDto,
@@ -94,6 +95,16 @@ export class ActividadesController {
     @Body() dto: CambiarEstadoActividadDto,
   ) {
     return this.actividades.cambiarEstado(id, u, dto);
+  }
+
+  /** Instrucciones de la tarea: las edita quien la creo o un administrador. */
+  @Patch(':id/instrucciones')
+  actualizarInstrucciones(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Usuario() u: UsuarioActual,
+    @Body() dto: ActualizarInstruccionesDto,
+  ) {
+    return this.actividades.actualizarInstrucciones(id, u, dto);
   }
 
   @Get(':id')

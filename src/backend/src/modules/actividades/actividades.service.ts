@@ -9,6 +9,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { CrearActividadDto } from './dto/crear-actividad.dto';
 import { ActualizarActividadDto } from './dto/actualizar-actividad.dto';
 import { ReasignarActividadDto } from './dto/reasignar-actividad.dto';
+import { ActualizarInstruccionesDto } from './dto/actualizar-instrucciones.dto';
 import { GuardarPosicionesDto, OrientacionMapa } from './dto/guardar-posiciones.dto';
 import {
   ActualizarSubtareaDto,
@@ -20,6 +21,14 @@ import {
   exigirOrganizacion,
   filtroActividadOrganizacion,
 } from '../../common/organizacion';
+
+/**
+ * Las instrucciones de una tarea (su descripcion) las agrega o edita quien la
+ * creo, o el administrador de la organizacion.
+ */
+function puedeEditarInstrucciones(u: UsuarioActual, creadoPorId: string | null) {
+  return (creadoPorId !== null && creadoPorId === u.id) || u.rol === 'ADMINISTRADOR';
+}
 
 /** US-03 y US-04 — consulta de actividades y su tiempo acumulado. */
 @Injectable()
@@ -70,7 +79,11 @@ export class ActividadesService {
     if (!actividad) throw new NotFoundException('La actividad no existe.');
 
     const tiempos = await this.segundosPorActividad([actividad.id]);
-    return { ...actividad, segundosTrabajados: tiempos.get(actividad.id) ?? 0 };
+    return {
+      ...actividad,
+      segundosTrabajados: tiempos.get(actividad.id) ?? 0,
+      puedeEditarInstrucciones: puedeEditarInstrucciones(u, actividad.creadoPorId),
+    };
   }
 
   /**
@@ -135,6 +148,7 @@ export class ActividadesService {
         titulo: dto.titulo,
         actividadPadreId: dto.actividadPadreId ?? null,
         responsableId: u.id,
+        creadoPorId: u.id,
         orden: (ultimaHermana?.orden ?? -1) + 1,
       },
       select: {
@@ -325,6 +339,43 @@ export class ActividadesService {
     return this.detalle(id, u);
   }
 
+  /** Agrega, cambia o quita (texto vacio) las instrucciones de la tarea. */
+  async actualizarInstrucciones(id: string, u: UsuarioActual, dto: ActualizarInstruccionesDto) {
+    const actividad = await this.prisma.actividad.findFirst({
+      where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
+      select: {
+        id: true,
+        descripcion: true,
+        creadoPorId: true,
+        proyecto: { select: { organizacionId: true } },
+      },
+    });
+    if (!actividad) throw new NotFoundException('La actividad no existe.');
+    if (!puedeEditarInstrucciones(u, actividad.creadoPorId)) {
+      throw new ForbiddenException(
+        'Solo quien creo la tarea o un administrador pueden editar sus instrucciones.',
+      );
+    }
+
+    const instrucciones = dto.instrucciones?.trim() || null;
+    await this.prisma.$transaction(async (tx) => {
+      await tx.actividad.update({ where: { id }, data: { descripcion: instrucciones } });
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: u.id,
+          organizacionId: actividad.proyecto.organizacionId,
+          accion: 'ACTIVIDAD_INSTRUCCIONES',
+          tipoEntidad: 'Actividad',
+          entidadId: id,
+          valorAnterior: { descripcion: actividad.descripcion },
+          valorNuevo: { descripcion: instrucciones },
+        },
+      });
+    });
+
+    return this.detalle(id, u);
+  }
+
   // ------------------------------------------------------------- monedas
   //
   // Las subtareas son las monedas de la bolsa: la tarea se ve llena en la
@@ -408,7 +459,10 @@ export class ActividadesService {
    * imposible para siempre.
    */
   async exigirEvidencia(actividadId: string) {
-    const adjuntos = await this.prisma.evidencia.count({ where: { actividadId } });
+    // Los adjuntos quitados no cuentan como respaldo.
+    const adjuntos = await this.prisma.evidencia.count({
+      where: { actividadId, eliminadaEn: null },
+    });
     if (adjuntos === 0) {
       throw new BadRequestException(
         'Adjunta al menos una evidencia del trabajo hecho antes de dar la tarea por terminada.',
