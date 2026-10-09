@@ -5,14 +5,14 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ReactFlow, Controls, Connection, ConnectionMode, Edge, Node, NodeMouseHandler, OnEdgesChange, OnNodeDrag,
-  OnNodesChange, Position, useReactFlow,
+  OnNodesChange, Position, ReactFlowInstance, useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Marco from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
 import AristaMapa, { DatosAristaMapa } from '@/components/nodos/AristaMapa';
-import { idManilla } from '@/components/nodos/orientacion';
+import { type Ancla, idManilla } from '@/components/nodos/orientacion';
 import PanelTarea from '@/components/nodos/PanelTarea';
 import { llenadoDeBolsa } from '@/components/tesoro/llenado';
 import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
@@ -197,8 +197,13 @@ function Nodos() {
   const [editando, setEditando] = useState(false);
   // Linea seleccionada en modo edicion: su panel deja elegir sus bordes.
   const [aristaSeleccionada, setAristaSeleccionada] = useState<string | null>(null);
-  // Linea cuyo extremo se esta arrastrando: solo puede soltarse en sus mismos nodos.
+  // Linea cuyo extremo se esta arrastrando: solo puede soltarse en sus mismos
+  // nodos. Mientras tanto los bordes reciben el extremo y se anota donde esta
+  // el puntero, para pegar la linea en el punto exacto donde se suelta.
   const reconectando = useRef<Edge | null>(null);
+  const [recibiendoExtremo, setRecibiendoExtremo] = useState(false);
+  const ultimoPuntero = useRef<{ x: number; y: number } | null>(null);
+  const instanciaMapa = useRef<ReactFlowInstance | null>(null);
   const [arrastre, setArrastre] = useState<{ id: string; x: number; y: number } | null>(null);
   const [historial, setHistorial] = useState<CambioPosiciones[]>([]);
 
@@ -348,24 +353,6 @@ function Nodos() {
       }
     },
     [proyectoId, cargar],
-  );
-
-  const alConectar = useCallback(
-    async (conexion: Connection) => {
-      const origen = conexion.source;
-      const destino = conexion.target;
-      if (!origen || !destino || destino === RAIZ) return;
-      const nuevoPadre = origen === RAIZ ? null : origen;
-      try {
-        await api.patch(`/actividades/${destino}`, { actividadPadreId: nuevoPadre });
-        if (origen === RAIZ) setExpandidoRaiz(true);
-        else setExpandido((prev) => new Set(prev).add(origen));
-        await cargar();
-      } catch (err) {
-        setAviso(err instanceof ErrorApi ? err.message : 'No se pudo unir esa tarea.');
-      }
-    },
-    [cargar],
   );
 
   function alternarRaiz() {
@@ -543,7 +530,7 @@ function Nodos() {
    * todas las burbujas para rodear las que le queden en medio. De paso se
    * anota que bordes usa cada nodo, para mostrar ahi su manilla.
    */
-  const { aristasVisibles, ladosEnUso } = useMemo(() => {
+  const { aristasVisibles, anclasPorNodo } = useMemo(() => {
     const cajas: Caja[] = nodosVisibles.map((n) => ({
       id: n.id,
       x: n.position.x,
@@ -554,11 +541,12 @@ function Nodos() {
     const porId = new Map(cajas.map((c) => [c.id, c]));
     const actividadPorId = new Map(actividades.map((a) => [a.id, a]));
     const datos: DatosAristaMapa = { cajas };
-    const ladosEnUso = new Map<string, { entrada: Position[]; salida: Position[] }>();
-    const anotar = (id: string, tipo: 'entrada' | 'salida', lado: Position) => {
-      if (!ladosEnUso.has(id)) ladosEnUso.set(id, { entrada: [], salida: [] });
-      const lados = ladosEnUso.get(id)![tipo];
-      if (!lados.includes(lado)) lados.push(lado);
+    const anclasPorNodo = new Map<string, Ancla[]>();
+    const anotar = (id: string, ancla: Ancla) => {
+      const lista = anclasPorNodo.get(id) ?? [];
+      const clave = idManilla(ancla.tipo, ancla.lado, ancla.fraccion);
+      if (!lista.some((a) => idManilla(a.tipo, a.lado, a.fraccion) === clave)) lista.push(ancla);
+      anclasPorNodo.set(id, lista);
     };
 
     const aristasVisibles = aristas.map((arista) => {
@@ -570,21 +558,24 @@ function Nodos() {
       const fijados = ladosGuardados(actividadPorId.get(arista.target), orientacion);
       const salida = (fijados.salida as Position | undefined) ?? automaticos.salida;
       const entrada = (fijados.entrada as Position | undefined) ?? automaticos.entrada;
-      anotar(arista.source, 'salida', salida);
-      anotar(arista.target, 'entrada', entrada);
+      // Un extremo fijado puede ir en cualquier punto de su borde; si no, al centro.
+      const fraccionSalida = fijados.salida ? fijados.salidaPos ?? 0.5 : 0.5;
+      const fraccionEntrada = fijados.entrada ? fijados.entradaPos ?? 0.5 : 0.5;
+      anotar(arista.source, { tipo: 'salida', lado: salida, fraccion: fraccionSalida });
+      anotar(arista.target, { tipo: 'entrada', lado: entrada, fraccion: fraccionEntrada });
       const seleccionada = arista.id === aristaSeleccionada;
       return {
         ...arista,
-        sourceHandle: idManilla('salida', salida),
-        targetHandle: idManilla('entrada', entrada),
-        data: datos,
+        sourceHandle: idManilla('salida', salida, fraccionSalida),
+        targetHandle: idManilla('entrada', entrada, fraccionEntrada),
+        data: { ...datos, fraccionSalida, fraccionEntrada },
         selected: seleccionada,
         style: seleccionada
           ? { ...arista.style, strokeWidth: 4, opacity: 1, filter: 'drop-shadow(0 0 4px rgba(251,191,36,.9))' }
           : arista.style,
       };
     });
-    return { aristasVisibles, ladosEnUso };
+    return { aristasVisibles, anclasPorNodo };
   }, [aristas, nodosVisibles, orientacion, actividades, aristaSeleccionada]);
 
   /**
@@ -612,22 +603,54 @@ function Nodos() {
     [actividades, orientacion, cargar],
   );
 
-  /** Soltar el extremo de una linea en otro borde del mismo nodo lo fija ahi. */
+  /**
+   * Donde (0 a 1 a lo largo del borde) quedo el puntero al soltar el extremo,
+   * segun la caja real del nodo. Se deja un margen para que no quede en la
+   * esquina misma.
+   */
+  const fraccionEnBorde = useCallback(
+    (nodoId: string, lado: LadoLinea) => {
+      const puntero = ultimoPuntero.current;
+      const instancia = instanciaMapa.current;
+      const nodo = nodosVisibles.find((n) => n.id === nodoId);
+      if (!puntero || !instancia || !nodo) return 0.5;
+      const p = instancia.screenToFlowPosition(puntero);
+      const ancho = nodoId === RAIZ ? ANCHO_RAIZ : ANCHO_NODO;
+      const alto = nodoId === RAIZ ? ALTO_RAIZ : ALTO_NODO;
+      const crudo =
+        lado === 'top' || lado === 'bottom' ? (p.x - nodo.position.x) / ancho : (p.y - nodo.position.y) / alto;
+      return Math.round(Math.min(0.94, Math.max(0.06, crudo)) * 1000) / 1000;
+    },
+    [nodosVisibles],
+  );
+
+  /** Soltar el extremo de una linea en otro punto de un borde del mismo nodo lo fija ahi. */
   const alReconectar = useCallback(
     (vieja: Edge, nueva: Connection) => {
       if (nueva.source !== vieja.source || nueva.target !== vieja.target) {
         setAviso('Suelta el extremo en otro borde del mismo nodo: aquí solo se elige por dónde sale o llega la línea.');
         return;
       }
+      // El extremo se solto sobre la franja de un borde ("borde-top", ...).
+      const extremo = nueva.sourceHandle?.startsWith('borde-')
+        ? 'salida'
+        : nueva.targetHandle?.startsWith('borde-')
+          ? 'entrada'
+          : null;
+      if (!extremo) return;
+      const lado = ladoDeManilla(extremo === 'salida' ? nueva.sourceHandle : nueva.targetHandle);
+      if (!lado) return;
+      const nodoId = extremo === 'salida' ? vieja.source : vieja.target;
       const actuales = ladosGuardados(actividades.find((a) => a.id === vieja.target), orientacion);
       const lados: LadosFijados = { ...actuales };
-      if (nueva.sourceHandle !== vieja.sourceHandle) lados.salida = ladoDeManilla(nueva.sourceHandle);
-      if (nueva.targetHandle !== vieja.targetHandle) lados.entrada = ladoDeManilla(nueva.targetHandle);
-      if (lados.salida === actuales.salida && lados.entrada === actuales.entrada) return;
+      lados[extremo] = lado;
+      const fraccion = fraccionEnBorde(nodoId, lado);
+      if (extremo === 'salida') lados.salidaPos = fraccion;
+      else lados.entradaPos = fraccion;
       setAviso(null);
       guardarLados(vieja.target, lados);
     },
-    [actividades, orientacion, guardarLados],
+    [actividades, orientacion, guardarLados, fraccionEnBorde],
   );
 
   /** La seleccion de lineas (clic o teclado) vive aqui: el mapa no guarda la suya. */
@@ -745,11 +768,13 @@ function Nodos() {
   const nodosFlow = useMemo(
     () =>
       nodosVisibles.map((n) => {
-        const lados = ladosEnUso.get(n.id);
-        const conLados = { ...n, data: { ...n.data, ladosEntrada: lados?.entrada, ladosSalida: lados?.salida } };
+        const conLados = {
+          ...n,
+          data: { ...n.data, anclas: anclasPorNodo.get(n.id), recibiendoExtremo },
+        };
         return medidas[n.id] ? { ...conLados, measured: medidas[n.id] } : conLados;
       }),
-    [nodosVisibles, ladosEnUso, medidas],
+    [nodosVisibles, anclasPorNodo, medidas, recibiendoExtremo],
   );
 
   const alArrastrar: OnNodeDrag = useCallback((_evento, nodo) => {
@@ -968,7 +993,7 @@ function Nodos() {
                 Línea automática
               </button>
               <span className="text-[11px] text-slate-500">
-                También puedes arrastrar un extremo de la línea a otro borde del nodo.
+                También puedes arrastrar un extremo de la línea a cualquier punto de un borde del nodo: queda justo donde la sueltas.
               </span>
             </div>
           )}
@@ -989,11 +1014,29 @@ function Nodos() {
               // las dos (de ella solo se usa el borde).
               connectionMode={ConnectionMode.Loose}
               onReconnect={alReconectar}
-              onReconnectStart={(_evento, arista) => {
+              onInit={(instancia) => {
+                instanciaMapa.current = instancia as unknown as ReactFlowInstance;
+              }}
+              onReconnectStart={(evento, arista) => {
                 reconectando.current = arista;
+                const e = evento as unknown as MouseEvent;
+                ultimoPuntero.current = { x: e.clientX, y: e.clientY };
+                const anotarPuntero = (m: PointerEvent | MouseEvent) => {
+                  ultimoPuntero.current = { x: m.clientX, y: m.clientY };
+                };
+                window.addEventListener('pointermove', anotarPuntero);
+                window.addEventListener('mousemove', anotarPuntero);
+                const soltar = () => {
+                  window.removeEventListener('pointermove', anotarPuntero);
+                  window.removeEventListener('mousemove', anotarPuntero);
+                };
+                window.addEventListener('pointerup', soltar, { once: true });
+                window.addEventListener('mouseup', soltar, { once: true });
+                setRecibiendoExtremo(true);
               }}
               onReconnectEnd={() => {
                 reconectando.current = null;
+                setRecibiendoExtremo(false);
               }}
               // Mientras se arrastra el extremo de una linea, solo valen sus mismos nodos.
               isValidConnection={(c) => {
@@ -1002,7 +1045,6 @@ function Nodos() {
               }}
               nodeTypes={TIPOS_NODO}
               edgeTypes={TIPOS_ARISTA}
-              onConnect={esTrabajador ? undefined : alConectar}
               onNodeClick={alHacerClicEnNodo}
               nodesDraggable={editando}
               onNodeDrag={alArrastrar}

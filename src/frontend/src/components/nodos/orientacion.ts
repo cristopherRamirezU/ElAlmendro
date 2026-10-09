@@ -31,7 +31,19 @@ export const LADOS = [Position.Top, Position.Right, Position.Bottom, Position.Le
 
 export type TipoManilla = 'entrada' | 'salida';
 
-/** Id de la manilla de un borde, el mismo que usan las aristas. */
-export function idManilla(tipo: TipoManilla, lado: Position) {
-  return `${tipo}-${lado}`;
+/** Punto de un borde donde nace o llega una linea (fraccion 0 a 1 del borde). */
+export interface Ancla {
+  tipo: TipoManilla;
+  lado: Position;
+  fraccion: number;
+}
+
+/** Id de la manilla de un ancla, el mismo que usan las aristas. */
+export function idManilla(tipo: TipoManilla, lado: Position, fraccion = 0.5) {
+  return fraccion === 0.5 ? `${tipo}-${lado}` : `${tipo}-${lado}-${Math.round(fraccion * 1000)}`;
+}
+
+/** Id de la franja de un borde que recibe el extremo de una linea arrastrada. */
+export function idBorde(lado: Position) {
+  return `borde-${lado}`;
 }

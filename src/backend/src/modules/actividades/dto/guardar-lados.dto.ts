@@ -4,8 +4,11 @@ import {
   ArrayMinSize,
   IsArray,
   IsIn,
+  IsNumber,
   IsOptional,
   IsUUID,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { ORIENTACIONES_MAPA, OrientacionMapa } from './guardar-posiciones.dto';
@@ -25,6 +28,20 @@ export class LadosLineaDto {
   @IsOptional()
   @IsIn(LADOS_LINEA, { message: 'El borde de llegada debe ser top, right, bottom o left.' })
   entrada?: LadoLinea | null;
+
+  /** Punto del borde de salida donde se solto la linea: 0 = un extremo, 1 = el otro. */
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'La posicion en el borde no es valida.' })
+  @Min(0, { message: 'La posicion en el borde va de 0 a 1.' })
+  @Max(1, { message: 'La posicion en el borde va de 0 a 1.' })
+  salidaPos?: number | null;
+
+  /** Punto del borde de llegada donde se solto la linea. */
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'La posicion en el borde no es valida.' })
+  @Min(0, { message: 'La posicion en el borde va de 0 a 1.' })
+  @Max(1, { message: 'La posicion en el borde va de 0 a 1.' })
+  entradaPos?: number | null;
 }
 
 export class CambioLadosDto {

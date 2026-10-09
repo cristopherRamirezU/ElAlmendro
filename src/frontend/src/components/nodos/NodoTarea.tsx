@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { NodeProps, Position } from '@xyflow/react';
+import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
-import { disposicionNodo } from './orientacion';
+import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 
 /**
@@ -40,9 +40,10 @@ export interface DatosNodoTarea {
   esMiTarea?: boolean;
   /** Modo edicion del mapa: la burbuja se arrastra y no ofrece agregar hijas. */
   editando?: boolean;
-  /** Bordes por donde llegan y salen sus lineas (las elige el mapa). */
-  ladosEntrada?: Position[];
-  ladosSalida?: Position[];
+  /** Puntos de sus bordes donde nacen o llegan sus lineas (los elige el mapa). */
+  anclas?: Ancla[];
+  /** Se esta arrastrando el extremo de una linea: sus bordes lo reciben. */
+  recibiendoExtremo?: boolean;
   /** Durante la entrada al mapa: segundos que espera antes de brotar. */
   retrasoEntrada?: number;
   onAlternar: () => void;
@@ -57,8 +58,11 @@ export interface DatosNodoTarea {
  * responsable; la profundidad la llevan las aristas y las manillas. El boton
  * circular del borde despliega o repliega sus hijas — parte colapsado.
  */
-export default function NodoTarea({ data }: NodeProps) {
+export default function NodoTarea({ id, data }: NodeProps) {
   const d = data as DatosNodoTarea;
+  // Mientras brota en la entrada la burbuja esta corrida y achicada: al
+  // terminar, React Flow vuelve a medir sus manillas.
+  const actualizarManillas = useUpdateNodeInternals();
   const disposicion = disposicionNodo(d.orientacion);
   const fase = faseDeTarea(d.estado);
   const porcentaje = porcentajeLlenado(d.llenado ?? 0);
@@ -83,15 +87,11 @@ export default function NodoTarea({ data }: NodeProps) {
           ...(entrando ? { '--tf-retraso': `${d.retrasoEntrada}s` } : {}),
         } as React.CSSProperties
       }
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget) actualizarManillas(id);
+      }}
     >
-      <Manillas
-        tipo="entrada"
-        principal={disposicion.entrada}
-        enUso={d.ladosEntrada}
-        editable={d.editando}
-        className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
-        style={{ borderColor: d.color }}
-      />
+      <Manillas nodoId={id} anclas={d.anclas} recibiendo={d.recibiendoExtremo} />
 
       <div
         className="tf-tarea relative flex h-full w-full flex-col gap-[7px] overflow-hidden rounded-xl px-3 pt-[9px]"
@@ -137,15 +137,6 @@ export default function NodoTarea({ data }: NodeProps) {
           />
         </span>
       </div>
-
-      <Manillas
-        tipo="salida"
-        principal={disposicion.salida}
-        enUso={d.ladosSalida}
-        editable={d.editando}
-        className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
-        style={{ borderColor: d.color }}
-      />
 
       {d.tieneHijos && (
         <button
