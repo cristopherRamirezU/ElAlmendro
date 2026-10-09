@@ -4,7 +4,8 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ReactFlow, Controls, Connection, Edge, Node, NodeMouseHandler, OnNodeDrag, OnNodesChange, Position, useReactFlow,
+  ReactFlow, Controls, Connection, ConnectionMode, Edge, Node, NodeMouseHandler, OnEdgesChange, OnNodeDrag,
+  OnNodesChange, Position, useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Marco from '@/components/Marco';
@@ -23,8 +24,12 @@ import {
   ANCHO_RAIZ,
   aplicarPosicionesGuardadas,
   calcularArbol,
+  conLados,
   conPosicion,
   desplazamientoRespectoDelPadre,
+  LadoLinea,
+  LadosFijados,
+  ladosGuardados,
   Orientacion,
   posicionGuardada,
   posicionInsignia,
@@ -79,6 +84,43 @@ const PASO_ENTRADA = 0.18;
 const ENCUADRE = { padding: 0.3, maxZoom: 1.25 };
 const TIPOS_ARISTA = { mapa: AristaMapa };
 const CLAVE_ORIENTACION = 'tf_nodos_orientacion';
+
+/**
+ * Textos de accesibilidad del mapa en espanol (React Flow los trae en ingles):
+ * los leen los lectores de pantalla al recorrer nodos y lineas con el teclado.
+ */
+const DIRECCIONES: Record<string, string> = { up: 'arriba', down: 'abajo', left: 'la izquierda', right: 'la derecha' };
+const TEXTOS_ACCESIBLES = {
+  'node.a11yDescription.default':
+    'Presiona Enter o Espacio para seleccionar un nodo. En modo edición puedes moverlo con las flechas; Escape cancela.',
+  'node.a11yDescription.keyboardDisabled': 'Presiona Enter o Espacio para seleccionar un nodo.',
+  'node.a11yDescription.ariaLiveMessage': ({ direction, x, y }: { direction: string; x: number; y: number }) =>
+    `Nodo movido hacia ${DIRECCIONES[direction] ?? direction}, a la posición x ${x}, y ${y}.`,
+  'edge.a11yDescription.default':
+    'Presiona Enter o Espacio para seleccionar una línea. En modo edición puedes elegir por dónde sale y por dónde llega.',
+  'controls.ariaLabel': 'Controles del mapa',
+  'controls.zoomIn.ariaLabel': 'Acercar',
+  'controls.zoomOut.ariaLabel': 'Alejar',
+  'controls.fitView.ariaLabel': 'Encuadrar el mapa',
+  'controls.interactive.ariaLabel': 'Bloquear o desbloquear el mapa',
+  'minimap.ariaLabel': 'Minimapa',
+  'handle.ariaLabel': 'Punto de conexión',
+};
+
+/** Opciones del panel de la linea seleccionada ('' = la elige el mapa). */
+const OPCIONES_LADO: { valor: LadoLinea | ''; texto: string }[] = [
+  { valor: '', texto: 'Automático' },
+  { valor: 'top', texto: 'Arriba' },
+  { valor: 'bottom', texto: 'Abajo' },
+  { valor: 'left', texto: 'Izquierda' },
+  { valor: 'right', texto: 'Derecha' },
+];
+
+/** El borde de una manilla a partir de su id ("salida-top" -> "top"). */
+function ladoDeManilla(id: string | null | undefined): LadoLinea | undefined {
+  const lado = id?.split('-')[1];
+  return lado === 'top' || lado === 'right' || lado === 'bottom' || lado === 'left' ? lado : undefined;
+}
 
 const ORIENTACIONES: { valor: Orientacion; texto: string; icono: string; titulo: string }[] = [
   { valor: 'horizontal', texto: 'Horizontal', icono: '→', titulo: 'De izquierda a derecha' },
@@ -153,6 +195,10 @@ function Nodos() {
   // el equipo. Mientras se arrastra, `arrastre` lleva su posicion provisional;
   // `historial` guarda como deshacer cada movimiento (boton o Ctrl+Z).
   const [editando, setEditando] = useState(false);
+  // Linea seleccionada en modo edicion: su panel deja elegir sus bordes.
+  const [aristaSeleccionada, setAristaSeleccionada] = useState<string | null>(null);
+  // Linea cuyo extremo se esta arrastrando: solo puede soltarse en sus mismos nodos.
+  const reconectando = useRef<Edge | null>(null);
   const [arrastre, setArrastre] = useState<{ id: string; x: number; y: number } | null>(null);
   const [historial, setHistorial] = useState<CambioPosiciones[]>([]);
 
@@ -383,6 +429,7 @@ function Nodos() {
         tieneHijos: raicesProyecto.length > 0,
         expandido: expandidoRaiz,
         orientacion,
+        editando,
         onAlternar: alternarRaiz,
         onAgregarHija: (titulo: string) => agregarTarea(titulo),
         onAgregarParaAlguien: puedeAsignar ? agregarTareaPara : undefined,
@@ -427,6 +474,7 @@ function Nodos() {
           source: padreId,
           target: a.id,
           type: 'mapa',
+          ariaLabel: `Línea hacia «${a.titulo}»`,
           style: { stroke: pos.color, strokeWidth: 2, opacity: 0.55 },
         });
       } else if (pos.profundidad === 1 && nombreProyecto) {
@@ -436,6 +484,7 @@ function Nodos() {
           source: RAIZ,
           target: a.id,
           type: 'mapa',
+          ariaLabel: `Línea hacia «${a.titulo}»`,
           className: retrasoLinea !== undefined ? 'tf-arista-entra' : undefined,
           style: {
             stroke: pos.color,
@@ -503,6 +552,7 @@ function Nodos() {
       alto: n.id === RAIZ ? ALTO_RAIZ : ALTO_NODO,
     }));
     const porId = new Map(cajas.map((c) => [c.id, c]));
+    const actividadPorId = new Map(actividades.map((a) => [a.id, a]));
     const datos: DatosAristaMapa = { cajas };
     const ladosEnUso = new Map<string, { entrada: Position[]; salida: Position[] }>();
     const anotar = (id: string, tipo: 'entrada' | 'salida', lado: Position) => {
@@ -515,18 +565,89 @@ function Nodos() {
       const origen = porId.get(arista.source);
       const destino = porId.get(arista.target);
       if (!origen || !destino) return arista;
-      const { salida, entrada } = ladosEnfrentados(origen, destino, orientacion);
+      // Lo que alguien fijo a mano manda; el extremo que no, lo elige el mapa.
+      const automaticos = ladosEnfrentados(origen, destino, orientacion);
+      const fijados = ladosGuardados(actividadPorId.get(arista.target), orientacion);
+      const salida = (fijados.salida as Position | undefined) ?? automaticos.salida;
+      const entrada = (fijados.entrada as Position | undefined) ?? automaticos.entrada;
       anotar(arista.source, 'salida', salida);
       anotar(arista.target, 'entrada', entrada);
+      const seleccionada = arista.id === aristaSeleccionada;
       return {
         ...arista,
         sourceHandle: idManilla('salida', salida),
         targetHandle: idManilla('entrada', entrada),
         data: datos,
+        selected: seleccionada,
+        style: seleccionada
+          ? { ...arista.style, strokeWidth: 4, opacity: 1, filter: 'drop-shadow(0 0 4px rgba(251,191,36,.9))' }
+          : arista.style,
       };
     });
     return { aristasVisibles, ladosEnUso };
-  }, [aristas, nodosVisibles, orientacion]);
+  }, [aristas, nodosVisibles, orientacion, actividades, aristaSeleccionada]);
+
+  /**
+   * Fija los bordes de la linea que llega a `destinoId` (o la vuelve
+   * automatica con `null`). Se ve al instante y se guarda para todo el
+   * equipo; si el servidor lo rechaza, el mapa vuelve a lo guardado.
+   */
+  const guardarLados = useCallback(
+    (destinoId: string, lados: LadosFijados | null) => {
+      const limpios = lados && (lados.salida || lados.entrada) ? lados : null;
+      const anterior = actividades.find((a) => a.id === destinoId)?.ladosLinea ?? null;
+      const conLadosLinea = (ladosLinea: NodoActividad['ladosLinea']) =>
+        setActividades((prev) => prev.map((a) => (a.id === destinoId ? { ...a, ladosLinea } : a)));
+      const actual = actividades.find((a) => a.id === destinoId);
+      if (actual) conLadosLinea(conLados(actual, orientacion, limpios));
+      api
+        .patch('/actividades/lados', { orientacion, cambios: [{ id: destinoId, lados: limpios }] })
+        .catch((err) => {
+          // La linea vuelve a como estaba, y el mapa intenta ponerse al dia.
+          conLadosLinea(anterior);
+          setAviso(err instanceof ErrorApi ? err.message : 'No se pudo guardar el borde de la línea.');
+          cargar().catch(() => undefined);
+        });
+    },
+    [actividades, orientacion, cargar],
+  );
+
+  /** Soltar el extremo de una linea en otro borde del mismo nodo lo fija ahi. */
+  const alReconectar = useCallback(
+    (vieja: Edge, nueva: Connection) => {
+      if (nueva.source !== vieja.source || nueva.target !== vieja.target) {
+        setAviso('Suelta el extremo en otro borde del mismo nodo: aquí solo se elige por dónde sale o llega la línea.');
+        return;
+      }
+      const actuales = ladosGuardados(actividades.find((a) => a.id === vieja.target), orientacion);
+      const lados: LadosFijados = { ...actuales };
+      if (nueva.sourceHandle !== vieja.sourceHandle) lados.salida = ladoDeManilla(nueva.sourceHandle);
+      if (nueva.targetHandle !== vieja.targetHandle) lados.entrada = ladoDeManilla(nueva.targetHandle);
+      if (lados.salida === actuales.salida && lados.entrada === actuales.entrada) return;
+      setAviso(null);
+      guardarLados(vieja.target, lados);
+    },
+    [actividades, orientacion, guardarLados],
+  );
+
+  /** La seleccion de lineas (clic o teclado) vive aqui: el mapa no guarda la suya. */
+  const alCambiarAristas: OnEdgesChange = useCallback((cambios) => {
+    for (const c of cambios) {
+      if (c.type !== 'select') continue;
+      setAristaSeleccionada((prev) => (c.selected ? c.id : prev === c.id ? null : prev));
+    }
+  }, []);
+
+  // Fuera del modo edicion, o al girar el arbol, no queda ninguna linea elegida.
+  useEffect(() => {
+    if (!editando) setAristaSeleccionada(null);
+  }, [editando]);
+  useEffect(() => setAristaSeleccionada(null), [orientacion]);
+
+  const lineaSeleccionada = editando ? aristasVisibles.find((a) => a.id === aristaSeleccionada) : undefined;
+  const ladosLineaSeleccionada = lineaSeleccionada
+    ? ladosGuardados(actividades.find((a) => a.id === lineaSeleccionada.target), orientacion)
+    : {};
 
   /**
    * Aplica un movimiento al instante y lo guarda para todo el equipo. Si el
@@ -724,14 +845,15 @@ function Nodos() {
 
       <div className="flex flex-col gap-4 lg:flex-row">
         <section className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2">
+          {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-white/10 px-4 py-2">
             <h2
               className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-white`}
               title={nombreProyecto ?? undefined}
             >
               {nombreProyecto}
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <SelectorFondo valor={fondo} onCambiar={cambiarFondo} />
               {puedeEditarMapa && (
                 <button
@@ -790,6 +912,66 @@ function Nodos() {
               </div>
             </div>
           </div>
+          {lineaSeleccionada && (
+            <div
+              role="group"
+              aria-label="Bordes de la línea seleccionada"
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-400/20 bg-amber-500/5 px-4 py-2 text-xs text-slate-300"
+            >
+              <span className="min-w-0 truncate font-semibold text-amber-200">
+                Línea hacia «{actividades.find((a) => a.id === lineaSeleccionada.target)?.titulo}»
+              </span>
+              <label className="flex items-center gap-1.5">
+                Sale por
+                <select
+                  value={ladosLineaSeleccionada.salida ?? ''}
+                  onChange={(e) =>
+                    guardarLados(lineaSeleccionada.target, {
+                      ...ladosLineaSeleccionada,
+                      salida: (e.target.value || undefined) as LadoLinea | undefined,
+                    })
+                  }
+                  className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
+                >
+                  {OPCIONES_LADO.map((o) => (
+                    <option key={o.valor} value={o.valor}>
+                      {o.texto}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1.5">
+                Llega por
+                <select
+                  value={ladosLineaSeleccionada.entrada ?? ''}
+                  onChange={(e) =>
+                    guardarLados(lineaSeleccionada.target, {
+                      ...ladosLineaSeleccionada,
+                      entrada: (e.target.value || undefined) as LadoLinea | undefined,
+                    })
+                  }
+                  className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
+                >
+                  {OPCIONES_LADO.map((o) => (
+                    <option key={o.valor} value={o.valor}>
+                      {o.texto}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                onClick={() => guardarLados(lineaSeleccionada.target, null)}
+                disabled={!ladosLineaSeleccionada.salida && !ladosLineaSeleccionada.entrada}
+                title="Que el mapa vuelva a elegir solo por dónde sale y llega esta línea"
+                className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Línea automática
+              </button>
+              <span className="text-[11px] text-slate-500">
+                También puedes arrastrar un extremo de la línea a otro borde del nodo.
+              </span>
+            </div>
+          )}
           <div
             className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
             style={{ height: '32rem', ...estiloFondoMapa(fondo) }}
@@ -800,6 +982,24 @@ function Nodos() {
               nodes={nodosFlow}
               edges={aristasVisibles}
               onNodesChange={alCambiarNodos}
+              onEdgesChange={alCambiarAristas}
+              edgesReconnectable={editando && puedeEditarMapa}
+              // En cada borde hay una manilla de entrada y otra de salida, una
+              // encima de la otra: en modo flexible vale soltar en cualquiera de
+              // las dos (de ella solo se usa el borde).
+              connectionMode={ConnectionMode.Loose}
+              onReconnect={alReconectar}
+              onReconnectStart={(_evento, arista) => {
+                reconectando.current = arista;
+              }}
+              onReconnectEnd={() => {
+                reconectando.current = null;
+              }}
+              // Mientras se arrastra el extremo de una linea, solo valen sus mismos nodos.
+              isValidConnection={(c) => {
+                const r = reconectando.current;
+                return !r || (c.source === r.source && c.target === r.target);
+              }}
               nodeTypes={TIPOS_NODO}
               edgeTypes={TIPOS_ARISTA}
               onConnect={esTrabajador ? undefined : alConectar}
@@ -810,6 +1010,7 @@ function Nodos() {
               fitView
               fitViewOptions={ENCUADRE}
               proOptions={{ hideAttribution: true }}
+              ariaLabelConfig={TEXTOS_ACCESIBLES}
               colorMode="dark"
             >
               <AjustarVista

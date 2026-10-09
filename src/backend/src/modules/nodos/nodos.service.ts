@@ -82,6 +82,7 @@ export class NodosService {
         prioridad: true,
         actividadPadreId: true,
         posicionNodo: true,
+        ladosLinea: true,
         orden: true,
         responsableId: true,
         responsable: { select: { id: true, nombreCompleto: true } },

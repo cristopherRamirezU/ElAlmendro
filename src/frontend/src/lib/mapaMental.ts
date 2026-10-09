@@ -199,6 +199,39 @@ export function aplicarPosicionesGuardadas(
   return finales;
 }
 
+export type LadoLinea = 'top' | 'right' | 'bottom' | 'left';
+const LADOS_LINEA: readonly LadoLinea[] = ['top', 'right', 'bottom', 'left'];
+
+/** Extremos de una linea fijados a mano; el que falta lo elige el mapa. */
+export interface LadosFijados {
+  salida?: LadoLinea;
+  entrada?: LadoLinea;
+}
+
+/** Bordes fijados de la linea que llega a la tarea, en esta orientacion. */
+export function ladosGuardados(a: NodoActividad | undefined, orientacion: Orientacion): LadosFijados {
+  const lados = a?.ladosLinea?.[orientacion] as Record<string, unknown> | undefined;
+  const resultado: LadosFijados = {};
+  if (!lados || typeof lados !== 'object') return resultado;
+  if (LADOS_LINEA.includes(lados.salida as LadoLinea)) resultado.salida = lados.salida as LadoLinea;
+  if (LADOS_LINEA.includes(lados.entrada as LadoLinea)) resultado.entrada = lados.entrada as LadoLinea;
+  return resultado;
+}
+
+/** `ladosLinea` con los de una orientacion cambiados (o borrados con `null`). */
+export function conLados(
+  a: NodoActividad,
+  orientacion: Orientacion,
+  lados: LadosFijados | null,
+): NodoActividad['ladosLinea'] {
+  const resultado: Record<string, LadosFijados> = {};
+  for (const o of ['horizontal', 'vertical'] as const) {
+    const actuales = o === orientacion ? lados ?? {} : ladosGuardados(a, o);
+    if (actuales.salida || actuales.entrada) resultado[o] = actuales;
+  }
+  return Object.keys(resultado).length ? resultado : null;
+}
+
 /** Desplazamiento a guardar para un nodo soltado en `punto`, relativo a su padre. */
 export function desplazamientoRespectoDelPadre(
   a: NodoActividad,

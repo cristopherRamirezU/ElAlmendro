@@ -253,6 +253,9 @@ model Actividad {
   fechaLimite      DateTime?       @db.Timestamptz(3)
   // Coordenadas del nodo en el mapa visual (React Flow) - US-05.
   posicionNodo     Json?
+  // Bordes que alguien fijo a mano para la linea que llega a esta tarea (desde
+  // su padre o desde el nodo principal), por orientacion. Nulo = automatico.
+  ladosLinea       Json?
   orden            Int             @default(0)
   creadoEn         DateTime        @default(now()) @db.Timestamptz(3)
   actualizadoEn    DateTime        @updatedAt @db.Timestamptz(3)

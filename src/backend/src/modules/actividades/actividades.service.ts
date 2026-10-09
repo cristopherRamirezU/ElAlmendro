@@ -11,6 +11,7 @@ import { ActualizarActividadDto } from './dto/actualizar-actividad.dto';
 import { ReasignarActividadDto } from './dto/reasignar-actividad.dto';
 import { ActualizarInstruccionesDto } from './dto/actualizar-instrucciones.dto';
 import { GuardarPosicionesDto, OrientacionMapa } from './dto/guardar-posiciones.dto';
+import { GuardarLadosDto, LADOS_LINEA, LadoLinea } from './dto/guardar-lados.dto';
 import {
   ActualizarSubtareaDto,
   CambiarEstadoActividadDto,
@@ -299,6 +300,51 @@ export class ActividadesService {
               posicionNodo: Object.keys(posiciones).length ? posiciones : Prisma.DbNull,
             },
             select: { id: true, posicionNodo: true },
+          }),
+        );
+      }
+      return guardadas;
+    });
+  }
+
+  /**
+   * Guarda por que bordes sale y llega la linea de cada tarea, cuando alguien
+   * que puede editar el mapa la fija a mano: lo ve igual todo el equipo, y se
+   * guarda por separado para cada orientacion, como las posiciones. Un
+   * extremo `null` vuelve a ser automatico; sin ninguno, la linea entera.
+   */
+  async guardarLados(u: UsuarioActual, dto: GuardarLadosDto) {
+    const ids = dto.cambios.map((c) => c.id);
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException('Una misma linea aparece dos veces en el cambio.');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const actividades = await tx.actividad.findMany({
+        where: { id: { in: ids }, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
+        select: { id: true, proyectoId: true, ladosLinea: true },
+      });
+      if (actividades.length !== ids.length) {
+        throw new NotFoundException('Alguna de las lineas no existe.');
+      }
+      if (new Set(actividades.map((a) => a.proyectoId)).size > 1) {
+        throw new BadRequestException('Solo se pueden cambiar lineas de un mismo proyecto.');
+      }
+
+      const porId = new Map(actividades.map((a) => [a.id, a]));
+      const guardadas = [];
+      for (const cambio of dto.cambios) {
+        const lados = ladosPorOrientacion(porId.get(cambio.id)!.ladosLinea);
+        const nuevos: LadosFijados = {};
+        if (cambio.lados?.salida) nuevos.salida = cambio.lados.salida;
+        if (cambio.lados?.entrada) nuevos.entrada = cambio.lados.entrada;
+        if (Object.keys(nuevos).length) lados[dto.orientacion] = nuevos;
+        else delete lados[dto.orientacion];
+        guardadas.push(
+          await tx.actividad.update({
+            where: { id: cambio.id },
+            data: { ladosLinea: Object.keys(lados).length ? lados : Prisma.DbNull },
+            select: { id: true, ladosLinea: true },
           }),
         );
       }
@@ -645,6 +691,23 @@ export class ActividadesService {
 }
 
 type PuntoMapa = { x: number; y: number };
+type LadosFijados = { salida?: LadoLinea; entrada?: LadoLinea };
+
+/** Lee los bordes fijados de una linea, por orientacion; lo que no calce se ignora. */
+function ladosPorOrientacion(valor: Prisma.JsonValue): Partial<Record<OrientacionMapa, LadosFijados>> {
+  const resultado: Partial<Record<OrientacionMapa, LadosFijados>> = {};
+  if (!valor || typeof valor !== 'object' || Array.isArray(valor)) return resultado;
+  const esLado = (x: unknown): x is LadoLinea => LADOS_LINEA.includes(x as LadoLinea);
+  for (const orientacion of ['horizontal', 'vertical'] as const) {
+    const lados = (valor as Record<string, unknown>)[orientacion] as Record<string, unknown> | undefined;
+    if (!lados || typeof lados !== 'object') continue;
+    const fijados: LadosFijados = {};
+    if (esLado(lados.salida)) fijados.salida = lados.salida;
+    if (esLado(lados.entrada)) fijados.entrada = lados.entrada;
+    if (Object.keys(fijados).length) resultado[orientacion] = fijados;
+  }
+  return resultado;
+}
 
 /**
  * Lee las posiciones guardadas de un nodo, una por orientacion. Cualquier otro

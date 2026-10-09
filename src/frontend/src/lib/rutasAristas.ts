@@ -349,6 +349,11 @@ function trazoConEsquinas(puntos: Punto[], radio = 10): string {
  * Trazo SVG de una linea del mapa: la curva de siempre si no toca ninguna
  * burbuja ajena; si la toca, una ruta en angulos rectos que las rodea (o la
  * curva, si no hay por donde pasar). `cajas` son todas las burbujas visibles.
+ *
+ * Con bordes enfrentados la curva nunca cruza sus propias burbujas, pero un
+ * borde fijado a mano (por ejemplo, salir por abajo hacia una tarea que esta
+ * a la derecha) puede hacer que las atraviese: por eso tambien se revisan,
+ * achicadas un poco para no contar el borde donde la linea nace y llega.
  */
 export function trazarArista({
   inicio,
@@ -371,10 +376,12 @@ export function trazarArista({
   const c2 = puntoControl(ladoFin, fin, inicio);
   const curva = `M${inicio.x},${inicio.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${fin.x},${fin.y}`;
 
+  const propias = cajas.filter((c) => c.id === origenId || c.id === destinoId);
   const ajenas = cajas.filter((c) => c.id !== origenId && c.id !== destinoId);
-  if (ajenas.length === 0) return curva;
   const muestras = muestrasCurva(inicio, c1, c2, fin);
-  const choca = ajenas.some((c) => muestras.some((p) => dentro(p, c, 4)));
+  const choca =
+    ajenas.some((c) => muestras.some((p) => dentro(p, c, 4))) ||
+    propias.some((c) => muestras.some((p) => dentro(p, c, -3)));
   if (!choca) return curva;
 
   const ruta = rutaOrtogonal(inicio, ladoInicio, fin, ladoFin, cajas);
