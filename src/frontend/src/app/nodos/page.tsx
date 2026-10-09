@@ -4,17 +4,21 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ReactFlow, Controls, Connection, Edge, Node, NodeMouseHandler, OnNodeDrag, OnNodesChange, useReactFlow,
+  ReactFlow, Controls, Connection, Edge, Node, NodeMouseHandler, OnNodeDrag, OnNodesChange, Position, useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import Marco from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
+import AristaMapa, { DatosAristaMapa } from '@/components/nodos/AristaMapa';
+import { idManilla } from '@/components/nodos/orientacion';
 import PanelTarea from '@/components/nodos/PanelTarea';
 import { llenadoDeBolsa } from '@/components/tesoro/llenado';
 import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
 import {
+  ALTO_NODO,
+  ANCHO_NODO,
   aplicarPosicionesGuardadas,
   calcularArbol,
   conPosicion,
@@ -23,6 +27,7 @@ import {
   posicionGuardada,
   Punto,
 } from '@/lib/mapaMental';
+import { Caja, ladosEnfrentados } from '@/lib/rutasAristas';
 import { useSesion } from '@/lib/sesion';
 import { useTesoro } from '@/lib/tesoro';
 import { useColorPrimario } from '@/lib/color';
@@ -54,6 +59,7 @@ function AjustarVista({ clave }: { clave: string }) {
   return null;
 }
 const TIPOS_NODO = { raiz: NodoRaiz, tarea: NodoTarea };
+const TIPOS_ARISTA = { mapa: AristaMapa };
 const CLAVE_ORIENTACION = 'tf_nodos_orientacion';
 
 const ORIENTACIONES: { valor: Orientacion; texto: string; icono: string; titulo: string }[] = [
@@ -336,7 +342,7 @@ function Nodos() {
           id: `${padreId}-${a.id}`,
           source: padreId,
           target: a.id,
-          type: 'default',
+          type: 'mapa',
           style: { stroke: pos.color, strokeWidth: 2, opacity: 0.55 },
         });
       } else if (pos.profundidad === 1 && nombreProyecto) {
@@ -344,7 +350,7 @@ function Nodos() {
           id: `${RAIZ}-${a.id}`,
           source: RAIZ,
           target: a.id,
-          type: 'default',
+          type: 'mapa',
           style: { stroke: pos.color, strokeWidth: 2.5, opacity: 0.7 },
         });
       }
@@ -390,6 +396,46 @@ function Nodos() {
         : n,
     );
   }, [nodos, arrastre, finales, descendientes]);
+
+  /*
+   * Cada linea sale y llega por los bordes enfrentados de sus dos burbujas,
+   * segun donde estan en pantalla (tambien mientras se arrastra), y conoce
+   * todas las burbujas para rodear las que le queden en medio. De paso se
+   * anota que bordes usa cada nodo, para mostrar ahi su manilla.
+   */
+  const { aristasVisibles, ladosEnUso } = useMemo(() => {
+    const cajas: Caja[] = nodosVisibles.map((n) => ({
+      id: n.id,
+      x: n.position.x,
+      y: n.position.y,
+      ancho: ANCHO_NODO,
+      alto: ALTO_NODO,
+    }));
+    const porId = new Map(cajas.map((c) => [c.id, c]));
+    const datos: DatosAristaMapa = { cajas };
+    const ladosEnUso = new Map<string, { entrada: Position[]; salida: Position[] }>();
+    const anotar = (id: string, tipo: 'entrada' | 'salida', lado: Position) => {
+      if (!ladosEnUso.has(id)) ladosEnUso.set(id, { entrada: [], salida: [] });
+      const lados = ladosEnUso.get(id)![tipo];
+      if (!lados.includes(lado)) lados.push(lado);
+    };
+
+    const aristasVisibles = aristas.map((arista) => {
+      const origen = porId.get(arista.source);
+      const destino = porId.get(arista.target);
+      if (!origen || !destino) return arista;
+      const { salida, entrada } = ladosEnfrentados(origen, destino, orientacion);
+      anotar(arista.source, 'salida', salida);
+      anotar(arista.target, 'entrada', entrada);
+      return {
+        ...arista,
+        sourceHandle: idManilla('salida', salida),
+        targetHandle: idManilla('entrada', entrada),
+        data: datos,
+      };
+    });
+    return { aristasVisibles, ladosEnUso };
+  }, [aristas, nodosVisibles, orientacion]);
 
   /**
    * Aplica un movimiento al instante y lo guarda para todo el equipo. Si el
@@ -485,8 +531,13 @@ function Nodos() {
     });
   }, []);
   const nodosFlow = useMemo(
-    () => nodosVisibles.map((n) => (medidas[n.id] ? { ...n, measured: medidas[n.id] } : n)),
-    [nodosVisibles, medidas],
+    () =>
+      nodosVisibles.map((n) => {
+        const lados = ladosEnUso.get(n.id);
+        const conLados = { ...n, data: { ...n.data, ladosEntrada: lados?.entrada, ladosSalida: lados?.salida } };
+        return medidas[n.id] ? { ...conLados, measured: medidas[n.id] } : conLados;
+      }),
+    [nodosVisibles, ladosEnUso, medidas],
   );
 
   const alArrastrar: OnNodeDrag = useCallback((_evento, nodo) => {
@@ -653,9 +704,10 @@ function Nodos() {
             <ReactFlow
               style={{ background: 'transparent' }}
               nodes={nodosFlow}
-              edges={aristas}
+              edges={aristasVisibles}
               onNodesChange={alCambiarNodos}
               nodeTypes={TIPOS_NODO}
+              edgeTypes={TIPOS_ARISTA}
               onConnect={esTrabajador ? undefined : alConectar}
               onNodeClick={alHacerClicEnNodo}
               nodesDraggable={editando}

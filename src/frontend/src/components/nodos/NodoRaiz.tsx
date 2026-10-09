@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Handle, type NodeProps } from '@xyflow/react';
+import type { NodeProps, Position } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
-import { disposicionNodo, useManillasSegunOrientacion } from './orientacion';
+import { disposicionNodo } from './orientacion';
+import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
 
 export interface DatosNodoRaiz {
@@ -11,6 +12,8 @@ export interface DatosNodoRaiz {
   tieneHijos: boolean;
   expandido: boolean;
   orientacion: Orientacion;
+  /** Bordes por donde salen sus lineas (los elige el mapa). */
+  ladosSalida?: Position[];
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -23,10 +26,9 @@ export interface DatosNodoRaiz {
  * una tarea: el layout la ubica como a una mas, y si fuera de otro tamano
  * quedaria descentrada respecto de sus hijas y las aristas saldrian chuecas.
  */
-export default function NodoRaiz({ id, data }: NodeProps) {
+export default function NodoRaiz({ data }: NodeProps) {
   const d = data as DatosNodoRaiz;
   const disposicion = disposicionNodo(d.orientacion);
-  useManillasSegunOrientacion(id, d.orientacion);
   const [agregando, setAgregando] = useState(false);
   const [texto, setTexto] = useState('');
 
@@ -50,9 +52,10 @@ export default function NodoRaiz({ id, data }: NodeProps) {
         <span className={`${fuenteTitulo.className} line-clamp-2 text-base font-bold leading-snug tracking-[-0.02em] text-white`} title={d.nombre}>
           {d.nombre}
         </span>
-        <Handle
-          type="source"
-          position={disposicion.salida}
+        <Manillas
+          tipo="salida"
+          principal={disposicion.salida}
+          enUso={d.ladosSalida}
           className="!h-3 !w-3 !border-2 !border-sky-300 !bg-slate-950"
         />
 

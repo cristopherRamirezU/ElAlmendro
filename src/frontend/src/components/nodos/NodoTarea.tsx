@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Handle, type NodeProps } from '@xyflow/react';
+import type { NodeProps, Position } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
-import { disposicionNodo, useManillasSegunOrientacion } from './orientacion';
+import { disposicionNodo } from './orientacion';
+import Manillas from './Manillas';
 
 const COLOR_ESTADO: Record<string, string> = {
   PENDIENTE: '#38bdf8',
@@ -45,6 +46,9 @@ export interface DatosNodoTarea {
   esMiTarea?: boolean;
   /** Modo edicion del mapa: la burbuja se arrastra y no ofrece agregar hijas. */
   editando?: boolean;
+  /** Bordes por donde llegan y salen sus lineas (las elige el mapa). */
+  ladosEntrada?: Position[];
+  ladosSalida?: Position[];
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -58,10 +62,9 @@ export interface DatosNodoTarea {
  * boton circular del borde despliega o repliega sus hijas, igual que en el
  * mapa mental de referencia — parte siempre colapsado.
  */
-export default function NodoTarea({ id, data }: NodeProps) {
+export default function NodoTarea({ data }: NodeProps) {
   const d = data as DatosNodoTarea;
   const disposicion = disposicionNodo(d.orientacion);
-  useManillasSegunOrientacion(id, d.orientacion);
   const tramo = tramoSaco(d.llenado ?? 0, d.estado);
   const [agregando, setAgregando] = useState(false);
   const [texto, setTexto] = useState('');
@@ -78,9 +81,10 @@ export default function NodoTarea({ id, data }: NodeProps) {
       className={`group relative ${d.editando ? 'cursor-grab active:cursor-grabbing' : ''}`}
       style={{ width: ANCHO_NODO, height: ALTO_NODO }}
     >
-      <Handle
-        type="target"
-        position={disposicion.entrada}
+      <Manillas
+        tipo="entrada"
+        principal={disposicion.entrada}
+        enUso={d.ladosEntrada}
         className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
         style={{ borderColor: d.color }}
       />
@@ -132,9 +136,10 @@ export default function NodoTarea({ id, data }: NodeProps) {
         </span>
       </div>
 
-      <Handle
-        type="source"
-        position={disposicion.salida}
+      <Manillas
+        tipo="salida"
+        principal={disposicion.salida}
+        enUso={d.ladosSalida}
         className="!h-2.5 !w-2.5 !border-2 !bg-slate-950"
         style={{ borderColor: d.color }}
       />
