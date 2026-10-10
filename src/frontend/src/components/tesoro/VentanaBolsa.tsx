@@ -1,24 +1,31 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTesoro } from '@/lib/tesoro';
-import BolsaOro from './BolsaOro';
+import RelojArena from './RelojArena';
 import ContenidoBolsa from './ContenidoBolsa';
 
-const CLAVE_POSICION = 'tf_bolsa_posicion';
-const ANCHO = 340;
-const ANCHO_MINI = 232;
-const MARGEN = 12;
-
-interface Posicion {
-  x: number;
-  y: number;
-}
+/**
+ * Lienzo de cada vista de la ventana aparte, en pixeles de contenido: entera
+ * (reloj, objetivos y evidencia) o encogida a solo el reloj retro. El
+ * contenido se dibuja siempre a este tamano y se escala para calzar en la
+ * ventana: asi nunca aparece una barra de desplazamiento, aunque el navegador
+ * la abra de otro tamano.
+ */
+const LIENZO = {
+  completo: { width: 380, height: 640 },
+  reloj: { width: 300, height: 220 },
+} as const;
 
 /** La API de ventana flotante del navegador (Chrome y Edge). */
 interface ApiVentanaFlotante {
-  requestWindow(opciones?: { width?: number; height?: number }): Promise<Window>;
+  requestWindow(opciones?: {
+    width?: number;
+    height?: number;
+    /** Usar siempre este tamano, no el ultimo que tuvo la ventana (Chrome 130+). */
+    preferInitialWindowPlacement?: boolean;
+  }): Promise<Window>;
   window: Window | null;
 }
 function apiVentanaFlotante(): ApiVentanaFlotante | null {
@@ -28,303 +35,242 @@ function apiVentanaFlotante(): ApiVentanaFlotante | null {
 }
 
 /**
- * Ventana de la bolsa abierta.
+ * El navegador solo deja abrir una ventana aparte justo despues de un clic
+ * (o tecla) del usuario. Sin ese gesto —por ejemplo al recargar la pagina con
+ * una tarea abierta— hay que pedir un clic antes de intentarlo.
+ */
+function hayGestoReciente() {
+  const activacion = (navigator as Navigator & { userActivation?: { isActive: boolean } }).userActivation;
+  return activacion ? activacion.isActive : true;
+}
+
+/**
+ * Copia los estilos de la pagina a la ventana nueva: es otro documento y no
+ * hereda nada, asi que sin esto llegaria sin formato.
+ */
+function copiarEstilos(destino: Window) {
+  for (const hoja of Array.from(document.styleSheets)) {
+    try {
+      const css = Array.from(hoja.cssRules)
+        .map((r) => r.cssText)
+        .join('\n');
+      const estilo = destino.document.createElement('style');
+      estilo.textContent = css;
+      destino.document.head.appendChild(estilo);
+    } catch {
+      // Hoja de otro origen: no se puede leer, pero si enlazar.
+      if (hoja.href) {
+        const enlace = destino.document.createElement('link');
+        enlace.rel = 'stylesheet';
+        enlace.href = hoja.href;
+        destino.document.head.appendChild(enlace);
+      }
+    }
+  }
+}
+
+/**
+ * Ventana de la tarea abierta: siempre fuera de la pagina, en una ventana
+ * propia del navegador que queda por encima de todo y sobrevive al cambio de
+ * pestana, como la ventanita de una videollamada. Se abre en cuanto se abre
+ * la tarea; cerrarla cierra la tarea.
  *
- * Tiene dos formas: pegada a la pagina —se arrastra por su barra y se encoge a
- * una pastilla— o desprendida en una ventana propia del navegador, que queda
- * por encima de todo y sobrevive al cambio de pestana, como la ventanita de
- * una videollamada. Vive en el layout raiz, de modo que navegar entre
- * pantallas no la cierra.
+ * Vive en el layout raiz, de modo que navegar entre pantallas no la cierra.
+ * Si el navegador no deja abrirla (recarga sin clic, ventanas emergentes
+ * bloqueadas) queda una pastilla en la pagina para abrirla con un clic.
  */
 export default function VentanaBolsa() {
   const { bolsa, cerrarBolsa, volarAlCofre, notificarCambio } = useTesoro();
 
-  const [posicion, setPosicion] = useState<Posicion | null>(null);
-  const [minimizada, setMinimizada] = useState(false);
   const [ventanaAparte, setVentanaAparte] = useState<Window | null>(null);
   const [contenedorAparte, setContenedorAparte] = useState<HTMLElement | null>(null);
-  // Tamano de la ventana desprendida: entera o encogida al cronometro.
   const [soloReloj, setSoloReloj] = useState(false);
+  // Escala del lienzo para que calce justo en la ventana.
+  const [escala, setEscala] = useState(1);
+  // No se pudo abrir sola: la pastilla de la pagina ofrece abrirla.
+  const [pendiente, setPendiente] = useState(false);
+  const abriendo = useRef(false);
 
-  const ventana = useRef<HTMLDivElement>(null);
-  const arrastre = useRef<{ dx: number; dy: number } | null>(null);
-
-  const ancho = minimizada ? ANCHO_MINI : ANCHO;
-
-  // ------------------------------------------------------------- posicion
-
-  const limitar = useCallback((p: Posicion, anchoActual: number): Posicion => {
-    const alto = ventana.current?.offsetHeight ?? 260;
-    return {
-      x: Math.max(MARGEN, Math.min(p.x, window.innerWidth - anchoActual - MARGEN)),
-      y: Math.max(MARGEN, Math.min(p.y, window.innerHeight - alto - MARGEN)),
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!bolsa) return;
-    let inicial: Posicion | null = null;
-    try {
-      const crudo = window.localStorage.getItem(CLAVE_POSICION);
-      if (crudo) inicial = JSON.parse(crudo) as Posicion;
-    } catch {
-      /* sin posicion guardada */
-    }
-    setPosicion((previa) =>
-      previa ??
-      limitar(inicial ?? { x: window.innerWidth - ANCHO - 24, y: window.innerHeight - 420 }, ANCHO),
-    );
-  }, [bolsa, limitar]);
-
-  useEffect(() => {
-    if (!bolsa) return;
-    const alRedimensionar = () => setPosicion((p) => (p ? limitar(p, ancho) : p));
-    window.addEventListener('resize', alRedimensionar);
-    return () => window.removeEventListener('resize', alRedimensionar);
-  }, [bolsa, ancho, limitar]);
-
-  function iniciarArrastre(e: React.PointerEvent) {
-    if (!posicion) return;
-    if ((e.target as HTMLElement).closest('button')) return;
-    arrastre.current = { dx: e.clientX - posicion.x, dy: e.clientY - posicion.y };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-
-  function moverArrastre(e: React.PointerEvent) {
-    if (!arrastre.current) return;
-    e.preventDefault();
-    setPosicion(
-      limitar({ x: e.clientX - arrastre.current.dx, y: e.clientY - arrastre.current.dy }, ancho),
-    );
-  }
-
-  function soltarArrastre(e: React.PointerEvent) {
-    if (!arrastre.current) return;
-    arrastre.current = null;
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    try {
-      if (posicion) window.localStorage.setItem(CLAVE_POSICION, JSON.stringify(posicion));
-    } catch {
-      /* sin persistencia: vuelve a su esquina por defecto */
-    }
-  }
-
-  // ------------------------------------------------- ventana independiente
-
-  /**
-   * Copia los estilos de la pagina a la ventana nueva: es otro documento y
-   * no hereda nada, asi que sin esto llegaria sin formato.
-   */
-  function copiarEstilos(destino: Window) {
-    for (const hoja of Array.from(document.styleSheets)) {
-      try {
-        const css = Array.from(hoja.cssRules)
-          .map((r) => r.cssText)
-          .join('\n');
-        const estilo = destino.document.createElement('style');
-        estilo.textContent = css;
-        destino.document.head.appendChild(estilo);
-      } catch {
-        // Hoja de otro origen: no se puede leer, pero si enlazar.
-        if (hoja.href) {
-          const enlace = destino.document.createElement('link');
-          enlace.rel = 'stylesheet';
-          enlace.href = hoja.href;
-          destino.document.head.appendChild(enlace);
-        }
-      }
-    }
-  }
-
-  async function desprender() {
-    if (!bolsa) return;
+  async function abrirAparte() {
+    if (!bolsa || abriendo.current) return;
     const api = apiVentanaFlotante();
 
     // Sin soporte para la ventana flotante (Firefox, Safari): se abre una
-    // ventana normal con la pantalla suelta de la bolsa.
+    // ventana normal con la pantalla suelta de la tarea.
     if (!api) {
-      window.open(
+      const emergente = window.open(
         `/bolsa/${bolsa.id}`,
         `bolsa-${bolsa.id}`,
-        'popup=yes,width=400,height=620,noopener=no',
+        `popup=yes,width=400,height=700,noopener=no`,
       );
-      cerrarBolsa();
+      if (emergente) {
+        setPendiente(false);
+        cerrarBolsa();
+      } else {
+        setPendiente(true);
+      }
       return;
     }
 
-    const nueva = await api.requestWindow({ width: 380, height: 600 });
-    copiarEstilos(nueva);
-    nueva.document.title = `Bolsa · ${bolsa.titulo}`;
-    nueva.document.body.style.margin = '0';
-    nueva.document.body.style.background = '#0f172a';
+    abriendo.current = true;
+    try {
+      // El navegador recuerda el ultimo tamano de la ventana (por ejemplo,
+      // encogida al reloj); se le pide abrirla siempre en su tamano completo.
+      const nueva = await api.requestWindow({ ...LIENZO.completo, preferInitialWindowPlacement: true });
+      copiarEstilos(nueva);
+      nueva.document.title = `Tarea · ${bolsa.titulo}`;
+      nueva.document.body.style.margin = '0';
+      nueva.document.body.style.overflow = 'hidden';
+      nueva.document.body.style.background = '#0f172a';
 
-    const caja = nueva.document.createElement('div');
-    caja.className = 'min-h-screen bg-slate-950 text-slate-100';
-    nueva.document.body.appendChild(caja);
+      const caja = nueva.document.createElement('div');
+      caja.className = 'flex h-screen justify-center overflow-hidden bg-slate-950 text-slate-100';
+      nueva.document.body.appendChild(caja);
 
-    // Al cerrarla, la bolsa vuelve a la pagina.
-    nueva.addEventListener('pagehide', () => {
-      setVentanaAparte(null);
-      setContenedorAparte(null);
+      // Cerrar la ventana es cerrar la tarea: no hay otra forma de verla.
+      nueva.addEventListener('pagehide', () => {
+        setVentanaAparte(null);
+        setContenedorAparte(null);
+        setSoloReloj(false);
+        cerrarBolsa();
+      });
+
       setSoloReloj(false);
-    });
-
-    setSoloReloj(false);
-    setVentanaAparte(nueva);
-    setContenedorAparte(caja);
+      setPendiente(false);
+      setVentanaAparte(nueva);
+      setContenedorAparte(caja);
+    } catch {
+      // El navegador la rechazo (sin gesto del usuario, por ejemplo).
+      setPendiente(true);
+    } finally {
+      abriendo.current = false;
+    }
   }
 
+  // Al abrir una tarea se abre su ventana aparte, sin pasos intermedios. Si ya
+  // hay una abierta, la tarea nueva simplemente se muestra en ella.
+  useEffect(() => {
+    if (!bolsa || ventanaAparte) return;
+    if (hayGestoReciente()) abrirAparte();
+    else setPendiente(true);
+    // Solo al cambiar de tarea: abrirAparte lee la tarea actual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bolsa?.id]);
+
+  // El lienzo de la vista actual se escala al tamano real de la ventana, y
+  // vuelve a escalarse si el navegador o el usuario la cambian de tamano.
+  useEffect(() => {
+    if (!ventanaAparte) return;
+    const lienzo = soloReloj ? LIENZO.reloj : LIENZO.completo;
+    const medir = () =>
+      setEscala(Math.min(ventanaAparte.innerWidth / lienzo.width, ventanaAparte.innerHeight / lienzo.height));
+    medir();
+    ventanaAparte.addEventListener('resize', medir);
+    return () => ventanaAparte.removeEventListener('resize', medir);
+  }, [ventanaAparte, soloReloj]);
+
+  useEffect(() => {
+    if (ventanaAparte && bolsa) ventanaAparte.document.title = `Tarea · ${bolsa.titulo}`;
+  }, [ventanaAparte, bolsa]);
+
+  useEffect(() => {
+    // Si se cierra la tarea (por ejemplo al cerrar sesion), tambien su ventana.
+    if (!bolsa) {
+      setPendiente(false);
+      if (ventanaAparte) {
+        ventanaAparte.close();
+        setVentanaAparte(null);
+        setContenedorAparte(null);
+      }
+    }
+  }, [bolsa, ventanaAparte]);
+
   /**
-   * Encoge o devuelve su tamano a la ventana desprendida. Se redimensiona la
-   * ventana de verdad, no solo su contenido: encogida ocupa lo justo para el
-   * cronometro y estorba menos sobre cualquier otra aplicacion.
+   * Encoge o devuelve su tamano a la ventana. Se redimensiona la ventana de
+   * verdad, no solo su contenido: encogida ocupa lo justo para el reloj y
+   * estorba menos sobre cualquier otra aplicacion.
    */
-  function cambiarTamanoAparte(reloj: boolean) {
+  function cambiarTamano(reloj: boolean) {
     setSoloReloj(reloj);
+    const lienzo = reloj ? LIENZO.reloj : LIENZO.completo;
     try {
-      ventanaAparte?.resizeTo(reloj ? 260 : 380, reloj ? 170 : 600);
+      if (ventanaAparte) {
+        // resizeTo mide la ventana por fuera: se suma lo que ocupa su marco.
+        const marcoAncho = ventanaAparte.outerWidth - ventanaAparte.innerWidth;
+        const marcoAlto = ventanaAparte.outerHeight - ventanaAparte.innerHeight;
+        ventanaAparte.resizeTo(lienzo.width + marcoAncho, lienzo.height + marcoAlto);
+      }
     } catch {
       /* el navegador no deja redimensionarla: al menos cambia el contenido */
     }
   }
 
-  useEffect(() => {
-    // Si se cierra la bolsa, tambien se cierra su ventana aparte.
-    if (!bolsa && ventanaAparte) {
-      ventanaAparte.close();
-      setVentanaAparte(null);
-      setContenedorAparte(null);
-    }
-  }, [bolsa, ventanaAparte]);
-
   if (!bolsa) return null;
 
-  const contenido = (
-    <ContenidoBolsa
-      bolsaId={bolsa.id}
-      titulo={bolsa.titulo}
-      modo={
-        contenedorAparte
-          ? soloReloj
-            ? 'reloj'
-            : 'completo'
-          : minimizada
-            ? 'barra'
-            : 'completo'
-      }
-      onExpandir={() => (contenedorAparte ? cambiarTamanoAparte(false) : setMinimizada(false))}
-      onCambio={notificarCambio}
-      onGuardada={(origen) => {
-        // Desde la ventana aparte el recuadro pertenece a otro documento: el
-        // vuelo sale entonces desde el centro de la pagina principal.
-        const desde =
-          origen && !ventanaAparte
-            ? origen
-            : new DOMRect(window.innerWidth / 2 - 40, window.innerHeight / 2 - 40, 80, 80);
-        volarAlCofre(desde);
-      }}
-    />
-  );
-
-  // ------------------------------------------- desprendida en otra ventana
+  // ------------------------------------------ abierta en su ventana aparte
   if (contenedorAparte) {
-    return (
-      <>
-        {createPortal(
-          <>
-            {/* Barra propia de la ventana desprendida. */}
-            <div className="flex items-center gap-1 border-b border-white/10 bg-white/5 px-2 py-1.5">
-              <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wide text-amber-200/70">
-                {soloReloj ? 'Cronometro' : 'Bolsa'}
-              </span>
-              <button
-                onClick={() => cambiarTamanoAparte(!soloReloj)}
-                title={soloReloj ? 'Ver la bolsa completa' : 'Dejar solo el cronometro'}
-                className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-              >
-                {soloReloj ? '⤢' : '—'}
-              </button>
-              <button
-                onClick={() => ventanaAparte?.close()}
-                title="Traer de vuelta a la pagina"
-                className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-              >
-                ⤡
-              </button>
-            </div>
-            {contenido}
-          </>,
-          contenedorAparte,
-        )}
-        <div className="fixed bottom-4 right-4 z-[60] flex items-center gap-2 rounded-xl border border-amber-500/25 bg-slate-900/95 px-3 py-2 shadow-xl backdrop-blur">
-          <BolsaOro llenado={1} tamano={26} animada={false} />
-          <span className="max-w-[10rem] truncate text-xs text-slate-300">{bolsa.titulo}</span>
-          <span className="text-[10px] text-amber-300/80">en ventana aparte</span>
+    const lienzo = soloReloj ? LIENZO.reloj : LIENZO.completo;
+    return createPortal(
+      <div className="flex shrink-0 flex-col overflow-hidden" style={{ ...lienzo, zoom: escala }}>
+        <div className="flex shrink-0 items-center gap-1 border-b border-white/10 bg-white/5 px-2 py-1.5">
+          <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wide text-orange-200/70">
+            {soloReloj ? 'Cronómetro' : 'Tarea'}
+          </span>
           <button
-            onClick={() => ventanaAparte?.close()}
-            title="Traer de vuelta a esta pagina"
+            onClick={() => cambiarTamano(!soloReloj)}
+            title={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
             className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
           >
-            ⤡
+            {soloReloj ? '⤢' : '—'}
+          </button>
+          <button
+            onClick={() => ventanaAparte?.close()}
+            title="Cerrar la tarea"
+            aria-label="Cerrar la tarea"
+            className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+          >
+            ×
           </button>
         </div>
-      </>
+        <ContenidoBolsa
+          bolsaId={bolsa.id}
+          titulo={bolsa.titulo}
+          modo={soloReloj ? 'reloj' : 'completo'}
+          onCambio={notificarCambio}
+          // El reloj de la ventana aparte pertenece a otro documento: el vuelo
+          // hacia el reloj del proyecto sale del centro de la pagina principal.
+          onGuardada={() =>
+            volarAlCofre(new DOMRect(window.innerWidth / 2 - 40, window.innerHeight / 2 - 40, 80, 80))
+          }
+        />
+      </div>,
+      contenedorAparte,
     );
   }
 
-  if (!posicion) return null;
-
-  // ------------------------------------------------- pegada a la pagina
+  // ------------------- no se pudo abrir sola: se pide un clic para abrirla
+  if (!pendiente) return null;
   return (
     <div
-      ref={ventana}
-      className="fixed z-[60] overflow-hidden rounded-2xl border border-amber-500/25 bg-slate-900/95 shadow-2xl shadow-black/60 backdrop-blur"
-      style={{ left: posicion.x, top: posicion.y, width: ancho }}
-      role="dialog"
-      aria-label={`Bolsa: ${bolsa.titulo}`}
+      role="status"
+      className="fixed bottom-4 right-4 z-[60] flex items-center gap-2 rounded-xl border border-orange-400/25 bg-slate-900/95 py-2 pl-3 pr-2 shadow-xl backdrop-blur"
     >
-      <div
-        onPointerDown={iniciarArrastre}
-        onPointerMove={moverArrastre}
-        onPointerUp={soltarArrastre}
-        onPointerCancel={soltarArrastre}
-        className="flex cursor-grab touch-none items-center gap-1.5 border-b border-white/10 bg-white/5 px-3 py-2 active:cursor-grabbing"
+      <RelojArena llenado={0.5} tamano={18} animada={false} />
+      <span className="max-w-[12rem] truncate text-xs text-slate-300">{bolsa.titulo}</span>
+      <button
+        onClick={abrirAparte}
+        className="rounded-lg bg-orange-500 px-2.5 py-1 text-[11px] font-bold text-slate-950 transition hover:bg-orange-400"
       >
-        <span className="text-slate-500" aria-hidden>
-          ⠿
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">
-          Bolsa abierta
-        </span>
-        <button
-          onClick={desprender}
-          title="Sacarla en una ventana aparte, siempre visible"
-          className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-        >
-          ⧉
-        </button>
-        <button
-          onClick={() => {
-            setMinimizada((v) => !v);
-            setPosicion((p) => (p ? limitar(p, minimizada ? ANCHO : ANCHO_MINI) : p));
-          }}
-          title={minimizada ? 'Expandir' : 'Minimizar'}
-          className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-        >
-          {minimizada ? '⤢' : '—'}
-        </button>
-        <button
-          onClick={cerrarBolsa}
-          title="Cerrar"
-          className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-        >
-          ×
-        </button>
-      </div>
-
-      <div className={minimizada ? '' : 'max-h-[min(70vh,34rem)] overflow-y-auto'}>
-        {contenido}
-      </div>
+        Abrir ventana
+      </button>
+      <button
+        onClick={cerrarBolsa}
+        title="Cerrar la tarea"
+        aria-label="Cerrar la tarea"
+        className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+      >
+        ×
+      </button>
     </div>
   );
 }

@@ -12,11 +12,16 @@ export default function ConfirmarSalida({
   onMarcarYSalir,
   onSalirSinMarcar,
   onCancelar,
+  onIrATarea,
+  tituloTarea,
 }: {
   /** Marca la salida y cierra sesion; si falla, debe lanzar el error con su mensaje. */
   onMarcarYSalir: () => Promise<void>;
   onSalirSinMarcar: () => void;
   onCancelar: () => void;
+  /** La salida se rechazo por un cronometro abierto: lleva a esa tarea. */
+  onIrATarea?: () => void;
+  tituloTarea?: string;
 }) {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,9 +118,17 @@ export default function ConfirmarSalida({
         </p>
 
         {error && (
-          <p role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
-            {error}
-          </p>
+          <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            <p>{error}</p>
+            {onIrATarea && (
+              <button
+                onClick={onIrATarea}
+                className="mt-2 rounded-lg bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-100 transition hover:bg-rose-500/35"
+              >
+                Ir a la tarea{tituloTarea ? ` «${tituloTarea}»` : ''} →
+              </button>
+            )}
+          </div>
         )}
 
         <div className="flex flex-col gap-2">

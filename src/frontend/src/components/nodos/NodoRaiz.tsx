@@ -7,6 +7,7 @@ import { api, PersonaRef } from '@/lib/api';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
+import RelojArena from '@/components/tesoro/RelojArena';
 
 export interface DatosNodoRaiz {
   nombre: string;
@@ -42,7 +43,7 @@ type Modo = 'menu' | 'nueva' | 'para-alguien' | null;
 /**
  * Insignia del proyecto: el nodo central del que cuelgan las tareas. Lleva la
  * etiqueta "PROYECTO", el nombre, cuantas tareas tiene y cuantas estan
- * completadas, y un anillo con el avance. Es mas grande que una tarea; el
+ * completadas, y el reloj de arena del proyecto con su avance. Es mas grande que una tarea; el
  * mapa la dibuja centrada en el lugar que el acomodo reserva para ella.
  *
  * Al pasar el mouse, al enfocarla con el teclado o al tocarla se abre un menu
@@ -194,7 +195,19 @@ export default function NodoRaiz({ id, data }: NodeProps) {
         style={abierto ? { boxShadow: '0 0 0 3px rgba(56,189,248,.35), 0 20px 50px -14px rgba(56,189,248,.7)' } : undefined}
       >
         <div className="tf-insignia-cuerpo flex h-full items-center gap-3.5 px-[18px]">
-          <AnilloAvance porcentaje={avance} />
+          {/* El reloj final: se llena con las tareas terminadas del proyecto. */}
+          <div className="flex shrink-0 flex-col items-center" role="img" aria-label={`Avance del proyecto: ${avance}%`}>
+            <RelojArena
+              variante="proyecto"
+              llenado={avance / 100}
+              terminado={d.totalTareas > 0 && avance >= 100}
+              tamano={40}
+              animada={!d.entrando}
+            />
+            <span aria-hidden className="mt-0.5 text-[10px] font-bold tabular-nums text-pink-200">
+              {avance}%
+            </span>
+          </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-300">Proyecto</p>
             <p
@@ -363,37 +376,6 @@ export default function NodoRaiz({ id, data }: NodeProps) {
         </form>
       )}
     </div>
-  );
-}
-
-/** Anillo verde con el porcentaje de tareas completadas del proyecto. */
-function AnilloAvance({ porcentaje }: { porcentaje: number }) {
-  const circunferencia = 2 * Math.PI * 18;
-  return (
-    <svg
-      viewBox="0 0 44 44"
-      width="44"
-      height="44"
-      className="shrink-0"
-      role="img"
-      aria-label={`Avance del proyecto: ${porcentaje}%`}
-    >
-      <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(148,163,184,.25)" strokeWidth="4" />
-      <circle
-        cx="22"
-        cy="22"
-        r="18"
-        fill="none"
-        stroke="#34d399"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeDasharray={`${(porcentaje / 100) * circunferencia} ${circunferencia}`}
-        transform="rotate(-90 22 22)"
-      />
-      <text x="22" y="26" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="700">
-        {porcentaje}%
-      </text>
-    </svg>
   );
 }
 

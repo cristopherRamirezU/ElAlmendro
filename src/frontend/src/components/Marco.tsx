@@ -16,11 +16,12 @@ import {
   Workflow,
 } from 'lucide-react';
 import { PERMISOS, PermisoCodigo } from '@/lib/rbac';
-import { api, ErrorApi, Jornada, Usuario } from '@/lib/api';
+import { api, ErrorApi, Jornada, Sesion, Usuario } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
 import { ContextoSesion } from '@/lib/sesion';
 import AvisoVersion from './AvisoVersion';
 import ConfirmarSalida from './ConfirmarSalida';
+import InterruptorJornada from './ui/InterruptorJornada';
 import { ProveedorChat } from '@/lib/chat';
 import { cerrarSocketChat } from '@/lib/socket';
 import InsigniaChat from '@/components/chat/InsigniaChat';
@@ -124,6 +125,11 @@ export default function Marco({
   const [respondio, setRespondio] = useState(false);
   const listo = usuario !== null || respondio;
   const [avisoJornada, setAvisoJornada] = useState<string | null>(null);
+  // Posicion pedida al interruptor mientras el servidor la confirma.
+  const [jornadaPendiente, setJornadaPendiente] = useState<boolean | null>(null);
+  // Si la salida se rechaza porque hay un cronometro corriendo, la tarea donde
+  // corre: el aviso ofrece ir directo a ella para cerrarlo.
+  const [tareaAbierta, setTareaAbierta] = useState<Sesion['actividad'] | null>(null);
   const colorPrimario = usuario?.organizacionColor || COLOR_PRIMARIO_DEFECTO;
   const temaFondo = usuario?.organizacionTema || TEMA_FONDO_DEFECTO;
   useAplicarTemaFondo(temaFondo);
@@ -154,14 +160,42 @@ export default function Marco({
     };
   }, [router]);
 
+  /**
+   * Busca la sesion de cronometro abierta, para ofrecer ir a su tarea cuando
+   * la salida se rechaza por ella.
+   */
+  async function buscarTareaAbierta() {
+    const sesion = await api.get<Sesion | null>('/sesiones/activa').catch(() => null);
+    setTareaAbierta(sesion?.actividad.proyectoId ? sesion.actividad : null);
+  }
+
+  /** Lleva al mapa del proyecto con el popup de la tarea abierta. */
+  function irATareaAbierta() {
+    if (!tareaAbierta?.proyectoId) return;
+    const nombre = tareaAbierta.proyecto?.nombre ?? 'Proyecto';
+    setAvisoJornada(null);
+    setTareaAbierta(null);
+    setConfirmandoSalida(false);
+    router.push(
+      // `abrir` cambia en cada clic: aunque ya se este en ese mapa con esa
+      // tarea en la direccion, el popup se vuelve a abrir.
+      `/nodos?proyectoId=${tareaAbierta.proyectoId}&nombre=${encodeURIComponent(nombre)}&tarea=${tareaAbierta.id}&abrir=${Date.now()}`,
+    );
+  }
+
   async function alternarJornada() {
     setAvisoJornada(null);
+    setTareaAbierta(null);
+    setJornadaPendiente(!jornada);
     try {
       await api.post(jornada ? '/jornadas/salida' : '/jornadas/entrada');
       const j = await api.get<Jornada | null>('/jornadas/actual');
       if (usuario) guardarCacheSesion({ usuario, jornada: j });
     } catch (err) {
       setAvisoJornada(err instanceof ErrorApi ? err.message : 'No se pudo actualizar la jornada.');
+      if (jornada) await buscarTareaAbierta();
+    } finally {
+      setJornadaPendiente(null);
     }
   }
 
@@ -195,9 +229,11 @@ export default function Marco({
   }
 
   async function marcarSalidaYCerrar() {
+    setTareaAbierta(null);
     try {
       await api.post('/jornadas/salida');
     } catch (err) {
+      await buscarTareaAbierta();
       throw new Error(err instanceof ErrorApi ? err.message : 'No se pudo marcar la salida.');
     }
     await cerrarSesion();
@@ -241,6 +277,8 @@ export default function Marco({
           onMarcarYSalir={marcarSalidaYCerrar}
           onSalirSinMarcar={cerrarSesion}
           onCancelar={() => setConfirmandoSalida(false)}
+          onIrATarea={tareaAbierta ? irATareaAbierta : undefined}
+          tituloTarea={tareaAbierta?.titulo}
         />
       )}
       <div
@@ -303,24 +341,28 @@ export default function Marco({
             </div>
             <div className="ml-auto flex items-center gap-3">
               {avisoJornada && (
-                <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300">
+                <span className="flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 py-1 pl-3 pr-1 text-xs text-rose-300">
                   {avisoJornada}
+                  {tareaAbierta ? (
+                    <button
+                      onClick={irATareaAbierta}
+                      title={`Ir a «${tareaAbierta.titulo}» para cerrar su cronómetro`}
+                      className="rounded-full bg-rose-500/20 px-2.5 py-0.5 font-semibold text-rose-100 transition hover:bg-rose-500/35"
+                    >
+                      Ir a la tarea →
+                    </button>
+                  ) : (
+                    <span className="pr-2" />
+                  )}
                 </span>
               )}
               {usuario?.rol !== 'SUPER_ADMIN' && (
-                <button
-                  onClick={alternarJornada}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                    jornada
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15'
-                      : 'border-[var(--tf-borde)] bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)]'
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${jornada ? 'animate-pulse bg-emerald-400' : 'bg-slate-500'}`}
-                  />
-                  {jornada ? 'En jornada · marcar salida' : 'Marcar entrada'}
-                </button>
+                <InterruptorJornada
+                  encendido={Boolean(jornada)}
+                  pendiente={jornadaPendiente}
+                  desde={jornada?.inicioEn}
+                  onAlternar={alternarJornada}
+                />
               )}
               {acciones}
               <div

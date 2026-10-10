@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import BolsaOro from '@/components/tesoro/BolsaOro';
+import RelojArena from '@/components/tesoro/RelojArena';
 
 /** Tarea abierta en la ventana flotante. */
 export interface BolsaAbierta {
@@ -21,9 +21,9 @@ interface EstadoTesoro {
   bolsa: BolsaAbierta | null;
   abrirBolsa: (bolsa: BolsaAbierta) => void;
   cerrarBolsa: () => void;
-  /** El cofre visible en pantalla, si la vista actual muestra uno. */
+  /** El reloj del proyecto visible en pantalla, si la vista actual muestra uno. */
   registrarCofre: (el: HTMLElement | null) => void;
-  /** Lanza la bolsa desde donde esta hacia el cofre. */
+  /** Lanza el reloj de la tarea desde donde esta hacia el reloj del proyecto. */
   volarAlCofre: (origen: DOMRect) => void;
   /** Avisa a las vistas abiertas que el tesoro cambio (recargar datos). */
   notificarCambio: () => void;
@@ -103,7 +103,7 @@ export function ProveedorTesoro({ children }: { children: React.ReactNode }) {
 
   const volarAlCofre = useCallback((origen: DOMRect) => {
     const caja = cofre.current?.getBoundingClientRect();
-    // Sin cofre a la vista (otra pantalla), la bolsa sube y se desvanece:
+    // Sin reloj del proyecto a la vista (otra pantalla), el de la tarea sube y se desvanece:
     // igual queda claro que el trabajo se guardo.
     const hasta = caja
       ? { x: caja.left + caja.width / 2, y: caja.top + caja.height / 2 }
@@ -115,7 +115,7 @@ export function ProveedorTesoro({ children }: { children: React.ReactNode }) {
       desde: {
         x: origen.left + origen.width / 2,
         y: origen.top + origen.height / 2,
-        tamano: Math.max(48, Math.min(120, origen.width)),
+        tamano: Math.max(40, Math.min(100, origen.width)),
       },
       hasta,
     };
@@ -187,7 +187,7 @@ export function ProveedorTesoro({ children }: { children: React.ReactNode }) {
       {children}
       <div className="pointer-events-none fixed inset-0 z-[70]" aria-hidden>
         {vuelos.map((v) => (
-          <BolsaVolando
+          <RelojVolando
             key={v.id}
             vuelo={v}
             onTermino={() => setVuelos((lista) => lista.filter((x) => x.id !== v.id))}
@@ -199,11 +199,11 @@ export function ProveedorTesoro({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Una bolsa que viaja hasta el cofre describiendo un arco. Se anima con la
+ * El reloj de una tarea terminada que viaja hasta el del proyecto describiendo un arco. Se anima con la
  * API del navegador y se borra sola al terminar; si el usuario tiene activada
  * la reduccion de movimiento, aparece y desaparece sin recorrido.
  */
-function BolsaVolando({ vuelo, onTermino }: { vuelo: Vuelo; onTermino: () => void }) {
+function RelojVolando({ vuelo, onTermino }: { vuelo: Vuelo; onTermino: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -248,7 +248,7 @@ function BolsaVolando({ vuelo, onTermino }: { vuelo: Vuelo; onTermino: () => voi
         width: vuelo.desde.tamano,
       }}
     >
-      <BolsaOro llenado={1} tamano={vuelo.desde.tamano} guardada animada={false} />
+      <RelojArena llenado={1} tamano={vuelo.desde.tamano} terminado animada={false} />
     </div>
   );
 }

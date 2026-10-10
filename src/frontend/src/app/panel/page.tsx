@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Marco from '@/components/Marco';
 import EquipoProyecto from '@/components/panel/EquipoProyecto';
-import Cofre from '@/components/tesoro/Cofre';
-import CofreProyecto from '@/components/tesoro/CofreProyecto';
+import Modal from '@/components/ui/Modal';
+import RelojArena from '@/components/tesoro/RelojArena';
+import RelojProyecto from '@/components/tesoro/RelojProyecto';
 import RejillaBolsas from '@/components/tesoro/RejillaBolsas';
 import { api, ErrorApi, ProgresoPersonalItem, ProyectoItem, Sesion } from '@/lib/api';
 import { useDatosCache } from '@/lib/cacheDatos';
@@ -31,6 +32,9 @@ export default function Panel() {
   const esAdmin = usuario?.rol === 'ADMINISTRADOR' || usuario?.rol === 'SUPER_ADMIN';
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
+  // El detalle del proyecto se abre en una ventana emergente. Cerrarla no
+  // olvida el proyecto elegido: la pestana de tareas sigue mostrandolo.
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
   const [pestana, setPestana] = useState<'proyectos' | 'bolsas'>('proyectos');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<ProyectoItem | null>(null);
@@ -46,6 +50,7 @@ export default function Panel() {
     try {
       await api.delete(`/proyectos/${p.id}`);
       setSeleccionado(null);
+      setDetalleAbierto(false);
       setEditando(null);
       await cargar();
     } catch (err) {
@@ -255,7 +260,7 @@ export default function Panel() {
         </div>
       )}
 
-      {/* -------------------- Proyectos y bolsas, en dos pestañas -------------------- */}
+      {/* -------------------- Proyectos y tareas, en dos pestañas -------------------- */}
       <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-[var(--tf-borde)]">
         <button
           onClick={() => setPestana('proyectos')}
@@ -279,7 +284,7 @@ export default function Panel() {
               : 'border-transparent text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
           }`}
         >
-          Bolsas del proyecto
+          Tareas del proyecto
           {proyecto && (
             <span className="max-w-[12rem] truncate rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
               {proyecto.nombre}
@@ -291,12 +296,12 @@ export default function Panel() {
           {pestana === 'proyectos'
             ? esTrabajador
               ? 'Proyectos donde tienes asignaciones'
-              : 'Elige un proyecto para ver su cofre y su equipo'
-            : 'Cada tarea es una bolsa: llénala con sus monedas y guárdala en el cofre'}
+              : 'Elige un proyecto para ver su reloj y su equipo'
+            : 'Cada tarea es un reloj de arena: avanza con sus objetivos y llena el reloj del proyecto'}
         </p>
       </div>
 
-      {/* -------------------- Pestaña: bolsas del proyecto -------------------- */}
+      {/* -------------------- Pestaña: tareas del proyecto -------------------- */}
       {pestana === 'bolsas' &&
         (proyecto ? (
           <div className="mb-6 flex flex-col gap-4 lg:flex-row">
@@ -304,7 +309,7 @@ export default function Panel() {
               <RejillaBolsas key={proyecto.id} proyectoId={proyecto.id} />
             </div>
             <aside className="w-full shrink-0 lg:w-72">
-              <CofreProyecto
+              <RelojProyecto
                 proyecto={proyecto}
                 activo={pestana === 'bolsas'}
                 onCambio={cargar}
@@ -320,7 +325,7 @@ export default function Panel() {
         ) : (
           <div className="mb-6 rounded-2xl border border-dashed border-[var(--tf-borde)] p-12 text-center">
             <p className="text-sm text-[var(--tf-texto-tenue)]">
-              Elige primero un proyecto para ver sus bolsas.
+              Elige primero un proyecto para ver sus tareas.
             </p>
             <button
               onClick={() => setPestana('proyectos')}
@@ -332,8 +337,8 @@ export default function Panel() {
         ))}
 
       {/* -------------------- Pestaña: proyectos -------------------- */}
-      <div className={`flex-col gap-4 lg:flex-row ${pestana === 'proyectos' ? 'flex' : 'hidden'}`}>
-        <section className="min-w-0 flex-1">
+      <div className={pestana === 'proyectos' ? 'block' : 'hidden'}>
+        <section>
           {cargando ? (
             <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
               Cargando proyectos…
@@ -360,7 +365,10 @@ export default function Panel() {
                 return (
                   <div
                     key={p.id}
-                    onClick={() => setSeleccionado(p.id)}
+                    onClick={() => {
+                      setSeleccionado(p.id);
+                      setDetalleAbierto(true);
+                    }}
                     style={
                       seleccionado === p.id
                         ? ({
@@ -380,17 +388,19 @@ export default function Panel() {
                       {p.nombre}
                     </p>
 
-                    {/* El cofre del proyecto: se llena con cada bolsa guardada. */}
-                    <Cofre
+                    {/* El reloj del proyecto: se llena con cada tarea terminada. */}
+                    <RelojArena
+                      variante="proyecto"
                       llenado={p.totalTareas > 0 ? p.tareasCompletadas / p.totalTareas : 0}
-                      tamano={64}
+                      terminado={p.totalTareas > 0 && p.tareasCompletadas >= p.totalTareas}
+                      tamano={50}
                     />
 
                     <div className="w-full">
-                      <span className="text-xl font-bold text-amber-300">{porcentaje}%</span>
+                      <span className="text-xl font-bold text-pink-300">{porcentaje}%</span>
                       <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                         <div
-                          className="tf-barra-brillo h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700"
+                          className="tf-barra-brillo h-full rounded-full bg-gradient-to-r from-pink-600 to-pink-400 transition-[width] duration-700"
                           style={{ width: `${porcentaje}%` }}
                         />
                       </div>
@@ -416,88 +426,27 @@ export default function Panel() {
             </div>
           )}
         </section>
-
-        {proyecto && (
-          <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-sm backdrop-blur lg:w-96">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <h2 className="font-bold leading-snug text-white">{proyecto.nombre}</h2>
-              <div className="flex shrink-0 items-center gap-2">
-                {/* Editar: solo Administrador o Supervisor; el trabajador crea pero no modifica. */}
-                {(esAdmin || esSupervisor) && (
-                  <button
-                    onClick={() => setEditando(proyecto)}
-                    className="rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-                  >
-                    Editar
-                  </button>
-                )}
-                {esAdmin && (
-                  <button
-                    onClick={() => handleEliminarProyecto(proyecto)}
-                    title="Eliminar proyecto (Exclusivo Administrador)"
-                    className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-400 transition hover:bg-rose-500/20"
-                  >
-                    Eliminar
-                  </button>
-                )}
-                <button
-                  onClick={() => setSeleccionado(null)}
-                  aria-label="Cerrar detalle"
-                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            <CofreProyecto
-              proyecto={proyecto}
-              activo={pestana === 'proyectos'}
-              onCambio={cargar}
-            />
-
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-              Descripción
-            </p>
-            <p className="mb-4 text-sm leading-relaxed text-slate-300">
-              {proyecto.descripcion || 'Sin descripción'}
-            </p>
-
-            <EquipoProyecto
-              key={proyecto.id}
-              proyectoId={proyecto.id}
-              puedeGestionar={esAdmin || esSupervisor}
-            />
-
-            <Fila
-              etiqueta="Creado el"
-              valor={new Date(proyecto.creadoEn).toLocaleDateString('es-CL', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            />
-            <Fila
-              etiqueta="Tareas asociadas"
-              valor={`${proyecto.totalTareas} tarea${proyecto.totalTareas === 1 ? '' : 's'}`}
-            />
-
-            <button
-              onClick={() => setPestana('bolsas')}
-              className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-2.5 text-sm font-bold text-slate-950 transition hover:from-amber-300 hover:to-amber-400"
-            >
-              Ver las bolsas de este proyecto
-            </button>
-            <button
-              onClick={() => irATareas(proyecto)}
-              style={{ backgroundColor: colorPrimario }}
-              className="mt-2 w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
-            >
-              {esTrabajador ? 'Iniciar tarea / Registrar avance' : 'Ir al mapa de nodos'}
-            </button>
-          </aside>
-        )}
       </div>
+
+      {proyecto && detalleAbierto && pestana === 'proyectos' && (
+        <ModalDetalleProyecto
+          proyecto={proyecto}
+          puedeEditar={esAdmin || esSupervisor}
+          esAdmin={esAdmin}
+          esTrabajador={esTrabajador}
+          // Con el formulario de edicion encima, Escape cierra solo ese.
+          bloqueado={editando !== null}
+          onCerrar={() => setDetalleAbierto(false)}
+          onEditar={() => setEditando(proyecto)}
+          onEliminar={() => handleEliminarProyecto(proyecto)}
+          onVerTareas={() => {
+            setDetalleAbierto(false);
+            setPestana('bolsas');
+          }}
+          onIrAlMapa={() => irATareas(proyecto)}
+          onCambio={cargar}
+        />
+      )}
 
       {modalAbierto && (
         <ModalCrearProyecto
@@ -549,6 +498,115 @@ function TarjetaMetrica({
         <p className="mt-0.5 text-[11px] text-slate-500">{subtexto}</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * Detalle del proyecto en una ventana emergente: a la izquierda su reloj de
+ * arena y los accesos (mapa de nodos, tareas), a la derecha la descripcion,
+ * el equipo y los datos. Asi lo importante queda a la vista sin bajar. Se
+ * cierra con la X, con Escape o con un clic fuera.
+ */
+function ModalDetalleProyecto({
+  proyecto,
+  puedeEditar,
+  esAdmin,
+  esTrabajador,
+  bloqueado,
+  onCerrar,
+  onEditar,
+  onEliminar,
+  onVerTareas,
+  onIrAlMapa,
+  onCambio,
+}: {
+  proyecto: ProyectoItem;
+  puedeEditar: boolean;
+  esAdmin: boolean;
+  esTrabajador: boolean;
+  /** Hay otro dialogo encima: no reacciona a Escape. */
+  bloqueado: boolean;
+  onCerrar: () => void;
+  onEditar: () => void;
+  onEliminar: () => void;
+  onVerTareas: () => void;
+  onIrAlMapa: () => void;
+  onCambio: () => void;
+}) {
+  const colorPrimario = useColorPrimario();
+
+  return (
+    <Modal
+      titulo={proyecto.nombre}
+      bloqueado={bloqueado}
+      onCerrar={onCerrar}
+      acciones={
+        <>
+          {/* Editar: solo Administrador o Supervisor; el trabajador crea pero no modifica. */}
+          {puedeEditar && (
+            <button
+              onClick={onEditar}
+              className="rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+            >
+              Editar
+            </button>
+          )}
+          {esAdmin && (
+            <button
+              onClick={onEliminar}
+              title="Eliminar proyecto (Exclusivo Administrador)"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-400 transition hover:bg-rose-500/20"
+            >
+              Eliminar
+            </button>
+          )}
+        </>
+      }
+    >
+      <div className="grid gap-6 md:grid-cols-[17rem_1fr]">
+        {/* Reloj y accesos: lo que se busca al abrir un proyecto. */}
+        <div className="flex flex-col">
+          <RelojProyecto proyecto={proyecto} onCambio={onCambio} />
+          <button
+            onClick={onIrAlMapa}
+            style={{ backgroundColor: colorPrimario }}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+          >
+            {esTrabajador ? 'Iniciar tarea / Registrar avance' : 'Ir al mapa de nodos'}
+          </button>
+          <button
+            onClick={onVerTareas}
+            className="mt-2 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-2.5 text-sm font-bold text-slate-950 transition hover:from-amber-300 hover:to-amber-400"
+          >
+            Ver las tareas de este proyecto
+          </button>
+        </div>
+
+        <div className="min-w-0">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Descripción
+          </p>
+          <p className="mb-4 text-sm leading-relaxed text-slate-300">
+            {proyecto.descripcion || 'Sin descripción'}
+          </p>
+
+          <EquipoProyecto key={proyecto.id} proyectoId={proyecto.id} puedeGestionar={puedeEditar} />
+
+          <Fila
+            etiqueta="Creado el"
+            valor={new Date(proyecto.creadoEn).toLocaleDateString('es-CL', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          />
+          <Fila
+            etiqueta="Tareas asociadas"
+            valor={`${proyecto.totalTareas} tarea${proyecto.totalTareas === 1 ? '' : 's'}`}
+          />
+        </div>
+      </div>
+    </Modal>
   );
 }
 

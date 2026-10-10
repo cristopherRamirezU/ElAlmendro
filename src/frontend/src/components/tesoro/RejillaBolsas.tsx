@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { ESTADOS, PRIORIDADES } from '@/lib/formato';
 import { NodoActividad } from '@/lib/tipos';
 import { useTesoro } from '@/lib/tesoro';
-import BolsaOro from './BolsaOro';
+import RelojArena from './RelojArena';
 import GanttBolsas from './GanttBolsas';
 import { llenadoDeBolsa } from './llenado';
 
@@ -16,7 +16,7 @@ type Filtro = 'todas' | 'en_curso' | 'guardadas' | 'alta';
 const FILTROS: { clave: Filtro; texto: string }[] = [
   { clave: 'todas', texto: 'Todas' },
   { clave: 'en_curso', texto: 'En curso' },
-  { clave: 'guardadas', texto: 'Guardadas' },
+  { clave: 'guardadas', texto: 'Terminadas' },
   { clave: 'alta', texto: 'Prioridad alta' },
 ];
 
@@ -97,24 +97,24 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 font-bold text-[var(--tf-texto)]">
-            Las bolsas de este proyecto
+            Las tareas de este proyecto
             <span className="rounded-full bg-[var(--tf-hover)] px-2 py-0.5 text-[11px] font-semibold text-[var(--tf-texto-tenue)]">
               {actividades.length}
             </span>
           </h3>
           <p className="text-xs text-[var(--tf-texto-tenue)]">
-            Cada tarea es una bolsa. Llénala con sus monedas y guárdala en el cofre.
+            Cada tarea es un reloj de arena: avanza con sus objetivos y, al terminarla, llena el reloj del proyecto.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar una bolsa…"
+            placeholder="Buscar una tarea…"
             className="w-44 rounded-xl border border-white/10 bg-slate-950 px-3 py-1.5 text-xs text-white outline-none placeholder:text-slate-500 focus:border-amber-400/50"
           />
           <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
-            {guardadas} en el cofre
+            {guardadas} terminadas
           </span>
         </div>
       </div>
@@ -137,7 +137,7 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
           {(
             [
               ['gantt', 'Carta Gantt'],
-              ['rejilla', 'Bolsas'],
+              ['rejilla', 'Relojes'],
             ] as [Vista, string][]
           ).map(([v, texto]) => (
             <button
@@ -166,8 +166,8 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
       ) : visibles.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-8 text-center text-xs text-[var(--tf-texto-tenue)]">
           {actividades.length === 0
-            ? 'Este proyecto todavía no tiene bolsas. Créalas desde el mapa de nodos.'
-            : 'Ninguna bolsa coincide con este filtro.'}
+            ? 'Este proyecto todavía no tiene tareas. Créalas desde el mapa de nodos.'
+            : 'Ninguna tarea coincide con este filtro.'}
         </p>
       ) : vista === 'gantt' ? (
         <GanttBolsas
@@ -191,7 +191,7 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
                     : 'border-white/10 hover:border-amber-400/30'
                 }`}
               >
-                <BolsaOro llenado={llenado} tamano={58} guardada={a.estado === 'COMPLETADA'} />
+                <RelojArena llenado={llenado} tamano={42} terminado={a.estado === 'COMPLETADA'} />
                 <span className="min-w-0 flex-1">
                   <span className="mb-1 flex items-center gap-1.5">
                     <span
@@ -208,17 +208,17 @@ export default function RejillaBolsas({ proyectoId }: { proyectoId: string }) {
                   <span className="mt-1 flex items-center gap-2">
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                       <span
-                        className="tf-barra-brillo block h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-500"
+                        className="tf-barra-brillo block h-full rounded-full bg-gradient-to-r from-orange-600 to-orange-300 transition-[width] duration-500"
                         style={{ width: `${llenado * 100}%` }}
                       />
                     </span>
-                    <span className="shrink-0 text-[10px] font-semibold text-amber-300">
+                    <span className="shrink-0 text-[10px] font-semibold text-orange-300">
                       {Math.round(llenado * 100)}%
                     </span>
                   </span>
                   <span className="mt-0.5 block text-[10px] text-slate-500">
                     {a.monedas > 0
-                      ? `${a.monedasListas}/${a.monedas} monedas · ${a.responsable.nombreCompleto}`
+                      ? `${a.monedasListas}/${a.monedas} objetivos · ${a.responsable.nombreCompleto}`
                       : a.responsable.nombreCompleto}
                   </span>
                 </span>
