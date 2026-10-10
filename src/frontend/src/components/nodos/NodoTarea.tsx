@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
+import RelojArena from '@/components/tesoro/RelojArena';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 
@@ -31,7 +32,7 @@ export interface DatosNodoTarea {
   titulo: string;
   estado: string;
   color: string;
-  /** Avance de la tarea (sus monedas marcadas), de 0 a 1. */
+  /** Avance de la tarea (sus objetivos marcados), de 0 a 1. */
   llenado: number;
   tieneHijos: boolean;
   expandido: boolean;
@@ -94,39 +95,48 @@ export default function NodoTarea({ id, data }: NodeProps) {
       <Manillas nodoId={id} anclas={d.anclas} recibiendo={d.recibiendoExtremo} />
 
       <div
-        className="tf-tarea relative flex h-full w-full flex-col gap-[7px] overflow-hidden rounded-xl px-3 pt-[9px]"
+        className="tf-tarea relative flex h-full w-full items-center gap-2 overflow-hidden rounded-xl pb-[3px] pl-2 pr-3"
         style={{ '--c': fase.rgb } as React.CSSProperties}
       >
-        <div className="flex min-w-0 items-center gap-2" title={d.titulo}>
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: fase.color }} />
-          <span className="truncate text-xs font-bold text-white">{d.titulo}</span>
-        </div>
+        {/* El reloj de arena de la tarea: cae arena a medida que avanza. */}
+        <RelojArena
+          llenado={d.llenado ?? 0}
+          tamano={20}
+          terminado={d.estado === 'COMPLETADA'}
+          className="shrink-0"
+        />
 
-        <div className="flex min-w-0 items-center justify-between gap-1.5 text-[10px]">
-          {d.responsableNombre ? (
-            <span
-              className={`min-w-0 truncate rounded-[5px] border px-[7px] py-0.5 font-bold ${
-                d.esMiTarea
-                  ? 'border-sky-300/40 bg-sky-400/30 text-sky-200'
-                  : 'border-white/10 bg-slate-800/80 text-slate-300'
-              }`}
-              title={d.responsableNombre}
-            >
-              {d.esMiTarea ? 'Tú' : d.responsableNombre}
+        <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+          <div className="flex min-w-0 items-center gap-2" title={d.titulo}>
+            <span className="truncate text-xs font-bold text-white">{d.titulo}</span>
+          </div>
+
+          <div className="flex min-w-0 items-center justify-between gap-1.5 text-[10px]">
+            {d.responsableNombre ? (
+              <span
+                className={`min-w-0 truncate rounded-[5px] border px-[7px] py-0.5 font-bold ${
+                  d.esMiTarea
+                    ? 'border-sky-300/40 bg-sky-400/30 text-sky-200'
+                    : 'border-white/10 bg-slate-800/80 text-slate-300'
+                }`}
+                title={d.responsableNombre}
+              >
+                {d.esMiTarea ? 'Tú' : d.responsableNombre}
+              </span>
+            ) : (
+              <span />
+            )}
+            <span className="shrink-0 font-semibold" style={{ color: `rgb(${fase.rgb})` }}>
+              {fase.texto}
             </span>
-          ) : (
-            <span />
-          )}
-          <span className="shrink-0 font-semibold" style={{ color: `rgb(${fase.rgb})` }}>
-            {fase.texto}
-          </span>
-          <span
-            className="shrink-0 font-extrabold tabular-nums"
-            style={{ color: fase.color }}
-            title={`Avance ${porcentaje}%`}
-          >
-            {porcentaje}%
-          </span>
+            <span
+              className="shrink-0 font-extrabold tabular-nums"
+              style={{ color: fase.color }}
+              title={`Avance ${porcentaje}%`}
+            >
+              {porcentaje}%
+            </span>
+          </div>
         </div>
 
         {/* Barra de avance pegada al borde inferior: no ocupa fila propia. */}

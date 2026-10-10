@@ -10,7 +10,7 @@ export class CrearSubtareaDto {
 
 export class ActualizarSubtareaDto {
   @IsOptional()
-  @IsBoolean({ message: 'El estado de la moneda debe ser verdadero o falso.' })
+  @IsBoolean({ message: 'El estado del objetivo debe ser verdadero o falso.' })
   completada?: boolean;
 
   @IsOptional()

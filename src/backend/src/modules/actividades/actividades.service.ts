@@ -575,7 +575,7 @@ export class ActividadesService {
       });
       if (sesionViva) {
         throw new BadRequestException(
-          'Cierra primero el cronometro de esta tarea para guardarla en el cofre.',
+          'Cierra primero el cronometro de esta tarea para terminarla.',
         );
       }
       await this.exigirEvidencia(id);

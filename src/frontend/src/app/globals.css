@@ -42,13 +42,18 @@ body {
 }
 
 /*
- * Animaciones de tesoro: brillo del cofre y destello de las barras de
- * progreso, con el mismo espiritu pausado del logo animado del login.
+ * Relojes de arena: brillo del reloj completo, el hilo de arena que cae
+ * mientras corre el cronometro y el destello de las barras de progreso, con
+ * el mismo espiritu pausado del logo animado del login.
  */
-.tf-cofre-brillo {
+.tf-reloj-brillo {
   transform-box: fill-box;
   transform-origin: center;
-  animation: tf-pulso-cofre 3.2s ease-in-out infinite;
+  animation: tf-pulso-reloj 3.2s ease-in-out infinite;
+}
+.tf-arena-cae {
+  stroke-dasharray: 2 2;
+  animation: tf-arena-cae 0.45s linear infinite;
 }
 
 .tf-barra-brillo {
@@ -64,9 +69,217 @@ body {
   animation: tf-brillo-barra 2.6s ease-in-out infinite;
 }
 
-@keyframes tf-pulso-cofre {
+@keyframes tf-pulso-reloj {
   0%, 100% { opacity: 0.45; transform: scale(1); }
   50% { opacity: 0.85; transform: scale(1.1); }
+}
+/* El trazo avanza hacia abajo: un patron entero (4) por ciclo, sin saltos. */
+@keyframes tf-arena-cae { to { stroke-dashoffset: -4; } }
+
+/*
+ * Reloj retro de la tarea (tipo Casio de los 80): caja negra, placa
+ * plateada, marco negro con la marca, pantalla LCD verdosa y tres botones de
+ * goma. Sus colores son los del objeto, asi que no cambian con el tema.
+ */
+.tf-retro {
+  --lcd-tinta: #1b241d;
+  border-radius: 28px;
+  padding: 9px;
+  background: linear-gradient(160deg, #2c2c30 0%, #121214 55%, #050506 100%);
+  box-shadow:
+    0 18px 36px -16px rgba(0, 0, 0, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6);
+}
+.tf-retro-placa {
+  position: relative;
+  border-radius: 20px;
+  padding: 10px 12px 8px 22px;
+  background: linear-gradient(180deg, #f3f5f6 0%, #d4d9dd 55%, #b9c0c6 100%);
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 3px rgba(0, 0, 0, 0.18);
+}
+.tf-retro-compacto .tf-retro-placa { padding: 8px 10px 6px; }
+.tf-retro-lateral {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: center;
+  width: 0;
+  white-space: nowrap;
+  display: flex;
+  justify-content: center;
+  font: 800 7px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  color: #2a2f33;
+}
+.tf-retro-marco {
+  border-radius: 12px;
+  padding: 5px 7px 7px;
+  background: linear-gradient(180deg, #1d1d20, #0b0b0c);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.08);
+}
+.tf-retro-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 3px 5px;
+}
+.tf-retro-marca {
+  font: 900 12px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  color: #f4f4f5;
+}
+.tf-retro-modelo-oro {
+  font: italic 900 10px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fde68a, #c99a2e);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Pantalla de cristal liquido: verde grisaceo con sombra interior y reflejo. */
+.tf-retro-lcd {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  padding: 5px 8px 6px;
+  color: var(--lcd-tinta);
+  background: linear-gradient(175deg, #cdd6c4 0%, #b3bfab 60%, #a3b09b 100%);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+.tf-retro-lcd::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0%, transparent 38%);
+}
+.tf-lcd-indicadores {
+  display: flex;
+  gap: 7px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.tf-lcd-on { color: var(--lcd-tinta); }
+.tf-lcd-off { color: rgba(27, 36, 29, 0.12); }
+.tf-lcd-titulo {
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tf-lcd-digitos {
+  display: flex;
+  justify-content: flex-end;
+  height: 46px;
+  margin: 3px 0 2px;
+}
+.tf-retro-compacto .tf-lcd-digitos { height: 40px; }
+.tf-lcd-seg-lit { fill: var(--lcd-tinta); }
+.tf-lcd-seg-ghost { fill: rgba(27, 36, 29, 0.08); }
+.tf-lcd-pie {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  font-weight: 800;
+}
+.tf-lcd-barra { display: flex; flex: 1; gap: 2px; }
+.tf-lcd-barra > span {
+  height: 6px;
+  flex: 1;
+  transform: skewX(-12deg);
+}
+.tf-lcd-seg-on { background: var(--lcd-tinta); }
+.tf-lcd-seg-off { background: rgba(27, 36, 29, 0.1); }
+.tf-lcd-total {
+  margin-top: 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+/* En pausa los digitos parpadean, y corriendo late el separador. */
+.tf-lcd-parpadea { animation: tf-lcd-parpadeo 1s steps(1, end) infinite; }
+.tf-lcd-dos-puntos { animation: tf-lcd-parpadeo 1s steps(1, end) infinite; }
+@keyframes tf-lcd-parpadeo { 50% { opacity: 0.15; } }
+
+/* Botones de goma, cada uno con su plaquita dorada encima. */
+.tf-retro-botones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 9px;
+}
+.tf-retro-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tf-retro-plaquita {
+  padding: 1px 8px;
+  font: 800 7px/1.4 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  color: #e9d38f;
+  background: #1c1c1e;
+  border: 1px solid #b8913a;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.tf-retro-boton {
+  width: 100%;
+  height: 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 80ms ease, box-shadow 80ms ease, filter 150ms ease;
+}
+.tf-retro-compacto .tf-retro-boton { height: 20px; }
+.tf-retro-boton-rojo {
+  background: linear-gradient(180deg, #ff7a52 0%, #f0441c 45%, #c22d0c 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.22),
+    0 3px 0 #6e1705,
+    0 6px 10px -2px rgba(0, 0, 0, 0.45);
+}
+.tf-retro-boton-amarillo {
+  background: linear-gradient(180deg, #fff27a 0%, #facc15 45%, #ca8a04 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.18),
+    0 3px 0 #7a4a04,
+    0 6px 10px -2px rgba(0, 0, 0, 0.45);
+}
+.tf-retro-boton:hover:not(:disabled) { filter: brightness(1.08); }
+.tf-retro-boton:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.tf-retro-boton:focus-visible { outline: 2px solid #38bdf8; outline-offset: 3px; }
+.tf-retro-boton:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.7) brightness(0.8);
+  opacity: 0.6;
+}
+.tf-retro-funcion {
+  font: 800 9px/1.2 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #2a2f33;
+}
+.tf-retro-modelo {
+  margin-top: 6px;
+  text-align: center;
+  font: 900 11px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  color: #2a2f33;
 }
 @keyframes tf-brillo-barra {
   0% { transform: translateX(-100%); }
@@ -146,7 +359,8 @@ body {
   -webkit-mask-image: linear-gradient(100deg, transparent 35%, #000 100%);
   mask-image: linear-gradient(100deg, transparent 35%, #000 100%);
 }
-.tf-tarea > * { position: relative; }
+/* Sobre la trama; lo que ya va posicionado (la barra de avance) queda como esta. */
+.tf-tarea > :not(.absolute) { position: relative; }
 
 /*
  * Entrada al mapa: primero aparece la insignia; luego, una por una, cada
@@ -176,9 +390,86 @@ body {
 }
 @keyframes tf-traza { to { stroke-dashoffset: 0; } }
 
-/* Quien pide menos movimiento ve el cofre y las barras quietos. */
+/* Ventanas emergentes: el fondo se oscurece y el cuadro sube y crece un poco. */
+.tf-modal-fondo { animation: tf-modal-fondo 0.2s ease-out both; }
+.tf-modal-entra { animation: tf-modal-entra 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes tf-modal-fondo { from { opacity: 0; } }
+@keyframes tf-modal-entra { from { opacity: 0; transform: translateY(14px) scale(0.97); } }
+
+/*
+ * Interruptor de jornada: pista gris que se enciende en verde, perilla que
+ * salta con rebote y un pulso de luz al encender.
+ */
+.tf-interruptor {
+  border: 1px solid var(--tf-borde);
+  background: var(--tf-hover);
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+.tf-interruptor[data-encendido='true'] {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+}
+.tf-interruptor:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
+.tf-interruptor-pista {
+  position: relative;
+  width: 48px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: linear-gradient(180deg, #334155, #475569);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+.tf-interruptor[data-encendido='true'] .tf-interruptor-pista {
+  background: linear-gradient(180deg, #059669, #10b981);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 12px rgba(16, 185, 129, 0.55);
+  animation: tf-interruptor-pulso 0.6s ease-out;
+}
+.tf-interruptor-perilla {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #e2e8f0 60%, #cbd5e1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tf-interruptor[data-encendido='true'] .tf-interruptor-perilla { transform: translateX(24px); }
+.tf-interruptor:active:not(:disabled) .tf-interruptor-perilla { width: 24px; }
+.tf-interruptor[data-encendido='true']:active:not(:disabled) .tf-interruptor-perilla { transform: translateX(20px); }
+.tf-interruptor-rotulo {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  transition: opacity 0.3s ease;
+}
+.tf-interruptor-on { left: 7px; color: #ecfdf5; opacity: 0; }
+.tf-interruptor-off { right: 5px; color: #cbd5e1; opacity: 1; }
+.tf-interruptor[data-encendido='true'] .tf-interruptor-on { opacity: 1; }
+.tf-interruptor[data-encendido='true'] .tf-interruptor-off { opacity: 0; }
+@keyframes tf-interruptor-pulso {
+  0% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(16, 185, 129, 0); }
+}
+
+/* Quien pide menos movimiento ve los relojes y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
-  .tf-cofre-brillo { animation: none; }
+  .tf-reloj-brillo,
+  .tf-arena-cae,
+  .tf-lcd-parpadea,
+  .tf-lcd-dos-puntos { animation: none; }
+  .tf-retro-boton { transition: none; }
+  .tf-modal-fondo,
+  .tf-modal-entra { animation: none; }
+  .tf-interruptor-perilla,
+  .tf-interruptor-pista,
+  .tf-interruptor-rotulo { transition: none; }
+  .tf-interruptor[data-encendido='true'] .tf-interruptor-pista { animation: none; }
   .tf-barra-brillo::after { display: none; }
   .tf-mapa .react-flow__node,
   .tf-mapa .react-flow__edges { transition: none; }

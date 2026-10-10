@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ESTADOS } from '@/lib/formato';
 import { NodoActividad } from '@/lib/tipos';
-import BolsaOro from './BolsaOro';
+import RelojArena from './RelojArena';
 import { llenadoDeBolsa } from './llenado';
 
-type Escala = 'mes' | 'trimestre';
+type Escala = 'dia' | 'mes' | 'trimestre';
 
 const DIA_MS = 86_400_000;
+const HORA_MS = 3_600_000;
+/** En la vista de un dia, las horas fuera de este horario van sombreadas. */
+const HORARIO = { desde: 8, hasta: 19 };
 const ANCHO_ETIQUETA = 232;
 
 /** Color de la barra segun el estado de la bolsa. */
@@ -25,6 +28,15 @@ const fechaCorta = (d: Date) =>
   d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
 
 const inicioDeMes = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+
+const inicioDelDia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+const horaCorta = (t: number) =>
+  new Date(t).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+/** Fecha con hora (24 h), para el detalle de cada barra: "12 oct, 14:15". */
+const fechaHora = (d: Date) =>
+  d.toLocaleString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
@@ -77,12 +89,15 @@ function ordenarComoArbol(actividades: NodoActividad[]): Fila[] {
 /**
  * Carta Gantt de las bolsas de un proyecto.
  *
- * Cada tarea es una barra que nace el dia en que se creo y termina el dia en
- * que se guardo en el cofre; si sigue abierta, llega hasta hoy y queda
+ * Cada tarea es una barra que nace cuando se creo y termina cuando se
+ * termino; si sigue abierta, llega hasta ahora y queda
  * abierta por la derecha. El tramo rayado es la espera antes de encender el
- * cronometro por primera vez, y el oro que llena la barra es el mismo de la
- * bolsa: sus monedas marcadas. Al final de la barra va la bolsa, y tocar la
- * fila la abre en la ventana flotante con todas sus funciones.
+ * cronometro por primera vez, y la arena que llena la barra es la misma del
+ * reloj de la tarea: sus objetivos marcados. Al final de la barra va su reloj,
+ * y tocar la fila la abre en su ventana aparte.
+ *
+ * Se ve por dia (en horas: a que hora empezo y termino cada tarea), por mes o
+ * por tres meses.
  */
 export default function GanttBolsas({
   actividades,
@@ -94,7 +109,10 @@ export default function GanttBolsas({
   onAbrir: (a: NodoActividad) => void;
 }) {
   const [escala, setEscala] = useState<Escala>('mes');
-  const [desde, setDesde] = useState(() => inicioDeMes(new Date()));
+  // Cualquier fecha del periodo a mostrar; la escala decide desde donde parte.
+  const [ancla, setAncla] = useState(() => new Date());
+  const porDia = escala === 'dia';
+  const desde = porDia ? inicioDelDia(ancla) : inicioDeMes(ancla);
   const [ahora, setAhora] = useState(() => Date.now());
 
   // "Hoy" avanza solo: las barras abiertas crecen sin recargar.
@@ -103,19 +121,29 @@ export default function GanttBolsas({
     return () => window.clearInterval(t);
   }, []);
 
-  const meses = escala === 'mes' ? 1 : 3;
+  const meses = escala === 'trimestre' ? 3 : 1;
   const inicio = desde.getTime();
-  const fin = new Date(desde.getFullYear(), desde.getMonth() + meses, 1).getTime();
+  const fin = porDia
+    ? new Date(desde.getFullYear(), desde.getMonth(), desde.getDate() + 1).getTime()
+    : new Date(desde.getFullYear(), desde.getMonth() + meses, 1).getTime();
   const total = fin - inicio;
   const pct = (t: number) => ((t - inicio) / total) * 100;
 
+  const inicioMs = desde.getTime();
   const dias = useMemo(() => {
+    if (porDia) return [];
     const lista: Date[] = [];
-    for (let d = new Date(desde); d.getTime() < fin; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    for (let d = new Date(inicioMs); d.getTime() < fin; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
       lista.push(d);
     }
     return lista;
-  }, [desde, fin]);
+  }, [porDia, inicioMs, fin]);
+
+  /** Las 24 horas del dia, en la vista por dia. */
+  const horas = useMemo(
+    () => (porDia ? Array.from({ length: 24 }, (_, h) => new Date(inicioMs + h * HORA_MS)) : []),
+    [porDia, inicioMs],
+  );
 
   const filas = useMemo(() => ordenarComoArbol(actividades), [actividades]);
 
@@ -134,11 +162,16 @@ export default function GanttBolsas({
   }, [filas, inicio, fin, ahora]);
 
   const mover = (paso: number) =>
-    setDesde((d) => new Date(d.getFullYear(), d.getMonth() + paso * meses, 1));
+    setAncla((d) =>
+      porDia
+        ? new Date(d.getFullYear(), d.getMonth(), d.getDate() + paso)
+        : new Date(d.getFullYear(), d.getMonth() + paso * meses, 1),
+    );
 
   const hoyVisible = ahora >= inicio && ahora < fin;
-  const tituloCrudo =
-    escala === 'mes'
+  const tituloCrudo = porDia
+    ? desde.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+    : escala === 'mes'
       ? desde.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })
       : `${desde.toLocaleDateString('es-CL', { month: 'short' })} – ${mayuscula(new Date(fin - DIA_MS).toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }))}`;
   // Solo la primera letra: "Septiembre de 2026", no "Septiembre De 2026".
@@ -167,14 +200,14 @@ export default function GanttBolsas({
             ›
           </button>
           <button
-            onClick={() => setDesde(inicioDeMes(new Date()))}
+            onClick={() => setAncla(new Date())}
             className="ml-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 transition hover:bg-white/5 hover:text-white"
           >
             Hoy
           </button>
         </div>
         <div className="flex rounded-lg border border-white/10 p-0.5 text-xs">
-          {(['mes', 'trimestre'] as Escala[]).map((e) => (
+          {(['dia', 'mes', 'trimestre'] as Escala[]).map((e) => (
             <button
               key={e}
               onClick={() => setEscala(e)}
@@ -182,7 +215,7 @@ export default function GanttBolsas({
                 escala === e ? 'bg-amber-500/20 font-semibold text-amber-200' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              {e === 'mes' ? 'Mes' : '3 meses'}
+              {e === 'dia' ? 'Día' : e === 'mes' ? 'Mes' : '3 meses'}
             </button>
           ))}
         </div>
@@ -190,16 +223,30 @@ export default function GanttBolsas({
 
       {/* ---------------------------------- Rejilla ---------------------------------- */}
       <div className="overflow-x-auto">
-        <div style={{ minWidth: escala === 'mes' ? 760 : 980 }}>
+        <div style={{ minWidth: escala === 'trimestre' ? 980 : porDia ? 1000 : 760 }}>
           {/* Encabezado de dias */}
           <div className="flex border-b border-white/10">
             <div
               className="sticky left-0 z-20 shrink-0 bg-slate-900 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400"
               style={{ width: ANCHO_ETIQUETA }}
             >
-              Bolsa
+              Tarea
             </div>
             <div className="relative h-9 flex-1">
+              {horas.map((h) => {
+                const fuera = h.getHours() < HORARIO.desde || h.getHours() >= HORARIO.hasta;
+                return (
+                  <span
+                    key={h.getTime()}
+                    className={`absolute top-0 flex h-full items-center justify-center text-[10px] tabular-nums ${
+                      fuera ? 'text-slate-600' : 'text-slate-400'
+                    }`}
+                    style={{ left: `${pct(h.getTime())}%`, width: `${100 / 24}%` }}
+                  >
+                    {String(h.getHours()).padStart(2, '0')}
+                  </span>
+                );
+              })}
               {dias.map((d) => {
                 const izquierda = pct(d.getTime());
                 const esPrimero = d.getDate() === 1;
@@ -247,6 +294,21 @@ export default function GanttBolsas({
               style={{ left: ANCHO_ETIQUETA }}
               aria-hidden
             >
+              {horas.map((h) =>
+                h.getHours() < HORARIO.desde || h.getHours() >= HORARIO.hasta ? (
+                  <div
+                    key={h.getTime()}
+                    className="absolute inset-y-0 bg-white/[0.025]"
+                    style={{ left: `${pct(h.getTime())}%`, width: `${100 / 24}%` }}
+                  />
+                ) : (
+                  <div
+                    key={h.getTime()}
+                    className="absolute inset-y-0 border-l border-white/[0.04]"
+                    style={{ left: `${pct(h.getTime())}%` }}
+                  />
+                ),
+              )}
               {dias.map((d) =>
                 d.getDay() === 0 || d.getDay() === 6 ? (
                   <div
@@ -268,7 +330,7 @@ export default function GanttBolsas({
                   style={{ left: `${pct(ahora)}%` }}
                 >
                   <span className="absolute top-0 -translate-x-[calc(100%+3px)] rounded bg-sky-500/20 px-1 text-[9px] font-semibold text-sky-200">
-                    hoy
+                    {porDia ? horaCorta(ahora) : 'hoy'}
                   </span>
                 </div>
               )}
@@ -276,7 +338,7 @@ export default function GanttBolsas({
 
             {enPeriodo.length === 0 ? (
               <p className="p-8 text-center text-xs text-slate-500">
-                Ninguna bolsa estuvo abierta en este periodo.
+                Ninguna tarea estuvo abierta en este periodo.
               </p>
             ) : (
               enPeriodo.map(({ actividad: a, nivel }) => (
@@ -289,6 +351,7 @@ export default function GanttBolsas({
                   inicio={inicio}
                   fin={fin}
                   pct={pct}
+                  conHoras={porDia}
                   onAbrir={() => onAbrir(a)}
                 />
               ))
@@ -304,8 +367,8 @@ export default function GanttBolsas({
           En espera
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-5 rounded-sm bg-gradient-to-r from-amber-500 to-amber-300" />
-          Oro (monedas listas)
+          <span className="h-2.5 w-5 rounded-sm bg-gradient-to-r from-orange-500 to-orange-300" />
+          Arena (objetivos listos)
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2 w-2 rotate-45 bg-rose-400" />
@@ -317,7 +380,7 @@ export default function GanttBolsas({
         </span>
         {(antes > 0 || despues > 0) && (
           <span className="ml-auto text-slate-500">
-            {antes > 0 && `${antes} ${antes === 1 ? 'bolsa terminó' : 'bolsas terminaron'} antes`}
+            {antes > 0 && `${antes} ${antes === 1 ? 'tarea terminó' : 'tareas terminaron'} antes`}
             {antes > 0 && despues > 0 && ' · '}
             {despues > 0 && `${despues} ${despues === 1 ? 'nace' : 'nacen'} después`}
           </span>
@@ -335,6 +398,7 @@ function FilaGantt({
   inicio,
   fin,
   pct,
+  conHoras,
   onAbrir,
 }: {
   actividad: NodoActividad;
@@ -344,6 +408,8 @@ function FilaGantt({
   inicio: number;
   fin: number;
   pct: (t: number) => number;
+  /** Vista por dia: la barra lleva escrita la hora de inicio y de termino. */
+  conHoras: boolean;
   onAbrir: () => void;
 }) {
   const llenado = llenadoDeBolsa(a);
@@ -368,13 +434,16 @@ function FilaGantt({
   const espera =
     hasta > desde ? Math.min(Math.max((Math.min(finEspera, hasta) - desde) / (hasta - desde), 0), 1) : 0;
 
+  // Dentro del dia mostrado basta la hora; si cae en otro dia, va la fecha.
+  const momento = (t: number) => (t >= inicio && t < fin ? horaCorta(t) : fechaHora(new Date(t)));
+
   const detalle = [
     a.titulo,
-    `Creada: ${fechaCorta(new Date(ms(a.creadoEn) ?? nace))}`,
-    trabajo ? `Primer cronómetro: ${fechaCorta(new Date(trabajo))}` : 'Sin cronómetro aún',
-    guardada && a.completadaEn ? `Guardada en el cofre: ${fechaCorta(new Date(termina))}` : `Estado: ${estado.texto}`,
+    `Creada: ${fechaHora(new Date(ms(a.creadoEn) ?? nace))}`,
+    trabajo ? `Primer cronómetro: ${fechaHora(new Date(trabajo))}` : 'Sin cronómetro aún',
+    guardada && a.completadaEn ? `Terminada: ${fechaHora(new Date(termina))}` : `Estado: ${estado.texto}`,
     limite ? `Fecha límite: ${fechaCorta(new Date(limite))}${atrasada ? ' (atrasada)' : ''}` : null,
-    a.monedas > 0 ? `${a.monedasListas}/${a.monedas} monedas` : null,
+    a.monedas > 0 ? `${a.monedasListas}/${a.monedas} objetivos` : null,
     `Responsable: ${a.responsable.nombreCompleto}`,
   ]
     .filter(Boolean)
@@ -388,7 +457,7 @@ function FilaGantt({
         activa ? 'bg-amber-500/[0.07]' : 'hover:bg-white/[0.03]'
       }`}
     >
-      {/* Etiqueta: la bolsa con su nombre */}
+      {/* Etiqueta: el reloj de la tarea con su nombre */}
       <span
         className={`sticky left-0 z-20 flex h-full shrink-0 items-center gap-2 border-r border-white/5 bg-slate-900 pr-2 ${
           activa ? 'shadow-[inset_3px_0_0] shadow-amber-400' : ''
@@ -396,7 +465,7 @@ function FilaGantt({
         style={{ width: ANCHO_ETIQUETA, paddingLeft: 10 + nivel * 14 }}
       >
         {nivel > 0 && <span className="text-[10px] text-slate-600">└</span>}
-        <BolsaOro llenado={llenado} tamano={30} guardada={guardada} animada={false} />
+        <RelojArena llenado={llenado} tamano={22} terminado={guardada} animada={false} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-xs font-semibold text-white group-hover:text-amber-100">
             {a.titulo}
@@ -425,11 +494,17 @@ function FilaGantt({
                 style={{ width: `${espera * 100}%` }}
               />
             )}
-            {/* El oro de la bolsa */}
+            {/* La arena que ya cayo */}
             <span
-              className="absolute inset-y-[5px] left-0 rounded-sm bg-gradient-to-r from-amber-500/80 to-amber-300/80 transition-[width] duration-500"
+              className="absolute inset-y-[5px] left-0 rounded-sm bg-gradient-to-r from-orange-500/80 to-orange-300/80 transition-[width] duration-500"
               style={{ width: `${llenado * 100}%` }}
             />
+            {/* Vista por dia: a que hora empezo (su primer cronometro) y termino */}
+            {conHoras && (
+              <span className="relative z-[1] truncate px-1.5 text-[10px] font-semibold tabular-nums text-white/90 drop-shadow">
+                {momento(trabajo ?? nace)} – {guardada ? momento(termina) : 'ahora'}
+              </span>
+            )}
             {/* Barra abierta: se desvanece hacia hoy */}
             {!guardada && !cortadaDer && (
               <span className="absolute inset-y-0 right-0 w-4 bg-gradient-to-r from-transparent to-slate-900/60" />
@@ -437,13 +512,13 @@ function FilaGantt({
           </span>
         )}
 
-        {/* La bolsa al final de su barra */}
+        {/* El reloj al final de su barra */}
         {ancho > 0 && !cortadaDer && (
           <span
             className="absolute top-1/2 z-10 -translate-y-1/2 transition group-hover:scale-110"
             style={{ left: `calc(${izquierda + ancho}% - 12px)` }}
           >
-            <BolsaOro llenado={llenado} tamano={26} guardada={guardada} animada={activa} />
+            <RelojArena llenado={llenado} tamano={18} terminado={guardada} animada={activa} />
           </span>
         )}
 

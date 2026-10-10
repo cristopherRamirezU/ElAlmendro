@@ -14,6 +14,7 @@ import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
 import AristaMapa, { DatosAristaMapa } from '@/components/nodos/AristaMapa';
 import { type Ancla, idManilla } from '@/components/nodos/orientacion';
 import PanelTarea from '@/components/nodos/PanelTarea';
+import Modal from '@/components/ui/Modal';
 import { llenadoDeBolsa } from '@/components/tesoro/llenado';
 import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
@@ -178,6 +179,7 @@ function Nodos() {
   const proyectoId = parametros.get('proyectoId');
   const nombreProyecto = parametros.get('nombre');
   const tareaParam = parametros.get('tarea');
+  const abrirParam = parametros.get('abrir');
 
   const [actividades, setActividades] = useState<NodoActividad[]>([]);
   const [derivaciones, setDerivaciones] = useState<Derivacion[]>([]);
@@ -190,6 +192,8 @@ function Nodos() {
   const [expandidoRaiz, setExpandidoRaiz] = useState(true);
   const [expandido, setExpandido] = useState<Set<string>>(new Set());
   const [tareaSeleccionada, setTareaSeleccionada] = useState<string | null>(tareaParam);
+  // Las derivaciones se consultan en una ventana emergente: el mapa usa todo el ancho.
+  const [verDerivaciones, setVerDerivaciones] = useState(false);
 
   // Modo edicion: cada burbuja se deja donde se suelta y queda asi para todo
   // el equipo. Mientras se arrastra, `arrastre` lleva su posicion provisional;
@@ -265,6 +269,12 @@ function Nodos() {
     if (nodo.id === RAIZ) return;
     setTareaSeleccionada(nodo.id);
   }, []);
+
+  // Pedido explicito de abrir la tarea de la URL (por ejemplo desde "Ir a la
+  // tarea" del aviso de jornada): reabre su popup aunque ya se hubiera cerrado.
+  useEffect(() => {
+    if (abrirParam && tareaParam) setTareaSeleccionada(tareaParam);
+  }, [abrirParam, tareaParam]);
 
   // La tarea de la URL se enfoca una sola vez: si se repitiera en cada recarga
   // del mapa, el panel saltaria de vuelta a ella cada vez que algo cambia.
@@ -868,245 +878,249 @@ function Nodos() {
         </p>
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row">
-        <section className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
-          {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-white/10 px-4 py-2">
-            <h2
-              className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-white`}
-              title={nombreProyecto ?? undefined}
-            >
-              {nombreProyecto}
-            </h2>
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <SelectorFondo valor={fondo} onCambiar={cambiarFondo} />
-              {puedeEditarMapa && (
+      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
+        {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-white/10 px-4 py-2">
+          <h2
+            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-white`}
+            title={nombreProyecto ?? undefined}
+          >
+            {nombreProyecto}
+          </h2>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {derivaciones.length > 0 && (
+              <button
+                onClick={() => setVerDerivaciones(true)}
+                title="Traspasos de responsable, con su motivo y su fecha"
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white"
+              >
+                <span aria-hidden>⇄</span>
+                Derivaciones
+                <span className="rounded-full bg-sky-500/20 px-1.5 text-[10px] font-bold text-sky-200">
+                  {derivaciones.length}
+                </span>
+              </button>
+            )}
+            <SelectorFondo valor={fondo} onCambiar={cambiarFondo} />
+            {puedeEditarMapa && (
+              <button
+                aria-pressed={editando}
+                onClick={alternarEdicion}
+                title="Arrastra las tareas y déjalas donde quieras"
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+                  editando
+                    ? 'border-amber-400/50 bg-amber-500/20 font-semibold text-amber-200'
+                    : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span aria-hidden>✥</span>
+                {editando ? 'Listo' : 'Editar mapa'}
+              </button>
+            )}
+            {editando && (
+              <>
                 <button
-                  aria-pressed={editando}
-                  onClick={alternarEdicion}
-                  title="Arrastra las tareas y déjalas donde quieras"
-                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
-                    editando
-                      ? 'border-amber-400/50 bg-amber-500/20 font-semibold text-amber-200'
-                      : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
+                  onClick={deshacer}
+                  disabled={historial.length === 0}
+                  title="Deshacer el último movimiento (Ctrl+Z)"
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span aria-hidden>↶</span>
+                  Deshacer
+                </button>
+                <button
+                  onClick={restablecer}
+                  disabled={!hayMovidos}
+                  title="Devolver todos los nodos al acomodo automático en esta orientación"
+                  className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Restablecer
+                </button>
+              </>
+            )}
+            <div className="flex rounded-lg border border-white/10 bg-slate-950/60 p-0.5" role="radiogroup">
+              {ORIENTACIONES.map((o) => (
+                <button
+                  key={o.valor}
+                  role="radio"
+                  aria-checked={orientacion === o.valor}
+                  title={o.titulo}
+                  onClick={() => cambiarOrientacion(o.valor)}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
+                    orientacion === o.valor
+                      ? 'bg-sky-500/20 font-semibold text-sky-200'
+                      : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  <span aria-hidden>✥</span>
-                  {editando ? 'Listo' : 'Editar mapa'}
+                  <span aria-hidden>{o.icono}</span>
+                  {o.texto}
                 </button>
-              )}
-              {editando && (
-                <>
-                  <button
-                    onClick={deshacer}
-                    disabled={historial.length === 0}
-                    title="Deshacer el último movimiento (Ctrl+Z)"
-                    className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <span aria-hidden>↶</span>
-                    Deshacer
-                  </button>
-                  <button
-                    onClick={restablecer}
-                    disabled={!hayMovidos}
-                    title="Devolver todos los nodos al acomodo automático en esta orientación"
-                    className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    Restablecer
-                  </button>
-                </>
-              )}
-              <div className="flex rounded-lg border border-white/10 bg-slate-950/60 p-0.5" role="radiogroup">
-                {ORIENTACIONES.map((o) => (
-                  <button
-                    key={o.valor}
-                    role="radio"
-                    aria-checked={orientacion === o.valor}
-                    title={o.titulo}
-                    onClick={() => cambiarOrientacion(o.valor)}
-                    className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
-                      orientacion === o.valor
-                        ? 'bg-sky-500/20 font-semibold text-sky-200'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span aria-hidden>{o.icono}</span>
-                    {o.texto}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
           </div>
-          {lineaSeleccionada && (
-            <div
-              role="group"
-              aria-label="Bordes de la línea seleccionada"
-              className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-400/20 bg-amber-500/5 px-4 py-2 text-xs text-slate-300"
-            >
-              <span className="min-w-0 truncate font-semibold text-amber-200">
-                Línea hacia «{actividades.find((a) => a.id === lineaSeleccionada.target)?.titulo}»
-              </span>
-              <label className="flex items-center gap-1.5">
-                Sale por
-                <select
-                  value={ladosLineaSeleccionada.salida ?? ''}
-                  onChange={(e) =>
-                    guardarLados(lineaSeleccionada.target, {
-                      ...ladosLineaSeleccionada,
-                      salida: (e.target.value || undefined) as LadoLinea | undefined,
-                    })
-                  }
-                  className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
-                >
-                  {OPCIONES_LADO.map((o) => (
-                    <option key={o.valor} value={o.valor}>
-                      {o.texto}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-1.5">
-                Llega por
-                <select
-                  value={ladosLineaSeleccionada.entrada ?? ''}
-                  onChange={(e) =>
-                    guardarLados(lineaSeleccionada.target, {
-                      ...ladosLineaSeleccionada,
-                      entrada: (e.target.value || undefined) as LadoLinea | undefined,
-                    })
-                  }
-                  className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
-                >
-                  {OPCIONES_LADO.map((o) => (
-                    <option key={o.valor} value={o.valor}>
-                      {o.texto}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                onClick={() => guardarLados(lineaSeleccionada.target, null)}
-                disabled={!ladosLineaSeleccionada.salida && !ladosLineaSeleccionada.entrada}
-                title="Que el mapa vuelva a elegir solo por dónde sale y llega esta línea"
-                className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Línea automática
-              </button>
-              <span className="text-[11px] text-slate-500">
-                También puedes arrastrar un extremo de la línea a cualquier punto de un borde del nodo: queda justo donde la sueltas.
-              </span>
-            </div>
-          )}
+        </div>
+        {lineaSeleccionada && (
           <div
-            className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
-            style={{ height: '32rem', ...estiloFondoMapa(fondo) }}
+            role="group"
+            aria-label="Bordes de la línea seleccionada"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-400/20 bg-amber-500/5 px-4 py-2 text-xs text-slate-300"
           >
-            <DecoracionFondo fondo={fondo} />
-            <ReactFlow
-              style={{ background: 'transparent' }}
-              nodes={nodosFlow}
-              edges={aristasVisibles}
-              onNodesChange={alCambiarNodos}
-              onEdgesChange={alCambiarAristas}
-              edgesReconnectable={editando && puedeEditarMapa}
-              // En cada borde hay una manilla de entrada y otra de salida, una
-              // encima de la otra: en modo flexible vale soltar en cualquiera de
-              // las dos (de ella solo se usa el borde).
-              connectionMode={ConnectionMode.Loose}
-              onReconnect={alReconectar}
-              onInit={(instancia) => {
-                instanciaMapa.current = instancia as unknown as ReactFlowInstance;
-              }}
-              onReconnectStart={(evento, arista) => {
-                reconectando.current = arista;
-                const e = evento as unknown as MouseEvent;
-                ultimoPuntero.current = { x: e.clientX, y: e.clientY };
-                const anotarPuntero = (m: PointerEvent | MouseEvent) => {
-                  ultimoPuntero.current = { x: m.clientX, y: m.clientY };
-                };
-                window.addEventListener('pointermove', anotarPuntero);
-                window.addEventListener('mousemove', anotarPuntero);
-                const soltar = () => {
-                  window.removeEventListener('pointermove', anotarPuntero);
-                  window.removeEventListener('mousemove', anotarPuntero);
-                };
-                window.addEventListener('pointerup', soltar, { once: true });
-                window.addEventListener('mouseup', soltar, { once: true });
-                setRecibiendoExtremo(true);
-              }}
-              onReconnectEnd={() => {
-                reconectando.current = null;
-                setRecibiendoExtremo(false);
-              }}
-              // Mientras se arrastra el extremo de una linea, solo valen sus mismos nodos.
-              isValidConnection={(c) => {
-                const r = reconectando.current;
-                return !r || (c.source === r.source && c.target === r.target);
-              }}
-              nodeTypes={TIPOS_NODO}
-              edgeTypes={TIPOS_ARISTA}
-              onNodeClick={alHacerClicEnNodo}
-              nodesDraggable={editando}
-              onNodeDrag={alArrastrar}
-              onNodeDragStop={alSoltar}
-              fitView
-              fitViewOptions={ENCUADRE}
-              proOptions={{ hideAttribution: true }}
-              ariaLabelConfig={TEXTOS_ACCESIBLES}
-              colorMode="dark"
+            <span className="min-w-0 truncate font-semibold text-amber-200">
+              Línea hacia «{actividades.find((a) => a.id === lineaSeleccionada.target)?.titulo}»
+            </span>
+            <label className="flex items-center gap-1.5">
+              Sale por
+              <select
+                value={ladosLineaSeleccionada.salida ?? ''}
+                onChange={(e) =>
+                  guardarLados(lineaSeleccionada.target, {
+                    ...ladosLineaSeleccionada,
+                    salida: (e.target.value || undefined) as LadoLinea | undefined,
+                  })
+                }
+                className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
+              >
+                {OPCIONES_LADO.map((o) => (
+                  <option key={o.valor} value={o.valor}>
+                    {o.texto}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5">
+              Llega por
+              <select
+                value={ladosLineaSeleccionada.entrada ?? ''}
+                onChange={(e) =>
+                  guardarLados(lineaSeleccionada.target, {
+                    ...ladosLineaSeleccionada,
+                    entrada: (e.target.value || undefined) as LadoLinea | undefined,
+                  })
+                }
+                className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
+              >
+                {OPCIONES_LADO.map((o) => (
+                  <option key={o.valor} value={o.valor}>
+                    {o.texto}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              onClick={() => guardarLados(lineaSeleccionada.target, null)}
+              disabled={!ladosLineaSeleccionada.salida && !ladosLineaSeleccionada.entrada}
+              title="Que el mapa vuelva a elegir solo por dónde sale y llega esta línea"
+              className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <AjustarVista
-                clave={`${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}
-              />
-              <PuntosFondo fondo={fondo} />
-              <Controls showInteractive={false} />
-            </ReactFlow>
+              Línea automática
+            </button>
+            <span className="text-[11px] text-slate-500">
+              También puedes arrastrar un extremo de la línea a cualquier punto de un borde del nodo: queda justo donde la sueltas.
+            </span>
           </div>
-        </section>
-
-        <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur lg:w-80">
-          {tareaSeleccionada ? (
-            <PanelTarea
-              key={tareaSeleccionada}
-              actividadId={tareaSeleccionada}
-              onCerrar={() => setTareaSeleccionada(null)}
-              onCambio={cargar}
+        )}
+        <div
+          className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
+          style={{ height: 'max(32rem, calc(100vh - 15rem))', ...estiloFondoMapa(fondo) }}
+        >
+          <DecoracionFondo fondo={fondo} />
+          <ReactFlow
+            style={{ background: 'transparent' }}
+            nodes={nodosFlow}
+            edges={aristasVisibles}
+            onNodesChange={alCambiarNodos}
+            onEdgesChange={alCambiarAristas}
+            edgesReconnectable={editando && puedeEditarMapa}
+            // En cada borde hay una manilla de entrada y otra de salida, una
+            // encima de la otra: en modo flexible vale soltar en cualquiera de
+            // las dos (de ella solo se usa el borde).
+            connectionMode={ConnectionMode.Loose}
+            onReconnect={alReconectar}
+            onInit={(instancia) => {
+              instanciaMapa.current = instancia as unknown as ReactFlowInstance;
+            }}
+            onReconnectStart={(evento, arista) => {
+              reconectando.current = arista;
+              const e = evento as unknown as MouseEvent;
+              ultimoPuntero.current = { x: e.clientX, y: e.clientY };
+              const anotarPuntero = (m: PointerEvent | MouseEvent) => {
+                ultimoPuntero.current = { x: m.clientX, y: m.clientY };
+              };
+              window.addEventListener('pointermove', anotarPuntero);
+              window.addEventListener('mousemove', anotarPuntero);
+              const soltar = () => {
+                window.removeEventListener('pointermove', anotarPuntero);
+                window.removeEventListener('mousemove', anotarPuntero);
+              };
+              window.addEventListener('pointerup', soltar, { once: true });
+              window.addEventListener('mouseup', soltar, { once: true });
+              setRecibiendoExtremo(true);
+            }}
+            onReconnectEnd={() => {
+              reconectando.current = null;
+              setRecibiendoExtremo(false);
+            }}
+            // Mientras se arrastra el extremo de una linea, solo valen sus mismos nodos.
+            isValidConnection={(c) => {
+              const r = reconectando.current;
+              return !r || (c.source === r.source && c.target === r.target);
+            }}
+            nodeTypes={TIPOS_NODO}
+            edgeTypes={TIPOS_ARISTA}
+            onNodeClick={alHacerClicEnNodo}
+            nodesDraggable={editando}
+            onNodeDrag={alArrastrar}
+            onNodeDragStop={alSoltar}
+            fitView
+            fitViewOptions={ENCUADRE}
+            proOptions={{ hideAttribution: true }}
+            ariaLabelConfig={TEXTOS_ACCESIBLES}
+            colorMode="dark"
+          >
+            <AjustarVista
+              clave={`${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}
             />
-          ) : (
-            <>
-              <h2 className="mb-1 font-bold text-white">Derivaciones</h2>
-              <p className="mb-4 text-xs text-slate-400">
-                Traspasos de responsable, con su motivo y su fecha.
-              </p>
+            <PuntosFondo fondo={fondo} />
+            <Controls showInteractive={false} />
+          </ReactFlow>
+        </div>
+      </section>
 
-              {derivaciones.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-xs text-slate-500">
-                  Sin derivaciones registradas.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {derivaciones.map((d) => (
-                    <div key={d.id} className="rounded-xl border border-white/10 p-3">
-                      <p className="text-sm font-semibold leading-snug text-white">
-                        {d.actividad.titulo}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {d.deUsuario.nombreCompleto} → {d.aUsuario.nombreCompleto}
-                      </p>
-                      <p className="mt-1.5 rounded-lg bg-white/5 px-2 py-1 text-[11px] text-slate-300">
-                        {d.motivo}
-                      </p>
-                      <p className="mt-1 text-[10px] text-slate-500">
-                        {new Date(d.ocurridoEn).toLocaleDateString('es-CL')}
-                      </p>
-                    </div>
-                  ))}
+      {/* Detalle de la tarea elegida, en una ventana emergente sobre el mapa. */}
+      {tareaSeleccionada && (
+        <PanelTarea
+          key={tareaSeleccionada}
+          actividadId={tareaSeleccionada}
+          onCerrar={() => setTareaSeleccionada(null)}
+          onCambio={cargar}
+        />
+      )}
+
+      {verDerivaciones && (
+        <Modal titulo="Derivaciones" onCerrar={() => setVerDerivaciones(false)}>
+          <p className="mb-4 text-xs text-slate-400">Traspasos de responsable, con su motivo y su fecha.</p>
+          {derivaciones.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-xs text-slate-500">
+              Sin derivaciones registradas.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {derivaciones.map((d) => (
+                <div key={d.id} className="rounded-xl border border-white/10 p-3">
+                  <p className="text-sm font-semibold leading-snug text-white">{d.actividad.titulo}</p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {d.deUsuario.nombreCompleto} → {d.aUsuario.nombreCompleto}
+                  </p>
+                  <p className="mt-1.5 rounded-lg bg-white/5 px-2 py-1 text-[11px] text-slate-300">{d.motivo}</p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {new Date(d.ocurridoEn).toLocaleDateString('es-CL')}
+                  </p>
                 </div>
-              )}
-            </>
+              ))}
+            </div>
           )}
-        </aside>
-      </div>
+        </Modal>
+      )}
     </Marco>
   );
 }
