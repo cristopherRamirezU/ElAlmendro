@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
+import { problemaContrasena } from '../../common/seguridad/politica-contrasena';
 import {
   CODIGOS_PERMISOS_EXTRA,
   permisosEfectivos,
@@ -165,6 +166,8 @@ export class UsuariosService {
       throw new ConflictException(CORREO_EN_USO(email));
     }
 
+    const problema = problemaContrasena(dto.contrasena, email);
+    if (problema) throw new BadRequestException(problema);
     const hashContrasena = await argon2.hash(dto.contrasena);
 
     const usuario = await this.prisma.$transaction(async (tx) => {
@@ -296,12 +299,22 @@ export class UsuariosService {
       data.activo = dto.activo;
     }
 
+    // Desactivar o resetear la clave cierra todas las sesiones de esa
+    // persona: si la cuenta se reactiva, una cookie vieja (de un equipo
+    // perdido, por ejemplo) no vuelve a servir.
+    const cierraSesiones = (dto.activo === false && existente.activo) || Boolean(dto.contrasena);
+    if (cierraSesiones) data.versionSesion = { increment: 1 };
+
     if (dto.zonaHoraria?.trim()) {
       data.zonaHoraria = dto.zonaHoraria.trim();
     }
 
-    if (dto.contrasena && dto.contrasena.trim().length >= 8) {
-      data.hashContrasena = await argon2.hash(dto.contrasena.trim());
+    if (dto.contrasena) {
+      // Sin recortar espacios: la clave se guarda tal como se escribio, igual
+      // que al crear la cuenta y al iniciar sesion.
+      const problema = problemaContrasena(dto.contrasena, data.email ?? existente.email);
+      if (problema) throw new BadRequestException(problema);
+      data.hashContrasena = await argon2.hash(dto.contrasena);
     }
 
     const actualizado = await this.prisma.$transaction(async (tx) => {
@@ -465,7 +478,7 @@ export class UsuariosService {
       await this.prisma.$transaction(async (tx) => {
         await tx.usuario.update({
           where: { id },
-          data: { activo: false },
+          data: { activo: false, versionSesion: { increment: 1 } },
         });
 
         await tx.tokenRefresco.deleteMany({ where: { usuarioId: id } });

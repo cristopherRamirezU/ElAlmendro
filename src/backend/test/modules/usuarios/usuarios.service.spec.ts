@@ -52,7 +52,7 @@ describe('UsuariosService', () => {
     const nuevo = {
       email: 'nueva@timeflow.cl',
       nombreCompleto: 'Nueva',
-      contrasena: 'clave-larga',
+      contrasena: 'Clave-larga-7',
       rol: 'TRABAJADOR',
     };
 
@@ -211,22 +211,50 @@ describe('UsuariosService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('DOCUMENTA: una contrasena de menos de 8 caracteres se ignora en silencio', async () => {
+    it('rechaza una contrasena que no cumple la politica (antes se ignoraba en silencio)', async () => {
+      prisma.usuario.findFirst.mockResolvedValue(usuario() as never);
+
+      await expect(
+        servicio.actualizar(ADMIN, 'usuario-9', { contrasena: 'corta' } as never),
+      ).rejects.toThrow(/al menos 8/);
+      await expect(
+        servicio.actualizar(ADMIN, 'usuario-9', { contrasena: '12345678' } as never),
+      ).rejects.toThrow(/letras y números/);
+      expect(hashear).not.toHaveBeenCalled();
+      expect(prisma.usuario.update).not.toHaveBeenCalled();
+    });
+
+    it('resetear la clave cierra todas las sesiones de esa persona', async () => {
       prisma.usuario.findFirst.mockResolvedValue(usuario() as never);
       prisma.usuario.update.mockResolvedValue(usuario() as never);
 
-      await servicio.actualizar(ADMIN, 'usuario-9', {
-        contrasena: 'corta',
-      } as never);
+      await servicio.actualizar(ADMIN, 'usuario-9', { contrasena: 'Nueva-clave-9' } as never);
 
-      // Hoy no lanza error ni cambia la clave. Si se decide rechazarla,
-      // este test es el que cae y hay que actualizar.
-      expect(hashear).not.toHaveBeenCalled();
-      const datos = prisma.usuario.update.mock.calls[0][0].data as Record<
-        string,
-        unknown
-      >;
-      expect(datos).not.toHaveProperty('hashContrasena');
+      const datos = prisma.usuario.update.mock.calls[0][0].data as Record<string, unknown>;
+      expect(datos.hashContrasena).toBe('hash-nuevo');
+      expect(datos.versionSesion).toEqual({ increment: 1 });
+      // La clave se guarda tal como se escribio (sin recortar).
+      expect(hashear).toHaveBeenCalledWith('Nueva-clave-9');
+    });
+
+    it('desactivar una cuenta cierra sus sesiones: reactivarla no revive cookies viejas', async () => {
+      prisma.usuario.findFirst.mockResolvedValue(usuario() as never);
+      prisma.usuario.update.mockResolvedValue(usuario() as never);
+
+      await servicio.actualizar(ADMIN, 'usuario-9', { activo: false } as never);
+
+      const datos = prisma.usuario.update.mock.calls[0][0].data as Record<string, unknown>;
+      expect(datos.versionSesion).toEqual({ increment: 1 });
+    });
+
+    it('cambiar solo el nombre no cierra sesiones', async () => {
+      prisma.usuario.findFirst.mockResolvedValue(usuario() as never);
+      prisma.usuario.update.mockResolvedValue(usuario() as never);
+
+      await servicio.actualizar(ADMIN, 'usuario-9', { nombreCompleto: 'Otra' } as never);
+
+      const datos = prisma.usuario.update.mock.calls[0][0].data as Record<string, unknown>;
+      expect(datos).not.toHaveProperty('versionSesion');
     });
 
     it('deja rastro de auditoria con el valor anterior y el nuevo', async () => {
@@ -398,7 +426,8 @@ describe('UsuariosService', () => {
 
       expect(prisma.usuario.update).toHaveBeenCalledWith({
         where: { id: 'usuario-9' },
-        data: { activo: false },
+        // Tambien cierra sus sesiones abiertas.
+        data: { activo: false, versionSesion: { increment: 1 } },
       });
       expect(prisma.usuario.delete).not.toHaveBeenCalled();
       expect(resultado).toEqual(

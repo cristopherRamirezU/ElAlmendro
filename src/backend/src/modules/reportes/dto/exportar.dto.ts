@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsISO8601, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsISO8601, IsOptional, IsUUID } from 'class-validator';
 
 /**
  * Parametros de una exportacion por periodo.
@@ -36,7 +36,7 @@ export class ExportarPeriodoDto {
       'cualquier parametro no listado.',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID(undefined, { message: 'La organizacion indicada no es valida.' })
   organizacionId?: string;
 }
 
@@ -61,6 +61,6 @@ export class ExportarDiaDto {
       'cualquier parametro no listado.',
   })
   @IsOptional()
-  @IsString()
+  @IsUUID(undefined, { message: 'La organizacion indicada no es valida.' })
   organizacionId?: string;
 }

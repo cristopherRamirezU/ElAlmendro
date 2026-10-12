@@ -1,14 +1,17 @@
-import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { Rol } from '../../../common/rbac';
+import { EsContrasenaSegura } from '../../../common/seguridad/politica-contrasena';
 
 export class ActualizarUsuarioDto {
   @IsOptional()
   @IsEmail({}, { message: 'El correo electrónico no tiene un formato válido.' })
+  @MaxLength(254, { message: 'El correo electrónico no puede superar los 254 caracteres.' })
   email?: string;
 
   @IsOptional()
   @IsString({ message: 'El nombre completo debe ser una cadena de texto.' })
   @IsNotEmpty({ message: 'El nombre completo no puede estar vacío.' })
+  @MaxLength(120, { message: 'El nombre completo no puede superar los 120 caracteres.' })
   nombreCompleto?: string;
 
   @IsOptional()
@@ -23,11 +26,12 @@ export class ActualizarUsuarioDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(8, { message: 'La nueva contraseña debe tener al menos 8 caracteres.' })
+  @EsContrasenaSegura()
   contrasena?: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(64)
   zonaHoraria?: string;
 }
 

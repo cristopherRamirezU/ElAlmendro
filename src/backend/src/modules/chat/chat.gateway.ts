@@ -10,11 +10,9 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
-import {
-  cargarUsuarioVigente,
-  COOKIE_ACCESO,
-  verificarToken,
-} from '../../common/jwt-auth.guard';
+import { Interval } from '@nestjs/schedule';
+import { cargarUsuarioVigente } from '../../common/jwt-auth.guard';
+import { leerCookie, leerSesion, nombreCookieSesion } from '../../common/seguridad/sesion';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 
 /** Datos minimos del usuario que quedan pegados al socket tras autenticarse. */
@@ -22,7 +20,12 @@ interface UsuarioSocket {
   id: string;
   nombreCompleto: string;
   organizacionId: string;
+  /** Version de sesion del token con que se conecto. */
+  versionSesion: number;
 }
+
+/** Cada cuanto se revisa que las conexiones abiertas sigan siendo validas. */
+const REVISION_CONEXIONES_MS = 5 * 60 * 1000;
 
 /** Forma con que viaja un mensaje por el socket (misma que devuelve la API). */
 export interface MensajeEmitido {
@@ -171,38 +174,64 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   /**
+   * Un socket abierto no vuelve a pasar por el guard: si despues alguien
+   * cierra sus sesiones, cambia la clave, es desactivado o su empresa se
+   * suspende, el socket seguiria recibiendo mensajes. Esta revision periodica
+   * los desconecta.
+   */
+  @Interval(REVISION_CONEXIONES_MS)
+  async revisarConexiones() {
+    if (this.conexiones.size === 0) return;
+    const filas = await this.prisma.usuario.findMany({
+      where: { id: { in: [...this.conexiones.keys()] } },
+      select: {
+        id: true,
+        activo: true,
+        versionSesion: true,
+        organizacion: { select: { activo: true } },
+      },
+    });
+    const vigentes = new Map(filas.map((f) => [f.id, f]));
+    const sockets = await this.servidor.fetchSockets();
+    for (const socket of sockets) {
+      const usuario = socket.data.usuario as UsuarioSocket | undefined;
+      if (!usuario) continue;
+      const fila = vigentes.get(usuario.id);
+      const valido =
+        fila?.activo && fila.organizacion?.activo && fila.versionSesion === usuario.versionSesion;
+      if (!valido) {
+        this.registro.debug(`Socket ${socket.id} desconectado: la sesion ya no es valida.`);
+        socket.disconnect(true);
+      }
+    }
+  }
+
+  /**
    * Misma cookie httpOnly que usa JwtAuthGuard: el navegador la adjunta al
    * handshake porque el socket se abre con `withCredentials`.
    */
   private async autenticar(cliente: Socket): Promise<UsuarioSocket | null> {
-    const token = leerCookie(cliente.handshake.headers.cookie, COOKIE_ACCESO);
+    const token = leerCookie(cliente.handshake.headers.cookie, nombreCookieSesion());
     if (!token) return null;
-    const usuarioId = await verificarToken(this.jwt, token);
-    if (!usuarioId) {
+    const carga = await leerSesion(this.jwt, token);
+    if (!carga) {
       this.registro.debug(`Socket ${cliente.id} rechazado: token invalido o expirado.`);
       return null;
     }
     try {
-      // Mismas reglas que la API: cuenta activa y empresa no suspendida.
-      const usuario = await cargarUsuarioVigente(this.prisma, usuarioId);
+      // Mismas reglas que la API: cuenta activa, empresa no suspendida y
+      // sesion no cerrada desde otro dispositivo.
+      const usuario = await cargarUsuarioVigente(this.prisma, carga.sub, carga.ver);
       if (!usuario.organizacionId) return null; // SUPER_ADMIN no participa del chat.
       return {
         id: usuario.id,
         nombreCompleto: usuario.nombreCompleto,
         organizacionId: usuario.organizacionId,
+        versionSesion: carga.ver,
       };
     } catch {
       this.registro.debug(`Socket ${cliente.id} rechazado: cuenta u organizacion no vigente.`);
       return null;
     }
   }
-}
-
-function leerCookie(cabecera: string | undefined, nombre: string): string | null {
-  if (!cabecera) return null;
-  for (const par of cabecera.split(';')) {
-    const [clave, ...resto] = par.trim().split('=');
-    if (clave === nombre) return decodeURIComponent(resto.join('='));
-  }
-  return null;
 }

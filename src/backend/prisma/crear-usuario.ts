@@ -14,11 +14,15 @@
  * SUPER_ADMIN. Salvo SUPER_ADMIN, la cuenta pertenece a una organizacion: si
  * hay mas de una registrada, su slug es obligatorio (nunca se adivina).
  *
+ * La contrasena debe cumplir la misma politica que la app (8+ caracteres,
+ * letras y numeros, no una de las mas comunes).
+ *
  * Ejemplo:
- *   npm run usuario:crear -- cristopher@timeflow.cl "Cristopher Ramirez" Clave123! ADMINISTRADOR el-almendro
+ *   npm run usuario:crear -- cristopher@timeflow.cl "Cristopher Ramirez" 'Otono-Rio-2026' ADMINISTRADOR el-almendro
  */
 import { PrismaClient, Rol } from '@prisma/client';
 import * as argon2 from 'argon2';
+import { problemaContrasena } from '../src/common/seguridad/politica-contrasena';
 
 const prisma = new PrismaClient();
 
@@ -37,9 +41,8 @@ async function main() {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) {
     abortar(`El correo "${correo}" no tiene un formato valido.`);
   }
-  if (clave.length < 8) {
-    abortar('La contrasena debe tener al menos 8 caracteres.');
-  }
+  const problema = problemaContrasena(clave, correo);
+  if (problema) abortar(problema);
 
   const rol = rolPedido.toUpperCase();
   if (rol !== 'TRABAJADOR' && rol !== 'ADMINISTRADOR' && rol !== 'SUPERVISOR' && rol !== 'SUPER_ADMIN') {

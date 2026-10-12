@@ -15,9 +15,15 @@ https://148.113.249.196 {
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
+		-X-Powered-By
 	}
 
 	handle /api/* {
+		# Tope de lo que se acepta: el adjunto mas grande es de 25 MB. Corta
+		# antes de llegar a la API cualquier envio desmedido.
+		request_body {
+			max_size 30MB
+		}
 		reverse_proxy 127.0.0.1:4000
 	}
 

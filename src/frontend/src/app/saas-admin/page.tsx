@@ -12,6 +12,7 @@ import {
   CrearOrganizacionPayload,
   ActualizarOrganizacionPayload,
 } from '@/lib/api';
+import { AYUDA_CONTRASENA, CONTRASENA_MAXIMO } from '@/lib/contrasena';
 
 export default function SaasAdminPage() {
   const [metricas, setMetricas] = useState<MetricasSaaS | null>(null);
@@ -405,7 +406,9 @@ function ModalCrearOrganizacion({
   // Admin inicial
   const [adminEmail, setAdminEmail] = useState('');
   const [adminNombre, setAdminNombre] = useState('');
-  const [adminPassword, setAdminPassword] = useState('Cliente2026!');
+  // Sin clave por defecto: una clave fija y conocida para cada empresa nueva
+  // dejaria cuentas de administrador que cualquiera puede adivinar.
+  const [adminPassword, setAdminPassword] = useState('');
 
   const [guardando, setGuardando] = useState(false);
   const [errorModal, setErrorModal] = useState<string | null>(null);
@@ -553,6 +556,9 @@ function ModalCrearOrganizacion({
                 <label className="text-[11px] font-semibold text-slate-300">Contraseña Provisoria</label>
                 <input
                   type="text"
+                  autoComplete="new-password"
+                  maxLength={CONTRASENA_MAXIMO}
+                  placeholder={AYUDA_CONTRASENA}
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none font-mono"
