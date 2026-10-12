@@ -130,6 +130,10 @@ model Usuario {
   /// Permisos que el administrador dio a este trabajador ademas de los de su
   /// rol (codigos de PERMISOS_EXTRA en common/rbac.ts).
   permisosExtra  String[] @default([])
+  /// Version de sesion: va dentro del token. Subirla (cerrar sesion en todos
+  /// los dispositivos, cambio o reseteo de contrasena) invalida todos los
+  /// tokens emitidos antes.
+  versionSesion  Int      @default(0)
   activo         Boolean  @default(true)
   creadoEn       DateTime @default(now()) @db.Timestamptz(3)
   actualizadoEn  DateTime @updatedAt @db.Timestamptz(3)

@@ -38,7 +38,26 @@ const CLAVE_SUPERADMIN = 'SuperAdmin2026!';
  */
 const DIAS_HISTORIAL = 90;
 
+/**
+ * Estas claves estan publicadas en el repositorio: cargarlas en un servidor
+ * publico deja cuentas que cualquiera puede usar. Fuera de desarrollo el seed
+ * se niega a correr, salvo que se pida a proposito con PERMITIR_SEED=si.
+ */
+function exigirAmbienteDeDesarrollo() {
+  const web = process.env.NEXT_PUBLIC_WEB_URL ?? '';
+  const publico = /^https:\/\//i.test(web) && !/^https:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(web);
+  if ((process.env.NODE_ENV === 'production' || publico) && process.env.PERMITIR_SEED !== 'si') {
+    console.error(
+      '\n  El seed crea cuentas con claves publicas y este ambiente parece de produccion' +
+        ` (NEXT_PUBLIC_WEB_URL=${web || '-'}).\n` +
+        '  No se cargo nada. Si de verdad es un ambiente de pruebas, usa PERMITIR_SEED=si.\n',
+    );
+    process.exit(1);
+  }
+}
+
 async function main() {
+  exigirAmbienteDeDesarrollo();
   const hash = await argon2.hash(CLAVE_DEMO);
   const hashAdmin = await argon2.hash(CLAVE_ADMIN);
   const hashSuperAdmin = await argon2.hash(CLAVE_SUPERADMIN);

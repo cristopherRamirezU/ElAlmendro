@@ -1,11 +1,12 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsISO8601, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsISO8601, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 export const CANAL_GENERAL = 'general';
 
 export class ListarMensajesDto {
   /** Id del otro usuario, o `general` para el canal del equipo. */
   @IsString()
+  @MaxLength(64)
   con: string;
 
   /** Cursor: solo mensajes anteriores a este instante (para cargar mas antiguos). */

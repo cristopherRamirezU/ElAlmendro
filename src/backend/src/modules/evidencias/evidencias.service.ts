@@ -8,13 +8,14 @@ import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AlmacenamientoService } from '../../infra/almacenamiento/almacenamiento.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
+import { limpiarNombreArchivo, limpiarTipoMime, TAMANO_MAXIMO_BYTES, TAMANO_MAXIMO_MB } from './limites-subida';
 import {
   asegurarMismaOrganizacion,
   exigirOrganizacion,
   filtroActividadOrganizacion,
 } from '../../common/organizacion';
 
-const TAMANO_MAXIMO_BYTES = 25 * 1024 * 1024; // 25 MB
 
 /**
  * Un adjunto lo puede eliminar quien lo subio o el administrador de la
@@ -32,6 +33,7 @@ export class EvidenciasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly almacenamiento: AlmacenamientoService,
+    private readonly limites: LimiteIntentosService,
   ) {}
 
   async listar(u: UsuarioActual, actividadId: string) {
@@ -59,8 +61,11 @@ export class EvidenciasService {
     const organizacionId = exigirOrganizacion(u);
     if (!archivo) throw new BadRequestException('No se recibio ningun archivo.');
     if (archivo.size > TAMANO_MAXIMO_BYTES) {
-      throw new BadRequestException('El archivo supera el limite de 25 MB.');
+      throw new BadRequestException(`El archivo supera el limite de ${TAMANO_MAXIMO_MB} MB.`);
     }
+    this.limites.consumir(`subida:${u.id}`, REGLAS.subidaArchivos);
+    const nombreArchivo = limpiarNombreArchivo(archivo.originalname);
+    const tipoMime = limpiarTipoMime(archivo.mimetype);
 
     const actividad = await this.prisma.actividad.findFirst({
       where: { id: actividadId, eliminadoEn: null, proyecto: { organizacionId } },
@@ -76,9 +81,9 @@ export class EvidenciasService {
     const sha256 = createHash('sha256').update(archivo.buffer).digest('hex');
     // Prefijo por organizacion: los archivos de cada empresa quedan separados
     // tambien en el bucket, no solo en la base.
-    const clave = `organizaciones/${organizacionId}/evidencias/${actividadId}/${randomUUID()}-${archivo.originalname}`;
+    const clave = `organizaciones/${organizacionId}/evidencias/${actividadId}/${randomUUID()}-${nombreArchivo}`;
 
-    await this.almacenamiento.subir(clave, archivo.buffer, archivo.mimetype);
+    await this.almacenamiento.subir(clave, archivo.buffer, tipoMime);
 
     // Quien lo acaba de subir siempre puede eliminarlo (la tarea sigue abierta).
     const evidencia = await this.prisma.evidencia.create({
@@ -86,8 +91,8 @@ export class EvidenciasService {
         actividadId,
         subidaPorId: u.id,
         claveObjeto: clave,
-        nombreArchivo: archivo.originalname,
-        tipoMime: archivo.mimetype,
+        nombreArchivo,
+        tipoMime,
         tamanoBytes: archivo.size,
         sha256,
       },

@@ -80,10 +80,20 @@ else
   # --update-env relee el ecosystem (y con el, el .env) en cada restart.
   pm2 restart ecosystem.config.cjs --update-env
   # Si cambio el Caddyfile en el repo, se aplica sin cortar conexiones.
+  # Se valida ANTES de instalarlo: si trae un error, el servidor sigue con el
+  # que funcionaba y el deploy se detiene avisando.
   if ! sudo cmp -s "$CADDY_SRC" /etc/caddy/Caddyfile; then
-    sudo install -m 0644 "$CADDY_SRC" /etc/caddy/Caddyfile
-    sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
-    sudo systemctl reload caddy
+    CADDY_TMP="$(mktemp)"
+    cp "$CADDY_SRC" "$CADDY_TMP" && chmod 0644 "$CADDY_TMP"
+    if sudo -u caddy caddy validate --adapter caddyfile --config "$CADDY_TMP"; then
+      sudo install -m 0644 "$CADDY_SRC" /etc/caddy/Caddyfile
+      sudo systemctl reload caddy
+    else
+      echo "!! El Caddyfile nuevo no es valido: se mantiene el anterior." >&2
+      rm -f "$CADDY_TMP"
+      exit 1
+    fi
+    rm -f "$CADDY_TMP"
   fi
 fi
 

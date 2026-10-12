@@ -2,17 +2,25 @@ import {
   CanActivate, ExecutionContext, Injectable, UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { PrismaService } from '../infra/prisma/prisma.service';
 import { permisosEfectivos } from './rbac';
 import { UsuarioActual } from './usuario-actual.decorator';
-
-export const COOKIE_ACCESO = 'tf_acceso';
+import {
+  emitirCookieSesion,
+  firmarSesion,
+  leerSesion,
+  nombreCookieSesion,
+  renovarTrasMs,
+} from './seguridad/sesion';
 
 /**
- * Lee el token de acceso desde la cookie httpOnly y deja al usuario en la
+ * Lee el token de sesion desde la cookie httpOnly y deja al usuario en la
  * peticion. La cookie no es accesible desde JavaScript del navegador, de modo
  * que un script inyectado no puede robar el token.
+ *
+ * Pasada la mitad de su vida (una hora como maximo) se emite un token nuevo
+ * en la misma respuesta: quien sigue usando la app nunca llega al vencimiento.
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -23,26 +31,19 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest<Request>();
-    const token = req.cookies?.[COOKIE_ACCESO];
+    const token = req.cookies?.[nombreCookieSesion()];
     if (!token) throw new UnauthorizedException('No hay sesion iniciada.');
 
-    const usuarioId = await verificarToken(this.jwt, token);
-    if (!usuarioId) throw new UnauthorizedException('La sesion expiro. Vuelve a ingresar.');
+    const carga = await leerSesion(this.jwt, token);
+    if (!carga) throw new UnauthorizedException('La sesion expiro. Vuelve a ingresar.');
 
-    (req as any).usuario = await cargarUsuarioVigente(this.prisma, usuarioId);
+    (req as any).usuario = await cargarUsuarioVigente(this.prisma, carga.sub, carga.ver);
+
+    if (!carga.iat || Date.now() - carga.iat * 1000 > renovarTrasMs()) {
+      const res = ctx.switchToHttp().getResponse<Response>();
+      emitirCookieSesion(res, await firmarSesion(this.jwt, { id: carga.sub, versionSesion: carga.ver }));
+    }
     return true;
-  }
-}
-
-/** Devuelve el id del usuario del token, o null si la firma no es valida. */
-export async function verificarToken(jwt: JwtService, token: string): Promise<string | null> {
-  try {
-    const carga = await jwt.verifyAsync(token, {
-      secret: process.env.JWT_ACCESO_SECRET ?? process.env.JWT_ACCESS_SECRET,
-    });
-    return typeof carga?.sub === 'string' ? carga.sub : null;
-  } catch {
-    return null;
   }
 }
 
@@ -55,10 +56,15 @@ export async function verificarToken(jwt: JwtService, token: string): Promise<st
  *
  * Invariante Multi-SaaS: todo usuario distinto de SUPER_ADMIN sale de aqui
  * con `organizacionId`. Los servicios pueden confiar en ello.
+ *
+ * `versionToken` es la version de sesion con que se firmo el token: si el
+ * usuario cerro sesion en todos lados o cambio su contrasena despues, ya no
+ * coincide y el token queda invalido.
  */
 export async function cargarUsuarioVigente(
   prisma: PrismaService,
   usuarioId: string,
+  versionToken: number,
 ): Promise<UsuarioActual> {
   const usuario = await prisma.usuario.findUnique({
     where: { id: usuarioId },
@@ -70,6 +76,7 @@ export async function cargarUsuarioVigente(
       activo: true,
       fondoMapa: true,
       permisosExtra: true,
+      versionSesion: true,
       organizacionId: true,
       organizacion: {
         select: { nombre: true, slug: true, activo: true, colorPrimario: true, temaFondo: true },
@@ -79,6 +86,10 @@ export async function cargarUsuarioVigente(
 
   if (!usuario || !usuario.activo) {
     throw new UnauthorizedException('Tu cuenta no esta activa. Vuelve a ingresar.');
+  }
+
+  if (usuario.versionSesion !== versionToken) {
+    throw new UnauthorizedException('Tu sesion fue cerrada. Vuelve a ingresar.');
   }
 
   if (usuario.rol !== 'SUPER_ADMIN') {

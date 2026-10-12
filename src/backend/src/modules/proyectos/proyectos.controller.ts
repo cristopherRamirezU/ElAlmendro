@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { ProyectosService } from './proyectos.service';
 import { CrearProyectoDto } from './dto/crear-proyecto.dto';
@@ -29,7 +29,7 @@ export class ProyectosController {
 
   @Patch(':id')
   actualizar(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Usuario() u: UsuarioActual,
     @Body() dto: ActualizarProyectoDto,
   ) {
@@ -38,7 +38,7 @@ export class ProyectosController {
 
   /** Equipo del proyecto. */
   @Get(':id/miembros')
-  miembros(@Param('id') id: string, @Usuario() u: UsuarioActual) {
+  miembros(@Param('id', ParseUUIDPipe) id: string, @Usuario() u: UsuarioActual) {
     return this.proyectos.miembros(id, u);
   }
 
@@ -46,7 +46,7 @@ export class ProyectosController {
   @Post(':id/miembros')
   @ExigirPermisos(PERMISOS.ACTIVIDADES_GESTIONAR)
   agregarMiembro(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Usuario() u: UsuarioActual,
     @Body() dto: AgregarMiembroDto,
   ) {
@@ -56,8 +56,8 @@ export class ProyectosController {
   @Delete(':id/miembros/:usuarioId')
   @ExigirPermisos(PERMISOS.ACTIVIDADES_GESTIONAR)
   quitarMiembro(
-    @Param('id') id: string,
-    @Param('usuarioId') usuarioId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('usuarioId', ParseUUIDPipe) usuarioId: string,
     @Usuario() u: UsuarioActual,
   ) {
     return this.proyectos.quitarMiembro(id, u, usuarioId);
@@ -65,7 +65,7 @@ export class ProyectosController {
 
   /** Elimina un proyecto y todos sus nodos asociados (Solo Administrador / Super Admin). */
   @Delete(':id')
-  eliminar(@Param('id') id: string, @Usuario() u: UsuarioActual) {
+  eliminar(@Param('id', ParseUUIDPipe) id: string, @Usuario() u: UsuarioActual) {
     return this.proyectos.eliminar(id, u);
   }
 }

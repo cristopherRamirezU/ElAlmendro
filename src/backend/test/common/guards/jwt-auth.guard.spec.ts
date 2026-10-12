@@ -11,6 +11,7 @@ const fila = (cambios: Record<string, unknown> = {}) => ({
   rol: 'TRABAJADOR',
   nombreCompleto: 'U1',
   activo: true,
+  versionSesion: 0,
   organizacionId: ORG,
   organizacion: { nombre: 'El Almendro', slug: 'el-almendro', activo: true },
   ...cambios,
@@ -25,7 +26,7 @@ describe('cargarUsuarioVigente (JwtAuthGuard)', () => {
 
   const cargar = (valor: unknown) => {
     prisma.usuario.findUnique.mockResolvedValue(valor as never);
-    return cargarUsuarioVigente(prisma, 'u1');
+    return cargarUsuarioVigente(prisma, 'u1', 0);
   };
 
   it('toma rol y organizacion de la base, no del token', async () => {
@@ -60,6 +61,10 @@ describe('cargarUsuarioVigente (JwtAuthGuard)', () => {
     await expect(cargar(fila({ organizacionId: null, organizacion: null }))).rejects.toThrow(
       UnauthorizedException,
     );
+  });
+
+  it('rechaza un token de antes de cerrar sesion en todos lados o cambiar la clave', async () => {
+    await expect(cargar(fila({ versionSesion: 1 }))).rejects.toThrow(/sesion fue cerrada/);
   });
 
   it('rechaza un usuario eliminado', async () => {

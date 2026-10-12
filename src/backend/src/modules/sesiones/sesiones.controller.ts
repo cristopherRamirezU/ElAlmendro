@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SesionesService } from './sesiones.service';
 import { CerrarSesionDto, IniciarSesionDto } from './dto/sesion.dto';
@@ -22,19 +22,19 @@ export class SesionesController {
   }
 
   @Post(':id/pausar')
-  pausar(@Usuario() u: UsuarioActual, @Param('id') id: string) {
+  pausar(@Usuario() u: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
     return this.sesiones.pausar(u.id, id);
   }
 
   @Post(':id/reanudar')
-  reanudar(@Usuario() u: UsuarioActual, @Param('id') id: string) {
+  reanudar(@Usuario() u: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
     return this.sesiones.reanudar(u.id, id);
   }
 
   @Post(':id/cerrar')
   cerrar(
     @Usuario() u: UsuarioActual,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CerrarSesionDto,
   ) {
     return this.sesiones.cerrar(u.id, id, dto);

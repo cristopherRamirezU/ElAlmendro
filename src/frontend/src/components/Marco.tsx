@@ -12,6 +12,7 @@ import {
   MessageCircle,
   Settings,
   ShieldCheck,
+  UserCog,
   Users,
   Workflow,
 } from 'lucide-react';
@@ -323,6 +324,22 @@ export default function Marco({
           })}
 
           <div className="mt-auto border-t border-[var(--tf-borde)] pt-3">
+            <Link
+              href="/cuenta"
+              style={
+                activo === '/cuenta'
+                  ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
+                  : undefined
+              }
+              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                activo === '/cuenta'
+                  ? 'font-semibold'
+                  : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+              }`}
+            >
+              <UserCog size={18} className="shrink-0" />
+              Mi cuenta
+            </Link>
             <button
               onClick={salir}
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
@@ -365,13 +382,24 @@ export default function Marco({
                 />
               )}
               {acciones}
-              <div
+              <Link
+                href="/cuenta"
                 style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
-                className="grid h-9 w-9 place-items-center rounded-full text-xs font-bold"
-                title={usuario?.nombreCompleto}
+                className="grid h-9 w-9 place-items-center rounded-full text-xs font-bold transition hover:brightness-125"
+                title={`${usuario?.nombreCompleto ?? ''} · Mi cuenta`}
+                aria-label={`Mi cuenta (${usuario?.nombreCompleto ?? ''})`}
               >
                 {iniciales(usuario?.nombreCompleto ?? '')}
-              </div>
+              </Link>
+              {/* En celular la barra lateral no se ve: aqui queda la salida. */}
+              <button
+                onClick={salir}
+                aria-label="Cerrar sesion"
+                title="Cerrar sesion"
+                className="grid h-9 w-9 place-items-center rounded-full text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] md:hidden"
+              >
+                <LogOut size={18} />
+              </button>
             </div>
           </header>
 

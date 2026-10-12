@@ -150,15 +150,20 @@ Para pasar al dominio despues: cambiar ambas variables a
 2. Con el DNS ya resolviendo:
 
 ```bash
-cd /var/www/timeflow && bash deploy/update.sh --primera-vez --seed
+cd /var/www/timeflow && bash deploy/update.sh --primera-vez
+npm run usuario:crear -- superadmin@empresa.cl "Nombre Apellido" '<clave-larga-y-unica>' SUPER_ADMIN
 ```
 
 `--primera-vez` instala el Caddyfile, arranca pm2 y lo registra en systemd
-para que vuelva solo tras un reinicio. `--seed` carga los usuarios y las tres
-semanas de historial de prueba (ver README); omitirlo si la base debe nacer
-vacia. Usuarios del seed: `admin@admin.cl` / `12345` (administrador),
-`supervisor@timeflow.cl`, `trabajador@timeflow.cl` y `trabajador2@timeflow.cl`
-con `Timeflow2026!`. **Cambiarlas si el sitio queda publico.**
+para que vuelva solo tras un reinicio. La primera cuenta se crea a mano con
+`usuario:crear` (aplica la misma politica de contrasenas que la app) y desde
+ella se crean las empresas y sus administradores.
+
+**Nunca correr `--seed` en un servidor publico.** El seed crea cuentas cuyas
+claves estan escritas en este repositorio (que es publico): cualquiera podria
+entrar con ellas. Desde la rama `fix/seguridad` el seed se niega a correr si
+el ambiente parece de produccion (se puede forzar con `PERMITIR_SEED=si`, solo
+para un servidor de pruebas).
 
 3. Verificar:
 
@@ -319,10 +324,21 @@ docker exec timeflow-db pg_dump -U timeflow -d timeflow -Fc > /var/backups/timef
 
 Restaurar: `docker exec -i timeflow-db pg_restore -U timeflow -d timeflow --clean < archivo.dump`.
 
-Evidencias: el volumen `timeflow_storage_data`
-(`docker run --rm -v timeflow_storage_data:/data -v /var/backups:/b alpine tar czf /b/evidencias-$(date +%F).tgz -C /data .`).
+Evidencias: el volumen del contenedor `timeflow-storage`
+(`docker run --rm --volumes-from timeflow-storage:ro -v /var/backups:/b alpine tar czf /b/evidencias-$(date +%F).tgz -C /data .`).
 
-Pendiente: cron nocturno que haga ambas cosas y rote a 14 dias.
+Automatico: `deploy/respaldo.sh` hace ambas cosas, guarda en
+`/var/backups/timeflow` y borra los de mas de 14 dias. Para dejarlo cada noche
+a las 03:30 (hora del servidor, UTC):
+
+```bash
+sudo mkdir -p /var/backups/timeflow && sudo chown ubuntu: /var/backups/timeflow
+( crontab -l 2>/dev/null; echo '30 3 * * * bash /var/www/timeflow/deploy/respaldo.sh >> /var/backups/timeflow/respaldo.log 2>&1' ) | crontab -
+```
+
+Los respaldos quedan en el mismo VPS: protegen de un error (borrar datos, una
+migracion mala), no de perder el servidor. Copiarlos de vez en cuando a otro
+lugar (`scp` a un PC, o un bucket externo).
 
 ## 9. Problemas conocidos
 

@@ -78,6 +78,9 @@ npm run dev:web
 
 ### Usuarios de prueba
 
+Solo existen en la base local de desarrollo (los crea `npm run db:seed`). Sus
+claves son publicas: el seed se niega a correr en un ambiente de produccion.
+
 | Correo | Clave | Rol | Nombre |
 |---|---|---|---|
 | `admin@admin.cl` | `12345` | Administrador | Administrador TimeFlow |

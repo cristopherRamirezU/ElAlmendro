@@ -18,10 +18,16 @@ timeflows.site {
 		Referrer-Policy strict-origin-when-cross-origin
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		-Server
+		-X-Powered-By
 	}
 
 	# API REST (NestJS, prefijo global /api).
 	handle /api/* {
+		# Tope de lo que se acepta: el adjunto mas grande es de 25 MB. Corta
+		# antes de llegar a la API cualquier envio desmedido.
+		request_body {
+			max_size 30MB
+		}
 		reverse_proxy 127.0.0.1:4000
 	}
 

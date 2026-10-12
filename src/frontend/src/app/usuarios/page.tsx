@@ -15,6 +15,7 @@ import { api, ErrorApi, RolCatalogoItem, UsuarioItem } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
 import { useSesion } from '@/lib/sesion';
 import { useColorPrimario } from '@/lib/color';
+import { AYUDA_CONTRASENA, CONTRASENA_MAXIMO } from '@/lib/contrasena';
 
 export default function UsuariosPage() {
   return (
@@ -609,7 +610,9 @@ function ModalCrearUsuario({
               type="password"
               required
               minLength={8}
-              placeholder="Mínimo 8 caracteres"
+              maxLength={CONTRASENA_MAXIMO}
+              autoComplete="new-password"
+              placeholder={AYUDA_CONTRASENA}
               value={contrasena}
               onChange={(e) => setContrasena(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
@@ -868,7 +871,9 @@ function ModalEditarUsuario({
             <input
               type="password"
               minLength={8}
-              placeholder="Opcional: ingresar nueva contraseña"
+              maxLength={CONTRASENA_MAXIMO}
+              autoComplete="new-password"
+              placeholder={`Opcional. ${AYUDA_CONTRASENA}`}
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"

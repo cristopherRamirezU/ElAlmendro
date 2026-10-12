@@ -73,7 +73,7 @@ export class UsuariosController {
    */
   @Get(':id')
   @ExigirPermisos(PERMISOS.USUARIOS_VER)
-  detalle(@Usuario() u: UsuarioActual, @Param('id') id: string) {
+  detalle(@Usuario() u: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
     return this.usuarios.detalle(u, id);
   }
 
@@ -93,7 +93,7 @@ export class UsuariosController {
   @ExigirPermisos(PERMISOS.USUARIOS_GESTIONAR)
   actualizar(
     @Usuario() u: UsuarioActual,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ActualizarUsuarioDto,
   ) {
     return this.usuarios.actualizar(u, id, dto);
@@ -118,7 +118,7 @@ export class UsuariosController {
    */
   @Delete(':id')
   @ExigirPermisos(PERMISOS.USUARIOS_GESTIONAR)
-  desactivar(@Usuario() u: UsuarioActual, @Param('id') id: string) {
+  desactivar(@Usuario() u: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
     return this.usuarios.desactivar(u, id);
   }
 }
