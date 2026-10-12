@@ -316,25 +316,32 @@ cd /var/www/timeflow && npm run usuario:crear -- correo@empresa.cl "Nombre Apell
 
 ## 8. Respaldos
 
-Base de datos (a un archivo comprimido, desde el host):
+**Automaticos, todas las noches.** `deploy/respaldo.sh` guarda en
+`/var/backups/timeflow` un dump de la base (`timeflow-AAAA-MM-DD-HHMM.dump`) y
+un `.tgz` de los archivos adjuntos (`evidencias-...tgz`), y borra los de mas
+de 14 dias. Lo dispara el timer de systemd `timeflow-respaldo.timer` a las
+03:30 UTC (00:30 en Chile en verano); si el servidor estaba apagado a esa
+hora, respalda apenas vuelve. No respalda si quedan menos de 1 GB libres.
+
+`update.sh` instala el timer en cada despliegue (si ya esta, no lo toca) y la
+primera vez hace un respaldo de prueba: el resultado aparece en el log del
+despliegue (paso "respaldo diario").
 
 ```bash
-docker exec timeflow-db pg_dump -U timeflow -d timeflow -Fc > /var/backups/timeflow-$(date +%F).dump
+bash deploy/respaldo.sh --estado                 # ultimos respaldos y proxima ejecucion
+sudo systemctl start timeflow-respaldo.service   # respaldar ahora
+journalctl -u timeflow-respaldo -n 30            # registro
+bash deploy/respaldo.sh --desinstalar            # apagar el respaldo diario
 ```
 
-Restaurar: `docker exec -i timeflow-db pg_restore -U timeflow -d timeflow --clean < archivo.dump`.
-
-Evidencias: el volumen del contenedor `timeflow-storage`
-(`docker run --rm --volumes-from timeflow-storage:ro -v /var/backups:/b alpine tar czf /b/evidencias-$(date +%F).tgz -C /data .`).
-
-Automatico: `deploy/respaldo.sh` hace ambas cosas, guarda en
-`/var/backups/timeflow` y borra los de mas de 14 dias. Para dejarlo cada noche
-a las 03:30 (hora del servidor, UTC):
+Restaurar la base (reemplaza los datos actuales):
 
 ```bash
-sudo mkdir -p /var/backups/timeflow && sudo chown ubuntu: /var/backups/timeflow
-( crontab -l 2>/dev/null; echo '30 3 * * * bash /var/www/timeflow/deploy/respaldo.sh >> /var/backups/timeflow/respaldo.log 2>&1' ) | crontab -
+docker exec -i timeflow-db pg_restore -U timeflow -d timeflow --clean < /var/backups/timeflow/timeflow-AAAA-MM-DD-HHMM.dump
 ```
+
+Restaurar los adjuntos: detener MinIO y descomprimir el `.tgz` en su volumen
+(`docker run --rm --volumes-from timeflow-storage -v /var/backups/timeflow:/b alpine tar xzf /b/evidencias-....tgz -C /data`).
 
 Los respaldos quedan en el mismo VPS: protegen de un error (borrar datos, una
 migracion mala), no de perder el servidor. Copiarlos de vez en cuando a otro

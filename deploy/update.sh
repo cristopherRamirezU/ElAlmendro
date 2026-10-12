@@ -11,7 +11,8 @@
 #   3. levantar/asegurar db + storage       (idempotente)
 #   4. migraciones + reglas de integridad   (prisma migrate deploy)
 #   5. pm2 restart (o start la primera vez)
-#   6. comprobar /api/salud
+#   6. asegurar el respaldo diario          (idempotente; no detiene el deploy)
+#   7. comprobar /api/salud
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -39,12 +40,12 @@ if [[ "${NEXT_PUBLIC_API_URL:-}" =~ ^https?://[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ ]];
   CADDY_SRC=deploy/Caddyfile.ip
 fi
 
-echo "== [1/6] npm ci"
+echo "== [1/7] npm ci"
 # --include=dev: con NODE_ENV=production npm omitiria las devDependencies, y
 # el build las necesita (nest cli, typescript, tailwind, dotenv-cli).
 npm ci --include=dev --no-audit --no-fund
 
-echo "== [2/6] prisma generate + build"
+echo "== [2/7] prisma generate + build"
 npm run db:generate
 npm run build -w @timeflow/api
 # El commit desplegado viaja en el bundle (NEXT_PUBLIC_* se incrusta en tiempo
@@ -54,20 +55,20 @@ export NEXT_PUBLIC_VERSION="$(git rev-parse --short HEAD)"
 npm run build -w @timeflow/web
 echo "{\"version\":\"$NEXT_PUBLIC_VERSION\"}" > src/frontend/public/version.json
 
-echo "== [3/6] PostgreSQL y MinIO (docker compose)"
+echo "== [3/7] PostgreSQL y MinIO (docker compose)"
 docker compose -f docker/docker-compose.yml --env-file .env up -d db storage storage-init
 until docker compose -f docker/docker-compose.yml --env-file .env exec -T db pg_isready -U "${POSTGRES_USER:-timeflow}" -d "${POSTGRES_DB:-timeflow}" >/dev/null 2>&1; do
   echo "   esperando a la base..."; sleep 2
 done
 
-echo "== [4/6] migraciones + reglas de integridad"
+echo "== [4/7] migraciones + reglas de integridad"
 npm run prisma:deploy -w @timeflow/api
 if [[ $SEED -eq 1 ]]; then
   echo "   cargando datos de prueba (seed)"
   npm run db:seed
 fi
 
-echo "== [5/6] pm2"
+echo "== [5/7] pm2"
 if [[ $PRIMERA_VEZ -eq 1 ]]; then
   sudo install -m 0644 "$CADDY_SRC" /etc/caddy/Caddyfile
   sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
@@ -97,7 +98,13 @@ else
   fi
 fi
 
-echo "== [6/6] salud"
+echo "== [6/7] respaldo diario"
+# Instala (o deja como esta) el timer de systemd que respalda base y archivos
+# cada noche; la primera vez hace un respaldo de prueba. Un problema aqui se
+# avisa pero no tumba el despliegue: la app ya quedo actualizada.
+bash deploy/respaldo.sh --instalar || echo "!! No se pudo asegurar el respaldo diario (ver arriba)." >&2
+
+echo "== [7/7] salud"
 for i in $(seq 1 15); do
   if curl -fsS "http://127.0.0.1:${API_PORT:-4000}/api/salud" >/dev/null 2>&1; then
     echo "API OK: $(curl -fsS "http://127.0.0.1:${API_PORT:-4000}/api/salud")"
