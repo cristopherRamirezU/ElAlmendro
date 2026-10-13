@@ -6,13 +6,12 @@ import Link from 'next/link';
 import Marco from '@/components/Marco';
 import EquipoProyecto from '@/components/panel/EquipoProyecto';
 import Modal from '@/components/ui/Modal';
-import RelojArena from '@/components/tesoro/RelojArena';
+import GalaxiaProyectos from '@/components/panel/GalaxiaProyectos';
 import RelojProyecto from '@/components/tesoro/RelojProyecto';
-import RejillaBolsas from '@/components/tesoro/RejillaBolsas';
 import { api, ErrorApi, ProgresoPersonalItem, ProyectoItem, Sesion } from '@/lib/api';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { useSesion } from '@/lib/sesion';
-import { colorConAlfa, useColorPrimario } from '@/lib/color';
+import { useColorPrimario } from '@/lib/color';
 
 function formatearHoras(segundos: number): string {
   if (!segundos || segundos <= 0) return '0h 0m';
@@ -25,17 +24,14 @@ function formatearHoras(segundos: number): string {
 export default function Panel() {
   const router = useRouter();
   const usuario = useSesion();
-  const colorPrimario = useColorPrimario();
 
   const esTrabajador = usuario?.rol === 'TRABAJADOR';
   const esSupervisor = usuario?.rol === 'SUPERVISOR';
   const esAdmin = usuario?.rol === 'ADMINISTRADOR' || usuario?.rol === 'SUPER_ADMIN';
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
-  // El detalle del proyecto se abre en una ventana emergente. Cerrarla no
-  // olvida el proyecto elegido: la pestana de tareas sigue mostrandolo.
+  // El detalle del proyecto se abre en una ventana emergente.
   const [detalleAbierto, setDetalleAbierto] = useState(false);
-  const [pestana, setPestana] = useState<'proyectos' | 'bolsas'>('proyectos');
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<ProyectoItem | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -260,175 +256,42 @@ export default function Panel() {
         </div>
       )}
 
-      {/* -------------------- Proyectos y tareas, en dos pestañas -------------------- */}
+      {/* -------------------- Proyectos -------------------- */}
       <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-[var(--tf-borde)]">
-        <button
-          onClick={() => setPestana('proyectos')}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm transition ${
-            pestana === 'proyectos'
-              ? 'border-sky-400 font-semibold text-[var(--tf-texto)]'
-              : 'border-transparent text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
-          }`}
-        >
+        <h2 className="-mb-px border-b-2 border-sky-400 px-3 py-2 text-sm font-semibold text-[var(--tf-texto)]">
           {esTrabajador ? 'Mis Proyectos' : 'Proyectos del Sistema'}
           <span className="ml-2 rounded-full bg-[var(--tf-hover)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--tf-texto-tenue)]">
             {proyectos.length}
           </span>
-        </button>
-
-        <button
-          onClick={() => setPestana('bolsas')}
-          className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm transition ${
-            pestana === 'bolsas'
-              ? 'border-amber-400 font-semibold text-[var(--tf-texto)]'
-              : 'border-transparent text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
-          }`}
-        >
-          Tareas del proyecto
-          {proyecto && (
-            <span className="max-w-[12rem] truncate rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-              {proyecto.nombre}
-            </span>
-          )}
-        </button>
-
+        </h2>
         <p className="ml-auto hidden pb-2 text-xs text-[var(--tf-texto-tenue)] sm:block">
-          {pestana === 'proyectos'
-            ? esTrabajador
-              ? 'Proyectos donde tienes asignaciones'
-              : 'Elige un proyecto para ver su reloj y su equipo'
-            : 'Cada tarea es un reloj de arena: avanza con sus objetivos y llena el reloj del proyecto'}
+          {esTrabajador ? 'Proyectos donde tienes asignaciones' : 'Elige una galaxia y luego un proyecto'}
         </p>
       </div>
 
-      {/* -------------------- Pestaña: tareas del proyecto -------------------- */}
-      {pestana === 'bolsas' &&
-        (proyecto ? (
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row">
-            <div className="min-w-0 flex-1">
-              <RejillaBolsas key={proyecto.id} proyectoId={proyecto.id} />
-            </div>
-            <aside className="w-full shrink-0 lg:w-72">
-              <RelojProyecto
-                proyecto={proyecto}
-                activo={pestana === 'bolsas'}
-                onCambio={cargar}
-              />
-              <button
-                onClick={() => irATareas(proyecto)}
-                className="w-full rounded-xl border border-white/10 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/5 hover:text-white"
-              >
-                Ver el mapa de nodos
-              </button>
-            </aside>
-          </div>
-        ) : (
-          <div className="mb-6 rounded-2xl border border-dashed border-[var(--tf-borde)] p-12 text-center">
-            <p className="text-sm text-[var(--tf-texto-tenue)]">
-              Elige primero un proyecto para ver sus tareas.
-            </p>
-            <button
-              onClick={() => setPestana('proyectos')}
-              className="mt-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2 text-xs font-bold text-slate-950 transition hover:from-amber-300 hover:to-amber-400"
-            >
-              Ir a los proyectos
-            </button>
-          </div>
-        ))}
-
-      {/* -------------------- Pestaña: proyectos -------------------- */}
-      <div className={pestana === 'proyectos' ? 'block' : 'hidden'}>
+      <div>
         <section>
           {cargando ? (
             <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
               Cargando proyectos…
             </p>
-          ) : proyectos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-12 text-center">
-              <p className="text-sm font-medium text-[var(--tf-texto-tenue)]">
-                {esTrabajador
-                  ? 'No tienes proyectos asignados con tareas activas por el momento.'
-                  : 'No hay proyectos registrados.'}
-              </p>
-              <button
-                onClick={() => setModalAbierto(true)}
-                className="mt-4 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-sky-400"
-              >
-                Crear primer proyecto
-              </button>
-            </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {proyectos.map((p) => {
-                const porcentaje =
-                  p.totalTareas > 0 ? Math.round((p.tareasCompletadas / p.totalTareas) * 100) : 0;
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => {
-                      setSeleccionado(p.id);
-                      setDetalleAbierto(true);
-                    }}
-                    style={
-                      seleccionado === p.id
-                        ? ({
-                            borderColor: colorConAlfa(colorPrimario, 0.5),
-                            '--tw-ring-color': colorConAlfa(colorPrimario, 0.2),
-                          } as React.CSSProperties)
-                        : undefined
-                    }
-                    className={`group flex aspect-square cursor-pointer flex-col items-center justify-between rounded-2xl border bg-slate-900 p-3 text-center shadow-sm backdrop-blur transition hover:bg-slate-900 hover:shadow-md ${
-                      seleccionado === p.id ? 'ring-2' : 'border-white/10'
-                    }`}
-                  >
-                    <p
-                      className="line-clamp-2 text-sm font-semibold leading-snug text-white"
-                      title={p.nombre}
-                    >
-                      {p.nombre}
-                    </p>
-
-                    {/* El reloj del proyecto: se llena con cada tarea terminada. */}
-                    <RelojArena
-                      variante="proyecto"
-                      llenado={p.totalTareas > 0 ? p.tareasCompletadas / p.totalTareas : 0}
-                      terminado={p.totalTareas > 0 && p.tareasCompletadas >= p.totalTareas}
-                      tamano={50}
-                    />
-
-                    <div className="w-full">
-                      <span className="text-xl font-bold text-pink-300">{porcentaje}%</span>
-                      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="tf-barra-brillo h-full rounded-full bg-gradient-to-r from-pink-600 to-pink-400 transition-[width] duration-700"
-                          style={{ width: `${porcentaje}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex w-full items-center justify-center gap-1 border-t border-white/5 pt-2 text-xs text-slate-400 group-hover:text-[var(--color-primario)]">
-                      <span>Ver detalles</span>
-                      <span aria-hidden>→</span>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Crear proyecto: todos los roles. Los trabajadores tienen
-                  autonomia para abrir proyectos; lo que no pueden es editarlos. */}
-              <button
-                onClick={() => setModalAbierto(true)}
-                className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-[var(--tf-borde)] p-3 text-[var(--tf-texto-tenue)] transition hover:border-sky-400/40 hover:text-sky-300"
-              >
-                <span className="text-2xl leading-none">+</span>
-                <span className="text-sm font-medium">Crear proyecto</span>
-              </button>
-            </div>
+            // Los proyectos como planetas de dos galaxias (en proceso y
+            // completados). Tocar uno abre su ventana, con el acceso al mapa.
+            <GalaxiaProyectos
+              proyectos={proyectos}
+              seleccionado={detalleAbierto ? seleccionado : null}
+              onElegir={(id) => {
+                setSeleccionado(id);
+                setDetalleAbierto(true);
+              }}
+              onCrear={() => setModalAbierto(true)}
+            />
           )}
         </section>
       </div>
 
-      {proyecto && detalleAbierto && pestana === 'proyectos' && (
+      {proyecto && detalleAbierto && (
         <ModalDetalleProyecto
           proyecto={proyecto}
           puedeEditar={esAdmin || esSupervisor}
@@ -439,10 +302,6 @@ export default function Panel() {
           onCerrar={() => setDetalleAbierto(false)}
           onEditar={() => setEditando(proyecto)}
           onEliminar={() => handleEliminarProyecto(proyecto)}
-          onVerTareas={() => {
-            setDetalleAbierto(false);
-            setPestana('bolsas');
-          }}
           onIrAlMapa={() => irATareas(proyecto)}
           onCambio={cargar}
         />
@@ -503,7 +362,7 @@ function TarjetaMetrica({
 
 /**
  * Detalle del proyecto en una ventana emergente: a la izquierda su reloj de
- * arena y los accesos (mapa de nodos, tareas), a la derecha la descripcion,
+ * arena y el acceso al mapa de nodos, a la derecha la descripcion,
  * el equipo y los datos. Asi lo importante queda a la vista sin bajar. Se
  * cierra con la X, con Escape o con un clic fuera.
  */
@@ -516,7 +375,6 @@ function ModalDetalleProyecto({
   onCerrar,
   onEditar,
   onEliminar,
-  onVerTareas,
   onIrAlMapa,
   onCambio,
 }: {
@@ -529,7 +387,6 @@ function ModalDetalleProyecto({
   onCerrar: () => void;
   onEditar: () => void;
   onEliminar: () => void;
-  onVerTareas: () => void;
   onIrAlMapa: () => void;
   onCambio: () => void;
 }) {
@@ -573,12 +430,6 @@ function ModalDetalleProyecto({
             className="w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
           >
             {esTrabajador ? 'Iniciar tarea / Registrar avance' : 'Ir al mapa de nodos'}
-          </button>
-          <button
-            onClick={onVerTareas}
-            className="mt-2 w-full rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 py-2.5 text-sm font-bold text-slate-950 transition hover:from-amber-300 hover:to-amber-400"
-          >
-            Ver las tareas de este proyecto
           </button>
         </div>
 

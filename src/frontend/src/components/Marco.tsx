@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   UserCog,
   Users,
-  Workflow,
 } from 'lucide-react';
 import { PERMISOS, PermisoCodigo } from '@/lib/rbac';
 import { api, ErrorApi, Jornada, Sesion, Usuario } from '@/lib/api';
@@ -66,12 +65,8 @@ const SECCIONES: SeccionNav[] = [
     icono: Calendar,
     permisoRequerido: PERMISOS.CALENDARIO_VER_PROPIO,
   },
-  {
-    href: '/nodos',
-    texto: 'Mapa de nodos',
-    icono: Workflow,
-    permisoRequerido: PERMISOS.NODOS_VER_MAPA,
-  },
+  // El mapa de nodos no va en el menu: se entra desde la ventana de cada
+  // proyecto (Proyectos > un planeta > Ir al mapa de nodos).
   {
     href: '/reportes',
     texto: 'Reportes',
