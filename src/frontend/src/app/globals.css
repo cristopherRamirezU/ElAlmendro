@@ -457,6 +457,9 @@ body {
   100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(16, 185, 129, 0); }
 }
 
+/* Avisos y controles del sistema de planetas: aparecen cuando ya se armo. */
+.tf-galaxia-vacia { animation: tf-modal-fondo 0.5s ease-out 2.6s both; }
+
 /* Quien pide menos movimiento ve los relojes y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
   .tf-reloj-brillo,
@@ -465,7 +468,8 @@ body {
   .tf-lcd-dos-puntos { animation: none; }
   .tf-retro-boton { transition: none; }
   .tf-modal-fondo,
-  .tf-modal-entra { animation: none; }
+  .tf-modal-entra,
+  .tf-galaxia-vacia { animation: none; }
   .tf-interruptor-perilla,
   .tf-interruptor-pista,
   .tf-interruptor-rotulo { transition: none; }
