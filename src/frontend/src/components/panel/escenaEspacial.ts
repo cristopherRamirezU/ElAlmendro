@@ -119,6 +119,12 @@ const FIN_ENTRADA = 6.5;
 const DPR_MAXIMO = 1.5;
 /** Lo mas que se avanza en un cuadro: si el navegador se demora, no salta. */
 const PASO_MAXIMO = 0.08;
+/** Acercamiento al pasar el mouse sobre un planeta: el sistema crece hasta 1 + esto. */
+const ZOOM_FOCO = 0.7;
+/** Rapidez del acercamiento (suavizado exponencial): unos 0,5 s en llegar. */
+const VELOCIDAD_FOCO = 6;
+/** Cuanto se apagan los demas planetas mientras uno esta enfocado. */
+const ATENUACION_FOCO = 0.55;
 
 /**
  * Galaxias y texturas de planetas se generan una sola vez por visita a la
@@ -298,6 +304,24 @@ export class EscenaEspacial {
   /** Segundos que lleva girando el sistema (solo corren con movimiento). */
   private giro = 0;
 
+  /** Planeta bajo el mouse (o con el foco del teclado): la camara se le acerca. */
+  private enfocado: string | null = null;
+  /** Intensidad del enfoque, de 0 a 1, suavizada cuadro a cuadro. */
+  private fk = 0;
+  /**
+   * Vista del sistema: cada punto p se dibuja en p * z + t. Al enfocar se
+   * elige z y t para que el planeta quede justo donde esta en pantalla (bajo
+   * el cursor) y todo lo demas se abra alrededor: la camara se acerca a el.
+   */
+  private vista = { z: 1, tx: 0, ty: 0 };
+  private vistaObjetivo = { z: 1, tx: 0, ty: 0 };
+  /** Donde se dibujo cada planeta en el ultimo cuadro, sin la vista aplicada. */
+  private pantalla = new Map<string, Punto>();
+  /** Giro extra que acumula sobre su eje cada planeta mientras se lo mira. */
+  private giroExtra: Record<string, number> = {};
+  /** Segundos reales del cuadro en curso. */
+  private dtCuadro = 0;
+
   private reduced = false;
   private anim = { mode: 'overview' as 'overview' | 'enter' | 'exit', T: 0, xT: 0, world: 'proceso' as Mundo };
   private spin: Record<Mundo, number> = { proceso: 0, completados: 1.3 };
@@ -396,6 +420,48 @@ export class EscenaEspacial {
     }
     this.datos = datos;
     this.dom = null;
+    if (this.enfocado && !datos[this.anim.world].some((p) => p.id === this.enfocado)) this.enfocar(null);
+  }
+
+  /**
+   * Acerca la camara a un planeta (o la devuelve con null). Solo dentro de
+   * un sistema (no mientras se vuelve al mapa); con movimiento reducido no
+   * hay zoom, solo resaltado.
+   */
+  enfocar(id: string | null) {
+    const listo = this.modo === 'system' && this.anim.mode === 'enter';
+    const p = id && listo ? this.pantalla.get(id) : undefined;
+    if (!p) {
+      this.enfocado = null;
+      this.vistaObjetivo = { z: 1, tx: 0, ty: 0 };
+      return;
+    }
+    this.enfocado = id;
+    if (this.reduced) return;
+    // El planeta queda donde se ve ahora y el resto crece a su alrededor.
+    const v = this.vista;
+    const qx = p.x * v.z + v.tx;
+    const qy = p.y * v.z + v.ty;
+    const z = 1 + ZOOM_FOCO;
+    this.vistaObjetivo = { z, tx: qx - p.x * z, ty: qy - p.y * z };
+  }
+
+  /** Giro acumulado del planeta sobre su eje: crece solo mientras se lo mira. */
+  private giroFoco(id: string) {
+    if (this.enfocado === id && !this.reduced) {
+      this.giroExtra[id] = (this.giroExtra[id] ?? 0) + this.dtCuadro * 0.06 * this.fk;
+    }
+    return this.giroExtra[id] ?? 0;
+  }
+
+  /** Suelta el enfoque de golpe (al cambiar de vista). */
+  private soltarFoco() {
+    this.enfocado = null;
+    this.fk = 0;
+    this.vista = { z: 1, tx: 0, ty: 0 };
+    this.vistaObjetivo = { z: 1, tx: 0, ty: 0 };
+    this.pantalla.clear();
+    this.giroExtra = {};
   }
 
   /** El HTML de encima cambio (React volvio a pintar): se vuelve a buscar. */
@@ -411,6 +477,7 @@ export class EscenaEspacial {
     this.giro = 0;
     this.selK = {};
     this.hover = null;
+    this.soltarFoco();
     this.modo = 'system';
     this.alCambiarModo('system', w);
   }
@@ -418,12 +485,19 @@ export class EscenaEspacial {
   /** Vuelve al mapa de galaxias (cuando el sistema ya termino de aparecer). */
   volver() {
     if (this.anim.mode === 'enter' && this.anim.T > 3.5) {
+      // La camara se aleja del planeta mientras el sistema se despide.
+      this.enfocar(null);
       this.anim.mode = 'exit';
       this.anim.xT = 0;
     }
   }
 
   private resize() {
+    // Con otro tamano los planetas cambian de lugar: el acercamiento se suelta.
+    this.enfocado = null;
+    this.fk = 0;
+    this.vista = { z: 1, tx: 0, ty: 0 };
+    this.vistaObjetivo = { z: 1, tx: 0, ty: 0 };
     this.W = this.raiz.clientWidth;
     this.H = this.raiz.clientHeight;
     this.dpr = Math.min(DPR_MAXIMO, window.devicePixelRatio || 1);
@@ -633,6 +707,7 @@ export class EscenaEspacial {
     if (!this.W) return;
     const rawDt = Math.max(0, Math.min(PASO_MAXIMO, (now - this.last) / 1000));
     this.last = now;
+    this.dtCuadro = rawDt;
     const a = this.anim;
     const dt =
       a.mode === 'enter' && a.T < FIN_ENTRADA
@@ -672,6 +747,14 @@ export class EscenaEspacial {
       this.hk[w] += ((this.hover === w && a.mode === 'overview' ? 1 : 0) - this.hk[w]) * Math.min(1, rawDt * 6);
     });
     const spinBoost = { proceso: 0, completados: 0 };
+    // Enfoque de un planeta: intensidad y vista se acercan a su objetivo.
+    const kf = 1 - Math.exp(-rawDt * VELOCIDAD_FOCO);
+    this.fk += ((this.enfocado ? 1 : 0) - this.fk) * kf;
+    const vo = this.vistaObjetivo;
+    const vi = this.vista;
+    vi.z += (vo.z - vi.z) * kf;
+    vi.tx += (vo.tx - vi.tx) * kf;
+    vi.ty += (vo.ty - vi.ty) * kf;
 
     if (a.mode === 'overview') {
       P.g.proceso = P.g.completados = P.env = 1;
@@ -723,14 +806,24 @@ export class EscenaEspacial {
         a.mode = 'overview';
         this.modo = 'overview';
         this.seleccionado = null;
+        this.soltarFoco();
         this.alCambiarModo('overview', a.world);
       }
     }
     MUNDOS.forEach((w) => {
       this.spin[w] -= rawDt * (0.035 + spinBoost[w]);
     });
-    // Las orbitas empiezan a girar cuando el sistema termino de armarse.
-    if (this.movimiento && this.modo === 'system' && a.mode === 'enter' && a.T > FIN_ENTRADA) this.giro += rawDt;
+    // Las orbitas empiezan a girar cuando el sistema termino de armarse, y
+    // se detienen mientras se mira un planeta, para que no se escape.
+    const quieto = this.enfocado !== null || this.fk > 0.01;
+    if (this.movimiento && !quieto && this.modo === 'system' && a.mode === 'enter' && a.T > FIN_ENTRADA) this.giro += rawDt;
+    // Las estrellas del fondo se corren un poco hacia el lado contrario del
+    // planeta enfocado: da profundidad al acercamiento.
+    if (this.fk > 0.001 && vi.z > 1.0005) {
+      const ax = vi.tx / (1 - vi.z);
+      const ay = vi.ty / (1 - vi.z);
+      vp = { x: vp.x - (ax - W / 2) * 0.04 * this.fk, y: vp.y - (ay - H / 2) * 0.04 * this.fk };
+    }
 
     if (P.g.proceso > 0 || P.g.completados > 0 || P.env > 0) this.drawOverview(g, W, H, L, cam, P, T);
     if (haze > 0.001) {
@@ -745,7 +838,12 @@ export class EscenaEspacial {
     }
     this.drawStars(g, W, H, vp, v, dt, T);
     let sysInfo: InfoPlaneta[] = [];
-    if (sysA > 0 && this.modo === 'system') sysInfo = this.drawSystem(g, W, H, T, sysA, sysSc, a.world);
+    if (sysA > 0 && this.modo === 'system') {
+      const d = this.dpr;
+      g.setTransform(d * vi.z, 0, 0, d * vi.z, d * vi.tx, d * vi.ty);
+      sysInfo = this.drawSystem(g, W, H, T, sysA, sysSc, a.world);
+      g.setTransform(d, 0, 0, d, 0, 0);
+    }
     this.updateDom(L, cam, P, sysInfo, ui, sysChip, W);
   }
 
@@ -985,10 +1083,34 @@ export class EscenaEspacial {
     sel: number,
     alpha: number,
     T: number,
+    foco = 0,
   ) {
     if (alpha <= 0.01 || r < 0.5) return;
     g.save();
     g.globalAlpha = alpha;
+    // Planeta enfocado: resplandor frio de su atmosfera y un arco de luz que
+    // lo recorre (el halo dorado queda para el proyecto abierto).
+    if (foco > 0.01) {
+      g.globalCompositeOperation = 'lighter';
+      const fg = g.createRadialGradient(x, y, r * 0.9, x, y, r * 2.6);
+      fg.addColorStop(0, tex.atm + (0.5 * foco).toFixed(3) + ')');
+      fg.addColorStop(1, tex.atm + '0)');
+      g.fillStyle = fg;
+      g.fillRect(x - r * 2.6, y - r * 2.6, r * 5.2, r * 5.2);
+      g.globalCompositeOperation = 'source-over';
+      g.lineWidth = 1.2;
+      g.strokeStyle = `rgba(225,240,255,${0.18 * foco})`;
+      g.beginPath();
+      g.arc(x, y, r * 1.38, 0, TAU);
+      g.stroke();
+      g.strokeStyle = `rgba(235,246,255,${0.85 * foco})`;
+      g.lineWidth = 1.6;
+      g.lineCap = 'round';
+      const a0 = T * 1.6;
+      g.beginPath();
+      g.arc(x, y, r * 1.38, a0, a0 + 1.4);
+      g.stroke();
+    }
     if (sel > 0.01) {
       g.globalCompositeOperation = 'lighter';
       const gg = g.createRadialGradient(x, y, r * 0.8, x, y, r * 2.8);
@@ -1129,7 +1251,9 @@ export class EscenaEspacial {
     const orbits = ORBITAS.map((f) => ({ rx: base * f * sc, ry: base * f * 0.42 * sc }));
     const sunR = Math.min(W, H) * 0.065;
     const ss = T < 4.3 ? lerp(0.12, 1.45, eo(cl((T - 3.3) / 1.0))) : lerp(1.45, 1, eio(cl((T - 4.3) / 1.7)));
-    const sunA = alpha * sm(3.25, 3.9, T);
+    // Con un planeta enfocado, el sol y las orbitas pasan a segundo plano.
+    const fondoFoco = 1 - 0.4 * this.fk;
+    const sunA = alpha * sm(3.25, 3.9, T) * fondoFoco;
     const flare = sm(3.4, 4.0, T) * (1 - 0.7 * sm(4.2, 6, T));
     if (sunA > 0) {
       g.save();
@@ -1148,7 +1272,7 @@ export class EscenaEspacial {
     orbits.forEach((o, i) => {
       const p = sm(3.8 + i * 0.18, 4.7 + i * 0.18, T) * alpha;
       if (p <= 0) return;
-      g.strokeStyle = `rgba(160,175,230,${0.3 * alpha})`;
+      g.strokeStyle = `rgba(160,175,230,${0.3 * alpha * fondoFoco})`;
       g.beginPath();
       g.ellipse(c.x, c.y, o.rx, o.ry, 0, -Math.PI / 2, -Math.PI / 2 + p * TAU);
       g.stroke();
@@ -1207,6 +1331,9 @@ export class EscenaEspacial {
       const lx = c.x - x;
       const ly = c.y - y;
       const ll = Math.hypot(lx, ly) || 1;
+      const foco = this.enfocado === it.id ? this.fk : 0;
+      const otros = this.enfocado !== null && this.enfocado !== it.id ? this.fk : 0;
+      this.pantalla.set(it.id, { x, y });
       return {
         it,
         x,
@@ -1214,16 +1341,18 @@ export class EscenaEspacial {
         r,
         depth,
         sk,
+        foco,
         lx: lx / ll,
         ly: ly / ll,
-        pa: alpha * Math.min(1, p * 2),
+        pa: alpha * Math.min(1, p * 2) * (1 - ATENUACION_FOCO * otros),
         ca: sm(t0 + 0.75, t0 + 1.2, T) * alpha,
-        rot: T * 0.015 * (1 + (i % 3) * 0.4) + i * 0.37,
+        // El planeta enfocado gira un poco mas rapido sobre su eje.
+        rot: T * 0.015 * (1 + (i % 3) * 0.4) + i * 0.37 + this.giroFoco(it.id),
       };
     });
     const order = list.slice().sort((a, b) => a.depth - b.depth);
     const dp = (q: (typeof list)[number]) =>
-      this.drawPlanet(g, q.x, q.y, q.r, this.tex[q.it.tex % this.tex.length], q.rot, q.lx, q.ly, q.sk, q.pa, T);
+      this.drawPlanet(g, q.x, q.y, q.r, this.tex[q.it.tex % this.tex.length], q.rot, q.lx, q.ly, q.sk, q.pa, T, q.foco);
     // Los planetas que pasan por detras del sol se dibujan antes que el.
     order.filter((q) => q.depth < 0).forEach(dp);
     this.drawSun(g, c.x, c.y, sunR * ss * Math.min(1.3, sc), sunA, flare, T);
@@ -1267,22 +1396,37 @@ export class EscenaEspacial {
       d.sys.style.opacity = String(sysChip);
       d.sys.style.pointerEvents = sysChip > 0.5 ? 'auto' : 'none';
     }
+    // Botones y tarjetas siguen a los planetas con la misma vista del lienzo.
+    const v = this.vista;
+    const fk = this.fk;
     sysInfo.forEach((q) => {
       const id = q.it.id;
       const hb = d.hit[id];
       const cd = d.card[id];
+      const x = q.x * v.z + v.tx;
+      const y = q.y * v.z + v.ty;
+      const r = q.r * v.z;
+      const esFoco = this.enfocado === id;
+      const otro = this.enfocado !== null && !esFoco;
       if (hb) {
-        const s = q.r * 2 + 14;
+        const s = r * 2 + 14;
         hb.style.width = hb.style.height = s + 'px';
-        hb.style.transform = `translate(${q.x - s / 2}px,${q.y - s / 2}px)`;
+        hb.style.transform = `translate(${x - s / 2}px,${y - s / 2}px)`;
         hb.style.pointerEvents = q.ca > 0.5 ? 'auto' : 'none';
       }
       if (cd) {
         const cw = this.cardW[id] || (this.cardW[id] = cd.offsetWidth || ANCHO_TARJETA);
-        const t = rectTarjeta(q.x, q.y, q.r, W, cw);
-        cd.style.transform = `translate(${Math.round(t.x)}px,${Math.round(t.y)}px)`;
-        cd.style.opacity = String(q.ca);
-        cd.style.pointerEvents = q.ca > 0.5 ? 'auto' : 'none';
+        const t = rectTarjeta(x, y, r, W, cw);
+        // La tarjeta enfocada crece hacia abajo con mas datos: que no se salga.
+        const alto = esFoco ? cd.offsetHeight || ALTO_TARJETA : ALTO_TARJETA;
+        const top = Math.max(8, Math.min(this.H - alto - 8, t.y));
+        const escala = esFoco ? 1 + 0.12 * fk : 1;
+        cd.style.transform = `translate(${Math.round(t.x)}px,${Math.round(top)}px) scale(${escala.toFixed(3)})`;
+        cd.style.transformOrigin = t.x < x ? 'right center' : 'left center';
+        // Por encima de los botones de la escena (crear proyecto va en z 6).
+        cd.style.zIndex = esFoco ? '7' : '';
+        cd.style.opacity = String(q.ca * (otro ? 1 - 0.85 * fk : 1));
+        cd.style.pointerEvents = q.ca > 0.5 && !(otro && fk > 0.3) ? 'auto' : 'none';
       }
     });
   }
