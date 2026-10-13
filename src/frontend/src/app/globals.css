@@ -460,6 +460,13 @@ body {
 /* Avisos y controles del sistema de planetas: aparecen cuando ya se armo. */
 .tf-galaxia-vacia { animation: tf-modal-fondo 0.5s ease-out 2.6s both; }
 
+/* Datos extra de la tarjeta del planeta enfocado: se despliegan suave. */
+@keyframes tf-tarjeta-foco {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.tf-tarjeta-foco { animation: tf-tarjeta-foco 0.28s ease-out both; }
+
 /* Quien pide menos movimiento ve los relojes y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
   .tf-reloj-brillo,
@@ -469,7 +476,8 @@ body {
   .tf-retro-boton { transition: none; }
   .tf-modal-fondo,
   .tf-modal-entra,
-  .tf-galaxia-vacia { animation: none; }
+  .tf-galaxia-vacia,
+  .tf-tarjeta-foco { animation: none; }
   .tf-interruptor-perilla,
   .tf-interruptor-pista,
   .tf-interruptor-rotulo { transition: none; }

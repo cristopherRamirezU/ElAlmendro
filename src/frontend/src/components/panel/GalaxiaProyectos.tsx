@@ -16,6 +16,17 @@ const CLAVE_MOVIMIENTO = 'tf_galaxia_movimiento';
 
 const avance = (p: ProyectoItem) => (p.totalTareas > 0 ? Math.round((p.tareasCompletadas / p.totalTareas) * 100) : 0);
 
+/** Espera antes de acercarse: pasar de largo con el mouse no dispara el zoom. */
+const ESPERA_FOCO_MS = 90;
+/** Margen al salir: alcanza para ir del planeta a su tarjeta sin perder el foco. */
+const GRACIA_FOCO_MS = 160;
+
+const ESTADO_PROYECTO: Record<string, string> = {
+  ACTIVO: 'Activo',
+  PAUSADO: 'Pausado',
+  CERRADO: 'Cerrado',
+};
+
 const GALAXIAS: Record<
   Mundo,
   { titulo: string; detalle: string; borde: string; sombra: string; fondo: string; icono: string; acento: string }
@@ -148,6 +159,34 @@ export default function GalaxiaProyectos({
     onElegir(id);
   };
 
+  // Planeta al que la camara se acerca: el que esta bajo el mouse o tiene
+  // el foco del teclado. Con un pequeno retraso al entrar y al salir, para
+  // que barrer la escena con el mouse no haga saltar el zoom.
+  const [enfocado, setEnfocado] = useState<string | null>(null);
+  const temporizadorFoco = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function programarFoco(id: string | null, ms: number) {
+    if (temporizadorFoco.current) clearTimeout(temporizadorFoco.current);
+    temporizadorFoco.current = setTimeout(() => setEnfocado(id), ms);
+  }
+  useEffect(() => () => {
+    if (temporizadorFoco.current) clearTimeout(temporizadorFoco.current);
+  }, []);
+  useEffect(() => {
+    escena.current?.enfocar(enfocado);
+  }, [enfocado]);
+  // Al cambiar de vista (entrar o salir de una galaxia) no queda nada enfocado.
+  useEffect(() => {
+    if (temporizadorFoco.current) clearTimeout(temporizadorFoco.current);
+    setEnfocado(null);
+  }, [modo, mundo]);
+  // Solo el mouse acerca la camara: en pantallas tactiles, tocar abre.
+  const entrar = (id: string) => (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') programarFoco(id, enfocado ? 0 : ESPERA_FOCO_MS);
+  };
+  const salir = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse') programarFoco(null, GRACIA_FOCO_MS);
+  };
+
   const visibles = modo === 'system' ? porMundo[mundo] : [];
   const g = GALAXIAS[mundo];
 
@@ -214,11 +253,19 @@ export default function GalaxiaProyectos({
       {visibles.map((p) => {
         const pct = avance(p);
         const elegido = seleccionado === p.id;
+        const enFoco = enfocado === p.id;
         return (
           <div key={p.id}>
             <button
               data-hit={p.id}
               onClick={elegir(p.id)}
+              onPointerEnter={entrar(p.id)}
+              onPointerLeave={salir}
+              onFocus={() => programarFoco(p.id, 0)}
+              onBlur={() => programarFoco(null, GRACIA_FOCO_MS)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') programarFoco(null, 0);
+              }}
               aria-label={`Abrir el proyecto ${p.nombre}`}
               className="absolute left-0 top-0 z-[3] h-14 w-14 rounded-full p-0"
               style={{ transform: 'translate(-9999px,0)' }}
@@ -226,6 +273,8 @@ export default function GalaxiaProyectos({
             <div
               data-card={p.id}
               onClick={elegir(p.id)}
+              onPointerEnter={entrar(p.id)}
+              onPointerLeave={salir}
               className="absolute left-0 top-0 z-[4] cursor-pointer hover:z-[5]"
               style={{ width: ANCHO_TARJETA, transform: 'translate(-9999px,0)', opacity: 0 }}
             >
@@ -262,6 +311,17 @@ export default function GalaxiaProyectos({
                         {pct}%
                       </span>
                     </div>
+                    {enFoco && (
+                      <div className="tf-tarjeta-foco mt-1.5 border-t border-white/10 pt-1.5 text-[10px] leading-snug text-[#b8c2dc]">
+                        <p className="flex justify-between gap-2">
+                          <span className="tabular-nums">
+                            {p.tareasCompletadas}/{p.totalTareas} {p.totalTareas === 1 ? 'tarea' : 'tareas'}
+                          </span>
+                          <span>{ESTADO_PROYECTO[p.estado] ?? p.estado}</span>
+                        </p>
+                        <p className="mt-0.5 text-sky-300">Clic para abrir</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -328,7 +388,7 @@ export default function GalaxiaProyectos({
       >
         {modo === 'overview'
           ? 'Elige una galaxia para ver sus proyectos'
-          : 'Toca un planeta para abrir su proyecto'}
+          : 'Pasa el mouse sobre un planeta para acercarte · clic para abrirlo'}
       </p>
       <button
         data-ui
