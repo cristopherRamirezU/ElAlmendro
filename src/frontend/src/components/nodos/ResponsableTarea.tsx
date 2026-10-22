@@ -54,18 +54,29 @@ export default function ResponsableTarea({
   }
 
   return (
-    <div className="mb-4 rounded-2xl border border-white/10 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-wide text-slate-400">Responsable</p>
-          <p className="truncate text-sm font-medium text-white">
+    <div className="tf-vidrio rounded-2xl px-3 py-2.5">
+      <div className="flex items-center justify-between gap-2.5">
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3f6bff] text-[11px] font-semibold text-white"
+        >
+          {actividad.responsable.nombreCompleto
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((p) => p[0]?.toUpperCase())
+            .join('')}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="sr-only">Responsable</p>
+          <p className="truncate text-sm text-white" title="Responsable">
             {actividad.responsable.nombreCompleto}
           </p>
         </div>
         {puedeGestionar && (
           <button
             onClick={() => setAbierto((v) => !v)}
-            className="shrink-0 rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+            className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-[11px] font-medium text-slate-200 transition hover:bg-white/10 hover:text-white"
           >
             {abierto ? 'Cancelar' : 'Derivar'}
           </button>
@@ -103,7 +114,7 @@ export default function ResponsableTarea({
           <button
             onClick={derivar}
             disabled={ocupado || !elegido || !motivo.trim()}
-            className="rounded-xl bg-sky-500 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:opacity-50"
+            className="tf-boton-marca rounded-xl py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
             {ocupado ? 'Derivando…' : 'Confirmar derivacion'}
           </button>

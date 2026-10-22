@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
-import RelojArena from '@/components/tesoro/RelojArena';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 
@@ -98,14 +97,6 @@ export default function NodoTarea({ id, data }: NodeProps) {
         className="tf-tarea relative flex h-full w-full items-center gap-2 overflow-hidden rounded-xl pb-[3px] pl-2 pr-3"
         style={{ '--c': fase.rgb } as React.CSSProperties}
       >
-        {/* El reloj de arena de la tarea: cae arena a medida que avanza. */}
-        <RelojArena
-          llenado={d.llenado ?? 0}
-          tamano={20}
-          terminado={d.estado === 'COMPLETADA'}
-          className="shrink-0"
-        />
-
         <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
           <div className="flex min-w-0 items-center gap-2" title={d.titulo}>
             <span className="truncate text-xs font-bold text-white">{d.titulo}</span>
