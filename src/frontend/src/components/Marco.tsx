@@ -6,6 +6,8 @@ import Link from 'next/link';
 import {
   BarChart3,
   Calendar,
+  ChevronsLeft,
+  ChevronsRight,
   LayoutGrid,
   LogOut,
   LucideIcon,
@@ -38,6 +40,9 @@ import { precalentarRutas } from '@/lib/precalentar';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
 import { colorConAlfa, COLOR_PRIMARIO_DEFECTO } from '@/lib/color';
 import { TEMA_FONDO_DEFECTO, useAplicarTemaFondo } from '@/lib/tema';
+
+/** La barra lateral escondida se recuerda en este navegador. */
+const CLAVE_BARRA = 'tf_barra_oculta';
 
 interface SeccionNav {
   href: string;
@@ -101,12 +106,15 @@ export default function Marco({
   activo,
   titulo,
   subtitulo,
+  tituloOculto = false,
   acciones,
   children,
 }: {
   activo: string;
   titulo: string;
   subtitulo?: string;
+  /** El titulo queda solo para lectores de pantalla (la cabecera no lo muestra). */
+  tituloOculto?: boolean;
   acciones?: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -207,6 +215,25 @@ export default function Marco({
     return () => window.removeEventListener('beforeunload', alSalirDeLaPagina);
   }, [jornada]);
 
+  // Barra lateral: se puede esconder con la flecha para dar todo el ancho al modulo.
+  const [barraOculta, setBarraOculta] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(CLAVE_BARRA) === 'si') setBarraOculta(true);
+    } catch {
+      /* almacenamiento bloqueado: queda visible */
+    }
+  }, []);
+  function alternarBarra() {
+    setBarraOculta((v) => {
+      try {
+        window.localStorage.setItem(CLAVE_BARRA, v ? 'no' : 'si');
+      } catch {
+        /* sin persistencia, pero el cambio aplica igual */
+      }
+      return !v;
+    });
+  }
   const [confirmandoSalida, setConfirmandoSalida] = useState(false);
 
   async function cerrarSesion() {
@@ -281,13 +308,24 @@ export default function Marco({
         className="flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
         style={{ '--color-primario': colorPrimario } as React.CSSProperties}
       >
-        <aside className="hidden w-60 shrink-0 flex-col gap-1 bg-[var(--tf-superficie)] p-4 md:flex">
+        <aside
+          className={`w-60 shrink-0 flex-col gap-1 bg-[var(--tf-superficie)] p-4 ${barraOculta ? 'hidden' : 'hidden md:flex'}`}
+        >
           <div className="mb-4 flex items-center gap-3 px-2 py-2">
             <LogoTimeFlow tamano={40} className="h-10 w-10 shrink-0" />
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="font-bold leading-tight text-[var(--tf-texto)]">TimeFlow</p>
               <p className="text-[11px] text-[var(--tf-texto-tenue)]">Jornada · Actividades</p>
             </div>
+            <button
+              type="button"
+              onClick={alternarBarra}
+              title="Esconder la barra lateral"
+              aria-label="Esconder la barra lateral"
+              className="-mr-2 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+            >
+              <ChevronsLeft size={18} aria-hidden />
+            </button>
           </div>
 
           {seccionesVisibles.map((s) => {
@@ -347,10 +385,26 @@ export default function Marco({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="flex flex-wrap items-center gap-3 bg-[var(--tf-superficie)] px-6 py-4">
-            <div className="min-w-0">
-              <h1 className="truncate font-bold text-[var(--tf-texto)]">{titulo}</h1>
-              {subtitulo && <p className="text-xs text-[var(--tf-texto-tenue)]">{subtitulo}</p>}
-            </div>
+            {barraOculta && (
+              <button
+                type="button"
+                onClick={alternarBarra}
+                title="Mostrar la barra lateral"
+                aria-label="Mostrar la barra lateral"
+                className="hidden h-9 items-center gap-2 rounded-xl pl-1 pr-3 text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] md:flex"
+              >
+                <LogoTimeFlow tamano={28} className="h-7 w-7 shrink-0" />
+                <ChevronsRight size={16} aria-hidden />
+              </button>
+            )}
+            {tituloOculto ? (
+              <h1 className="sr-only">{titulo}</h1>
+            ) : (
+              <div className="min-w-0">
+                <h1 className="truncate font-bold text-[var(--tf-texto)]">{titulo}</h1>
+                {subtitulo && <p className="text-xs text-[var(--tf-texto-tenue)]">{subtitulo}</p>}
+              </div>
+            )}
             <div className="ml-auto flex items-center gap-3">
               {avisoJornada && (
                 <span className="flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/10 py-1 pl-3 pr-1 text-xs text-rose-300">

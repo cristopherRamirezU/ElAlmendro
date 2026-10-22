@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constelación de proyectos · maqueta final</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;500&family=Space+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #03060f; color: #e6ebff; font-family: 'Space Grotesk', sans-serif; }
+  .nota { max-width: 1100px; margin: 16px auto 8px; padding: 0 16px; font-size: 13px; color: #8fa0d0; }
+  .escena { position: relative; max-width: 1100px; margin: 0 auto 24px; height: 620px; background: #050914; border: 1px solid rgba(110,150,255,.18); border-radius: 14px; overflow: hidden; }
+  canvas { width: 100%; height: 100%; display: block; }
+  .filtros { position: absolute; z-index: 2; left: 0; right: 0; top: 18px; display: flex; justify-content: center; gap: 28px; transition: opacity .3s; }
+  .filtro { cursor: pointer; font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 300; color: #56618a; transition: color .3s; background: none; border: 0; padding: 4px 0; }
+  .filtro:hover { color: #8f9acb; }
+  .filtro.activo { font-weight: 500; background: linear-gradient(90deg, #7f9dff, #b49aff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tarjeta { position: absolute; z-index: 3; width: 240px; opacity: 0; pointer-events: none; transform: translateY(-6px) scale(.96); transform-origin: top center; transition: opacity .22s, transform .3s cubic-bezier(.2,.8,.2,1); background: rgba(10,15,34,.97); border: 1px solid rgba(110,150,255,.45); border-radius: 14px; padding: 12px 14px; }
+  .tarjeta.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .tarjeta .dato { font-size: 11px; color: #8fa0d0; }
+  .tarjeta .botones { display: flex; gap: 8px; margin-top: 12px; }
+  .tarjeta button { flex: 1; border-radius: 999px; padding: 8px 0; font-size: 12px; font-family: inherit; cursor: pointer; }
+  .b-mapa { background: linear-gradient(90deg, #3f6bff, #825aff); color: #fff; border: 0; }
+  .b-ver { background: rgba(20,30,60,.9); color: #cfd8ff; border: 1px solid rgba(110,150,255,.5); }
+  .aviso { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 4; background: #0c1228; border: 1px solid rgba(110,150,255,.5); font-size: 12px; padding: 6px 12px; border-radius: 8px; opacity: 0; transition: opacity .25s; }
+</style>
+</head>
+<body>
+<p class="nota">Maqueta de referencia (canvas 2D). Los datos son de ejemplo. Prueba: filtros, pasar el mouse por una tarjeta (zoom + tarjetita), pasar el mouse por la esfera (botón "Nuevo proyecto").</p>
+<div class="escena" id="escena">
+  <div class="filtros" id="filtros"></div>
+  <canvas id="cv"></canvas>
+  <div class="tarjeta" id="tarjeta"></div>
+  <div class="aviso" id="aviso"></div>
+</div>
+<script>
+// [nombre, totalTareas, tareasCompletadas, completado(0/1), descripcion]
+const PRJ = [
+  ['Octubre', 20, 2, 0, 'Campaña de contenido de octubre'],
+  ['web Celu', 12, 0, 0, 'Sitio móvil para la tienda'],
+  ['1111111', 6, 0, 0, 'Proyecto de prueba'],
+  ['Sistema de Trabajo', 16, 0, 0, 'Flujo interno del equipo'],
+  ['Video viral 1 min', 8, 0, 0, 'Pieza audiovisual corta'],
+  ['Lanzamiento Q3', 14, 14, 1, 'Lanzamiento del tercer trimestre'],
+];
+
+// Velocidades: casi imperceptibles a proposito.
+const GIRO_ANILLOS = 0.00025; // rad por cuadro
+const GIRO_ESFERA = 0.00025;
+
+const cv = document.getElementById('cv'), x = cv.getContext('2d');
+const filtrosEl = document.getElementById('filtros'), tarjeta = document.getElementById('tarjeta'), aviso = document.getElementById('aviso');
+let W, H;
+function medir() { const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1; W = r.width; H = r.height; cv.width = W * d; cv.height = H * d; x.setTransform(d, 0, 0, d, 0, 0); }
+medir(); addEventListener('resize', medir);
+
+let F = 0, t = 0, mx = -1, my = -1, sel = null, ry = 0, retener = 0, enTarjeta = false, z = 0, tarjetaVisible = false, fx = 0, fy = 0, pct = 0, ang = 0;
+let ab = 0, abHover = 0, retenerBoton = 0, nace = null, pulso = 0;
+
+const FILTROS = ['Todos', 'En proceso', 'Completados'];
+function pintarFiltros() {
+  filtrosEl.innerHTML = '';
+  FILTROS.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.className = 'filtro' + (i === F ? ' activo' : '');
+    b.textContent = f;
+    b.onclick = () => { F = i; pintarFiltros(); };
+    filtrosEl.appendChild(b);
+  });
+}
+pintarFiltros();
+
+cv.addEventListener('mousemove', (e) => { const r = cv.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; });
+cv.addEventListener('mouseleave', () => { mx = -1; });
+tarjeta.addEventListener('mouseenter', () => (enTarjeta = true));
+tarjeta.addEventListener('mouseleave', () => (enTarjeta = false));
+
+function avisar(s) { aviso.textContent = s; aviso.style.opacity = 1; setTimeout(() => (aviso.style.opacity = 0), 1500); }
+function llenarTarjeta(p) {
+  tarjeta.innerHTML = `<div class="dato" style="margin-bottom:6px">${p[4]}</div><div class="dato">${p[2]} de ${p[1]} tareas</div>
+  <div class="botones"><button class="b-mapa" id="bm">Ir al mapa</button><button class="b-ver" id="bv">Ver proyecto</button></div>`;
+  tarjeta.querySelector('#bm').onclick = () => avisar('Abriría el mapa de nodos de ' + p[0]);
+  tarjeta.querySelector('#bv').onclick = () => avisar('Abriría el detalle de ' + p[0]);
+}
+function mostrarTarjeta(v) { if (v === tarjetaVisible) return; tarjetaVisible = v; tarjeta.classList.toggle('visible', v); }
+
+// Una particula por tarea, repartidas en una esfera de Fibonacci.
+let tareas = [];
+function armarTareas() {
+  tareas = [];
+  PRJ.forEach((p, pi) => { for (let i = 0; i < p[1]; i++) tareas.push({ pi, hecha: i < p[2] }); });
+  const N = tareas.length, GA = Math.PI * (3 - Math.sqrt(5));
+  tareas.forEach((k, i) => { const y = N > 1 ? 1 - (i / (N - 1)) * 2 : 0, r = Math.sqrt(1 - y * y), th = GA * i; k.s = [Math.cos(th) * r, y, Math.sin(th) * r]; });
+}
+armarTareas();
+
+const estrellas = Array.from({ length: 120 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 0.9 + 0.2, p: Math.random() * 6 }));
+const chispas = Array.from({ length: 12 }, () => ({ o: Math.random(), y: (Math.random() - 0.5) * 10, s: 0.4 + Math.random() * 0.6 }));
+const visible = (p) => F === 0 || (F === 1 && !p[3]) || (F === 2 && p[3]);
+const suave = (v) => (v < 0.5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2);
+const salida = (v) => 1 - Math.pow(1 - v, 3);
+const KY = [0.5, 0.36];
+const R = 24, BW = 150, BH = 32, GAP = 18;
+const boton = (cx, cy) => ({ x: cx + R + GAP, y: cy - BH / 2, w: BW, h: BH });
+
+cv.addEventListener('click', () => {
+  const b = boton(W / 2, H / 2);
+  if (!sel && ab > 0.6 && mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) {
+    pulso = 1; PRJ.push(['Proyecto nuevo', 0, 0, 0, 'Recién creado']); nace = { i: PRJ.length - 1, k: 0 }; armarTareas();
+  }
+});
+
+function cuadro() {
+  t += 0.016;
+  const cx = W / 2, cy = H / 2, RR = [W * 0.27, W * 0.44], nodos = [];
+  if (!sel) ang += GIRO_ANILLOS;
+  [0, 1].forEach((d) => {
+    const arr = PRJ.map((p, i) => ({ p, i })).filter((o) => o.p[3] === d);
+    arr.forEach((o, j) => {
+      const a = (j / arr.length) * 6.283 + d * 1.2 + 0.4 + ang;
+      let X = cx + Math.cos(a) * RR[d], Y = cy + Math.sin(a) * RR[d] * KY[d];
+      if (nace && nace.i === o.i) { const e = suave(Math.min(1, nace.k)); X = cx + (X - cx) * e; Y = cy + (Y - cy) * e; }
+      nodos.push({ ...o, x: X, y: Y, z: Math.sin(a) });
+    });
+  });
+  if (nace) { nace.k += 0.012; if (nace.k > 1.6) nace = null; }
+
+  // Zoom hacia el proyecto bajo el mouse.
+  const e = suave(z), S = 1 + e * 0.85;
+  if (sel) { const s2 = nodos.find((n) => n.i === sel.i); fx = s2.x; fy = s2.y; sel = s2; }
+  const tx = (W / 2 - fx) * e, ty = (H / 2 - 20 - fy) * e;
+  const aPantalla = (px, py) => [(px - fx) * S + fx + tx, (py - fy) * S + fy + ty];
+
+  const b = boton(cx, cy);
+  const sobreEsfera = !sel && mx >= 0 && Math.hypot(mx - cx, my - cy) < 34;
+  const sobreBoton = !sel && ab > 0.3 && mx >= b.x - GAP && mx <= b.x + b.w && my >= b.y - 6 && my <= b.y + b.h + 6;
+  if (sobreEsfera || sobreBoton) retenerBoton = 0.4; else retenerBoton -= 0.016;
+  ab += ((retenerBoton > 0 ? 1 : 0) - ab) * (retenerBoton > 0 ? 0.07 : 0.1);
+  abHover += ((sobreBoton ? 1 : 0) - abHover) * 0.15; pulso *= 0.9;
+
+  let h = null;
+  if (mx >= 0 && !sobreEsfera && !sobreBoton) nodos.forEach((n) => {
+    if (!visible(n.p)) return;
+    const [sx, sy] = aPantalla(n.x, n.y), sc = (n.z > 0 ? 0.95 : 0.8) * S;
+    if (Math.abs(sx - mx) < 75 * sc && Math.abs(sy - my) < 25 * sc) h = n;
+  });
+  if (sel && h && h.i !== sel.i && z > 0.3) h = sel;
+  if (h) { if (!sel || sel.i !== h.i) { sel = h; fx = h.x; fy = h.y; llenarTarjeta(h.p); mostrarTarjeta(false); } retener = 0.4; }
+  else if (enTarjeta) retener = 0.4;
+  else { retener -= 0.016; if (retener <= 0) sel = null; }
+  z += ((sel ? 1 : 0) - z) * (sel ? 0.06 : 0.09);
+  if (!sel && z < 0.01) { fx = cx; fy = cy; }
+  if (sel && z > 0.92) mostrarTarjeta(true);
+  if (!sel || z < 0.85) mostrarTarjeta(false);
+  filtrosEl.style.opacity = 1 - e * 0.8;
+  ry += GIRO_ESFERA * (1 - e) * (1 - ab * 0.8);
+  cv.style.cursor = sobreEsfera || sobreBoton ? 'pointer' : 'default';
+
+  x.clearRect(0, 0, W, H);
+  estrellas.forEach((s) => {
+    const [sx, sy] = aPantalla(s.x * W, s.y * H), k = 1 / (1 + e * 0.5);
+    x.fillStyle = `rgba(190,205,255,${0.18 + 0.08 * Math.sin(t * 0.25 + s.p)})`;
+    x.beginPath(); x.arc((sx - W / 2) * k + W / 2, (sy - H / 2) * k + H / 2, s.r, 0, 6.3); x.fill();
+  });
+
+  x.save(); x.translate(fx + tx, fy + ty); x.scale(S, S); x.translate(-fx, -fy);
+  const bl = e * 4;
+  x.save(); if (bl > 0.2) x.filter = `blur(${bl.toFixed(1)}px)`;
+  [0, 1].forEach((d) => {
+    const resalta = (F === 1 && d === 0) || (F === 2 && d === 1), apaga = (F === 1 && d === 1) || (F === 2 && d === 0);
+    x.strokeStyle = d ? `rgba(60,220,170,${(resalta ? 0.32 : apaga ? 0.06 : 0.16) * (1 - e * 0.5)})` : `rgba(110,150,255,${(resalta ? 0.4 : apaga ? 0.06 : 0.2) * (1 - e * 0.5)})`;
+    x.setLineDash([2, 7]); x.lineWidth = 1 / S; x.beginPath(); x.ellipse(cx, cy, RR[d], RR[d] * KY[d], 0, 0, 6.3); x.stroke(); x.setLineDash([]);
+  });
+  x.restore();
+
+  const tarjetaProyecto = (n) => {
+    const p = n.p, yo = sel && sel.i === n.i, esNuevo = nace && nace.i === n.i;
+    const a = (visible(p) ? 1 : 0.12) * (yo ? 1 : 1 - e * 0.5) * (1 - ab * 0.45);
+    const pr = p[1] ? p[2] / p[1] : 0, sc = (n.z > 0 ? 0.95 : 0.8) * (esNuevo ? Math.min(1, nace.k * 1.4) : 1);
+    if (sc < 0.05) return;
+    const w = 150 * sc, hh = 50 * sc, X = n.x - w / 2, Y = n.y - hh / 2;
+    x.save(); if (!yo && bl > 0.2) x.filter = `blur(${bl.toFixed(1)}px)`;
+    if (esNuevo) { x.fillStyle = `rgba(120,150,255,${0.28 * (1.6 - nace.k)})`; x.beginPath(); x.roundRect(X - 6, Y - 6, w + 12, hh + 12, 14); x.fill(); }
+    if (yo && e > 0.05) { x.fillStyle = `rgba(90,130,255,${0.18 * e})`; x.beginPath(); x.roundRect(X - 5, Y - 5, w + 10, hh + 10, 14 * sc); x.fill(); }
+    x.fillStyle = `rgba(10,15,34,${0.96 * a})`; x.beginPath(); x.roundRect(X, Y, w, hh, 10 * sc); x.fill();
+    x.strokeStyle = yo ? `rgba(130,165,255,${0.3 + 0.4 * e})` : `rgba(110,150,255,${0.25 * a})`; x.lineWidth = (1 / S) * (yo ? 1.2 : 1); x.stroke();
+    x.fillStyle = `rgba(${p[3] ? '31,191,134' : '60,200,255'},${0.7 * a})`; x.fillRect(X + 8 * sc, Y + hh - 1.5, w - 16 * sc, 1.5);
+    const tx2 = X + 13 * sc;
+    x.textAlign = 'left'; x.fillStyle = `rgba(90,170,255,${a})`; x.font = `500 ${6.5 * sc}px "Space Grotesk",sans-serif`; x.fillText('P R O Y E C T O', tx2, Y + 15 * sc);
+    x.fillStyle = `rgba(255,255,255,${a})`; x.font = `500 ${12 * sc}px "Space Grotesk",sans-serif`; x.fillText(p[0], tx2, Y + 29 * sc);
+    const bw = w - 52 * sc;
+    x.fillStyle = `rgba(255,255,255,${0.1 * a})`; x.fillRect(tx2, Y + 37 * sc, bw, 2.5 * sc);
+    x.fillStyle = p[3] ? `rgba(31,191,134,${a})` : `rgba(255,90,160,${a})`; x.fillRect(tx2, Y + 37 * sc, Math.max(p[2] ? 3 : 0, bw * pr), 2.5 * sc);
+    x.textAlign = 'right'; x.font = `500 ${8.5 * sc}px "Space Grotesk",sans-serif`; x.fillText(p[1] ? Math.round(pr * 100) + '%' : 'nuevo', X + w - 10 * sc, Y + 40 * sc);
+    x.restore();
+  };
+
+  nodos.filter((n) => n.z <= 0 && !(sel && sel.i === n.i)).forEach(tarjetaProyecto);
+
+  // Boton "Nuevo proyecto" que se desliza desde la esfera.
+  if (ab > 0.01 && !sel) {
+    const ee = salida(Math.min(1, ab * 1.15)), sx = cx + R + 3, len = (b.x + b.w - sx) * ee;
+    const gl = x.createRadialGradient(cx, cy, 0, cx, cy, 60); gl.addColorStop(0, `rgba(110,140,255,${0.16 * ab})`); gl.addColorStop(1, 'rgba(110,140,255,0)');
+    x.fillStyle = gl; x.beginPath(); x.arc(cx, cy, 60, 0, 6.3); x.fill();
+    const st = x.createLinearGradient(sx, 0, b.x, 0); st.addColorStop(0, `rgba(200,215,255,${0.9 * ab})`); st.addColorStop(1, `rgba(120,150,255,${0.15 * ab})`);
+    x.strokeStyle = st; x.lineWidth = 1; x.beginPath(); x.moveTo(sx, cy); x.lineTo(Math.min(sx + len, b.x), cy); x.stroke();
+    chispas.forEach((s) => { const ph = (t * s.s * 0.5 + s.o) % 1; x.fillStyle = `rgba(220,230,255,${0.7 * ab * (1 - ph)})`; x.beginPath(); x.arc(sx + ph * (GAP + 8) * ee, cy + s.y * (1 - ph) * 0.5, 1, 0, 6.3); x.fill(); });
+    const bw = Math.max(0, len - (b.x - sx));
+    if (bw > 2) {
+      x.save(); x.beginPath(); x.roundRect(b.x, b.y, bw, b.h, b.h / 2); x.clip();
+      const bg = x.createLinearGradient(b.x, 0, b.x + b.w, 0); bg.addColorStop(0, 'rgba(63,107,255,.95)'); bg.addColorStop(1, 'rgba(130,90,255,.95)');
+      x.fillStyle = bg; x.fillRect(b.x, b.y, b.w, b.h);
+      const brillo = (t * 0.35) % 1.6 - 0.3, sg = x.createLinearGradient(b.x + b.w * brillo - 40, 0, b.x + b.w * brillo + 40, 0);
+      sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, `rgba(255,255,255,${0.18 + abHover * 0.12})`); sg.addColorStop(1, 'rgba(255,255,255,0)');
+      x.fillStyle = sg; x.fillRect(b.x, b.y, b.w, b.h);
+      if (abHover > 0.01) { x.fillStyle = `rgba(255,255,255,${0.08 * abHover})`; x.fillRect(b.x, b.y, b.w, b.h); }
+      const ta = Math.max(0, (ab - 0.5) * 2);
+      x.save(); x.translate(b.x + 17, cy); x.rotate((1 - ta) * -1.57 + abHover * 1.57);
+      x.strokeStyle = `rgba(255,255,255,${ta})`; x.lineWidth = 1.8; x.lineCap = 'round'; x.beginPath(); x.moveTo(-5, 0); x.lineTo(5, 0); x.moveTo(0, -5); x.lineTo(0, 5); x.stroke(); x.restore();
+      x.fillStyle = `rgba(255,255,255,${ta})`; x.font = '500 13px "Space Grotesk",sans-serif'; x.textAlign = 'left'; x.textBaseline = 'middle';
+      x.fillText('Nuevo proyecto', b.x + 32 + (1 - ta) * 8, cy + 1); x.textBaseline = 'alphabetic'; x.restore();
+      x.strokeStyle = `rgba(190,205,255,${0.35 + abHover * 0.35})`; x.lineWidth = 1; x.beginPath(); x.roundRect(b.x, b.y, bw, b.h, b.h / 2); x.stroke();
+      if (pulso > 0.02) { x.strokeStyle = `rgba(190,205,255,${pulso})`; x.beginPath(); x.roundRect(b.x - (1 - pulso) * 10, b.y - (1 - pulso) * 10, bw + (1 - pulso) * 20, b.h + (1 - pulso) * 20, b.h / 2 + 10); x.stroke(); }
+    }
+  }
+
+  // Esfera de tareas.
+  x.save(); if (bl > 0.2) x.filter = `blur(${bl.toFixed(1)}px)`;
+  tareas.map((k) => {
+    const c = Math.cos(ry), s = Math.sin(ry), X = k.s[0] * c - k.s[2] * s, Z = k.s[0] * s + k.s[2] * c, Y = k.s[1], inc = -0.38;
+    return { k, X, Y: Y * Math.cos(inc) - Z * Math.sin(inc), Z: Y * Math.sin(inc) + Z * Math.cos(inc) };
+  }).sort((a, b2) => a.Z - b2.Z).forEach(({ k, X, Y, Z }) => {
+    const pz = (Z + 1) / 2, p = PRJ[k.pi];
+    const a = (k.hecha ? 0.9 : 0.32) * (0.4 + 0.6 * pz) * (visible(p) ? 1 : 0.2) * (1 - e * 0.4) * (1 + ab * 0.3);
+    x.fillStyle = `rgba(${k.hecha ? (p[3] ? '120,240,200' : '235,240,255') : '110,125,190'},${Math.min(1, a)})`;
+    x.beginPath(); x.arc(cx + X * R, cy + Y * R, (k.hecha ? 1.3 : 0.95) * (0.6 + 0.5 * pz), 0, 6.3); x.fill();
+  });
+  x.restore();
+
+  nodos.filter((n) => n.z > 0 && !(sel && sel.i === n.i)).forEach(tarjetaProyecto);
+
+  // Porcentaje bajo la esfera: sin capsula, siempre por encima de las tarjetas.
+  const vis = PRJ.filter(visible), tot = vis.reduce((s, p) => s + p[1], 0), hechas = vis.reduce((s, p) => s + p[2], 0);
+  pct += ((tot ? (hechas / tot) * 100 : 0) - pct) * 0.08;
+  const la = (1 - e) * (1 - ab);
+  if (la > 0.02) {
+    const lx = cx, ly = cy + R + 26;
+    x.save();
+    const g = x.createRadialGradient(lx, ly, 0, lx, ly, 42); g.addColorStop(0, `rgba(5,9,20,${0.9 * la})`); g.addColorStop(1, 'rgba(5,9,20,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(lx, ly, 42, 0, 6.3); x.fill();
+    x.fillStyle = `rgba(240,244,255,${la})`; x.font = '300 22px "Space Grotesk",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = 'rgba(120,150,255,.6)'; x.shadowBlur = 12; x.fillText(Math.round(pct) + '%', lx, ly); x.restore();
+  }
+
+  if (e > 0.02) { x.restore(); x.fillStyle = `rgba(3,6,15,${0.4 * e})`; x.fillRect(0, 0, W, H); x.save(); x.translate(fx + tx, fy + ty); x.scale(S, S); x.translate(-fx, -fy); }
+  if (sel) tarjetaProyecto(sel);
+  x.restore();
+
+  if (sel) {
+    const [sx, sy] = aPantalla(sel.x, sel.y), sc = (sel.z > 0 ? 0.95 : 0.8) * S;
+    tarjeta.style.left = Math.min(Math.max(8, sx - 120), W - 248) + 'px';
+    tarjeta.style.top = sy + 25 * sc + 8 + 'px';
+  }
+  requestAnimationFrame(cuadro);
+}
+cuadro();
+</script>
+</body>
+</html>

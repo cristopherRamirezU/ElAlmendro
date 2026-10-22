@@ -6,11 +6,12 @@ import { Actividad, api, ErrorApi } from '@/lib/api';
 const LARGO_MAXIMO = 2000;
 
 /**
- * Instrucciones de la tarea (su descripcion). Todos las leen; quien creo la
- * tarea o un administrador pueden agregarlas o editarlas despues de crearla.
- * Con el texto vacio se quitan.
+ * Comentarios de la tarea: el texto que antes se llamaba "instrucciones" (la
+ * descripcion de la tarea). Todos lo leen; quien creo la tarea o un
+ * administrador pueden agregarlo o editarlo despues de crearla. Con el texto
+ * vacio se quita.
  */
-export default function InstruccionesTarea({
+export default function ComentariosTarea({
   actividad,
   onGuardadas,
 }: {
@@ -48,28 +49,28 @@ export default function InstruccionesTarea({
       setEditando(false);
       requestAnimationFrame(() => botonEditar.current?.focus());
     } catch (err) {
-      setAviso(err instanceof ErrorApi ? err.message : 'No se pudieron guardar las instrucciones.');
+      setAviso(err instanceof ErrorApi ? err.message : 'No se pudieron guardar los comentarios.');
     } finally {
       setGuardando(false);
     }
   }
 
   return (
-    <section className="mb-4" aria-labelledby={`instrucciones-${actividad.id}`}>
+    <section aria-labelledby={`comentarios-${actividad.id}`}>
       <div className="mb-2 flex items-center justify-between">
         <h3
-          id={`instrucciones-${actividad.id}`}
-          className="text-[11px] font-semibold uppercase tracking-wide text-slate-400"
+          id={`comentarios-${actividad.id}`}
+          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8fa0d0]"
         >
-          Instrucciones
+          Comentarios
         </h3>
         {puedeEditar && !editando && (
           <button
             ref={botonEditar}
             onClick={abrir}
-            className="text-[11px] font-semibold text-sky-300 hover:text-sky-200"
+            className="text-[11px] font-semibold text-[#9fb4ff] hover:text-white"
           >
-            {actividad.descripcion ? 'Editar' : '+ Agregar'}
+            {actividad.descripcion ? '✎ Editar' : '+ Agregar'}
           </button>
         )}
       </div>
@@ -92,9 +93,9 @@ export default function InstruccionesTarea({
             }}
             rows={5}
             maxLength={LARGO_MAXIMO}
-            aria-label="Instrucciones de la tarea"
+            aria-label="Comentarios de la tarea"
             placeholder="Qué hay que hacer, criterios de término, enlaces útiles…"
-            className="w-full resize-y rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs leading-relaxed text-white placeholder-slate-500 outline-none focus:border-sky-400"
+            className="w-full resize-y rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs leading-relaxed text-white placeholder-slate-500 outline-none focus:border-[#7f9dff]"
           />
           <p className="mb-2 mt-1 text-right text-[10px] tabular-nums text-slate-500">
             {texto.length} / {LARGO_MAXIMO}
@@ -108,7 +109,7 @@ export default function InstruccionesTarea({
             <button
               onClick={guardar}
               disabled={guardando}
-              className="flex-1 rounded-lg bg-sky-600 py-2 text-xs font-semibold text-white transition hover:bg-sky-500 disabled:opacity-50"
+              className="tf-boton-marca flex-1 rounded-lg py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
               {guardando ? 'Guardando…' : 'Guardar'}
             </button>
@@ -122,12 +123,12 @@ export default function InstruccionesTarea({
           </div>
         </div>
       ) : actividad.descripcion ? (
-        <p className="whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm leading-relaxed text-slate-300">
+        <p className="min-h-28 whitespace-pre-wrap break-words tf-vidrio rounded-2xl px-4 py-3 text-sm leading-relaxed text-slate-200">
           {actividad.descripcion}
         </p>
       ) : (
-        <p className="rounded-xl border border-dashed border-white/15 p-3 text-center text-xs text-slate-500">
-          Sin instrucciones.
+        <p className="grid min-h-28 place-items-center rounded-2xl border border-dashed border-white/15 p-3 text-center text-xs text-slate-500">
+          Sin comentarios.
         </p>
       )}
     </section>

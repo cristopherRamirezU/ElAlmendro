@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
 import { ALTO_RAIZ, ANCHO_RAIZ, type Orientacion } from '@/lib/mapaMental';
 import { api, PersonaRef } from '@/lib/api';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
-import RelojArena from '@/components/tesoro/RelojArena';
 
 export interface DatosNodoRaiz {
   nombre: string;
@@ -43,7 +42,9 @@ type Modo = 'menu' | 'nueva' | 'para-alguien' | null;
 /**
  * Insignia del proyecto: el nodo central del que cuelgan las tareas. Lleva la
  * etiqueta "PROYECTO", el nombre, cuantas tareas tiene y cuantas estan
- * completadas, y el reloj de arena del proyecto con su avance. Es mas grande que una tarea; el
+ * completadas, un anillo con el % de avance y una barra con un segmento por
+ * tarea (los hechos con el degradado de la marca y el siguiente con rayas
+ * que avanzan). Es mas grande que una tarea; el
  * mapa la dibuja centrada en el lugar que el acomodo reserva para ella.
  *
  * Al pasar el mouse, al enfocarla con el teclado o al tocarla se abre un menu
@@ -195,20 +196,8 @@ export default function NodoRaiz({ id, data }: NodeProps) {
         style={abierto ? { boxShadow: '0 0 0 3px rgba(56,189,248,.35), 0 20px 50px -14px rgba(56,189,248,.7)' } : undefined}
       >
         <div className="tf-insignia-cuerpo flex h-full items-center gap-3.5 px-[18px]">
-          {/* El reloj final: se llena con las tareas terminadas del proyecto. */}
-          <div className="flex shrink-0 flex-col items-center" role="img" aria-label={`Avance del proyecto: ${avance}%`}>
-            <RelojArena
-              variante="proyecto"
-              llenado={avance / 100}
-              terminado={d.totalTareas > 0 && avance >= 100}
-              tamano={40}
-              animada={!d.entrando}
-            />
-            <span aria-hidden className="mt-0.5 text-[10px] font-bold tabular-nums text-pink-200">
-              {avance}%
-            </span>
-          </div>
-          <div className="min-w-0">
+          <AnilloAvance avance={avance} />
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-300">Proyecto</p>
             <p
               className={`${fuenteTitulo.className} mt-0.5 font-bold leading-[1.05] tracking-[-0.03em] text-white ${
@@ -219,6 +208,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
             >
               {d.nombre}
             </p>
+            {d.totalTareas > 0 && <SegmentosAvance total={d.totalTareas} hechas={d.completadas} />}
             <p className="mt-1.5 truncate text-[11px] font-medium text-[#93a3c4]">
               {d.totalTareas === 0
                 ? 'Sin tareas todavía'
@@ -412,5 +402,56 @@ function OpcionMenu({
         <small className="block text-[10px] font-medium text-slate-400">{detalle}</small>
       </span>
     </button>
+  );
+}
+
+/** Con mas tareas que esto, cada segmento de la barra del nodo junta varias. */
+const MAX_SEGMENTOS_NODO = 20;
+
+/** Anillo con el % de avance del proyecto, con el degradado de la marca. */
+function AnilloAvance({ avance }: { avance: number }) {
+  const id = useId();
+  const radio = 22;
+  const largo = 2 * Math.PI * radio;
+  return (
+    <svg width="56" height="56" viewBox="-28 -28 56 56" className="shrink-0" role="img" aria-label={`Avance del proyecto: ${avance}%`}>
+      <defs>
+        <linearGradient id={id} x1="0" x2="1">
+          <stop offset="0" stopColor="#3f6bff" />
+          <stop offset="1" stopColor="#825aff" />
+        </linearGradient>
+      </defs>
+      <circle r={radio} fill="none" stroke="rgba(110,150,255,.15)" strokeWidth="5" />
+      <circle
+        r={radio}
+        fill="none"
+        stroke={`url(#${id})`}
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeDasharray={`${(largo * avance) / 100} ${largo}`}
+        transform="rotate(-90)"
+        className="transition-[stroke-dasharray] duration-700 motion-reduce:transition-none"
+      />
+      <text y="4" fill="#fff" fontSize="12" fontWeight="300" textAnchor="middle" className="tabular-nums">
+        {avance}%
+      </text>
+    </svg>
+  );
+}
+
+/** Barra del nodo: un segmento por tarea; el siguiente por terminar tiene rayas que avanzan. */
+function SegmentosAvance({ total, hechas }: { total: number; hechas: number }) {
+  const segmentos = Math.min(total, MAX_SEGMENTOS_NODO);
+  const llenos = hechas >= total ? segmentos : Math.floor((hechas / total) * segmentos);
+  const activo = hechas < total ? llenos : -1;
+  return (
+    <div aria-hidden className="mt-2 flex gap-[3px]">
+      {Array.from({ length: segmentos }, (_, i) => (
+        <div
+          key={i}
+          className={`tf-segmento tf-segmento-fino ${i < llenos ? 'tf-segmento-hecho' : i === activo ? 'tf-segmento-activo' : ''}`}
+        />
+      ))}
+    </div>
   );
 }

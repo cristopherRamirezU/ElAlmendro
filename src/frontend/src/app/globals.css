@@ -457,15 +457,119 @@ body {
   100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(16, 185, 129, 0); }
 }
 
-/* Avisos y controles del sistema de planetas: aparecen cuando ya se armo. */
-.tf-galaxia-vacia { animation: tf-modal-fondo 0.5s ease-out 2.6s both; }
-
-/* Datos extra de la tarjeta del planeta enfocado: se despliegan suave. */
-@keyframes tf-tarjeta-foco {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
+/* Cajon del proyecto enfocado en la constelacion: sale por debajo de la
+   tarjeta agrandada (o por encima si abajo no cabe) con sus dos botones. El
+   motor lo ubica, le da el ancho de la tarjeta y marca data-visible cuando la
+   camara termina de acercarse. */
+.tf-constelacion-tarjeta {
+  --tf-cajon-oculto: inset(0 0 100% 0);
+  display: flex;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  clip-path: var(--tf-cajon-oculto);
+  transition: clip-path 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s;
+  background: rgba(10, 15, 34, 0.97);
+  border: 1px solid rgba(130, 165, 255, 0.6);
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
 }
-.tf-tarjeta-foco { animation: tf-tarjeta-foco 0.28s ease-out both; }
+.tf-constelacion-tarjeta[data-lado='arriba'] {
+  --tf-cajon-oculto: inset(100% 0 0 0);
+  border-top: 1px solid rgba(130, 165, 255, 0.6);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+}
+.tf-constelacion-tarjeta[data-visible='true'] {
+  opacity: 1;
+  clip-path: inset(0);
+  pointer-events: auto;
+}
+.tf-constelacion-tarjeta button {
+  flex: 1;
+  min-width: 0;
+  padding: 0.85em 0.4em;
+  font-size: 1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition: background-color 0.2s, filter 0.2s;
+}
+.tf-cajon-mapa {
+  color: #fff;
+  background: linear-gradient(90deg, #3f6bff, #825aff);
+}
+.tf-cajon-mapa:hover { filter: brightness(1.12); }
+.tf-cajon-ver { color: #cfd8ff; }
+.tf-cajon-ver:hover { background: rgba(110, 150, 255, 0.12); }
+
+/* Avance del proyecto en su ventana: un segmento por tarea; los hechos con el
+   degradado de la marca y el siguiente con rayas que avanzan. */
+.tf-banda-avance {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(63, 107, 255, 0.16), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(130, 90, 255, 0.14), transparent 55%),
+    #111933;
+  border: 1px solid rgba(130, 165, 255, 0.22);
+}
+.tf-boton-marca {
+  background: linear-gradient(90deg, #3f6bff, #825aff);
+  box-shadow: 0 6px 18px rgba(80, 90, 255, 0.25);
+  transition: filter 0.2s;
+}
+.tf-boton-marca:hover { filter: brightness(1.12); }
+.tf-segmento {
+  flex: 1;
+  height: 12px;
+  border-radius: 4px;
+  background: rgba(110, 150, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(130, 165, 255, 0.14);
+  transition: background 0.4s, box-shadow 0.4s;
+}
+.tf-segmento-hecho {
+  background: linear-gradient(180deg, #6b8cff, #6a55f0);
+  box-shadow: 0 0 10px rgba(110, 120, 255, 0.35);
+}
+@keyframes tf-segmento-rayas {
+  to { background-position: 14px 0; }
+}
+.tf-segmento-activo {
+  background: repeating-linear-gradient(135deg, rgba(127, 157, 255, 0.85) 0 5px, rgba(127, 157, 255, 0.28) 5px 10px);
+  background-size: 14px 14px;
+  animation: tf-segmento-rayas 0.9s linear infinite;
+  box-shadow: 0 0 12px rgba(127, 157, 255, 0.35), inset 0 0 0 1px rgba(170, 190, 255, 0.5);
+}
+
+/* Ventana de una tarea: vidrio translucido que deja ver el fondo, desenfocado. */
+.tf-ventana-tarea {
+  background: rgba(14, 21, 38, 0.55);
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(140%);
+}
+/* Bloques de vidrio dentro de la ventana (comentarios, responsable). */
+.tf-vidrio {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Contador de la tarea: un panel de vidrio un poco mas claro que la ventana. */
+.tf-contador {
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.tf-boton-vidrio {
+  background: linear-gradient(135deg, #5b7dff, #9a6bff);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: filter 0.2s;
+}
+.tf-boton-vidrio:hover { filter: brightness(1.1); }
+
+/* Segmentos mas finos, para el nodo principal del mapa. */
+.tf-segmento.tf-segmento-fino { height: 5px; border-radius: 3px; }
 
 /* Quien pide menos movimiento ve los relojes y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
@@ -475,9 +579,9 @@ body {
   .tf-lcd-dos-puntos { animation: none; }
   .tf-retro-boton { transition: none; }
   .tf-modal-fondo,
-  .tf-modal-entra,
-  .tf-galaxia-vacia,
-  .tf-tarjeta-foco { animation: none; }
+  .tf-modal-entra { animation: none; }
+  .tf-constelacion-tarjeta { clip-path: none; transition: opacity 0.22s; }
+  .tf-segmento-activo { animation: none; }
   .tf-interruptor-perilla,
   .tf-interruptor-pista,
   .tf-interruptor-rotulo { transition: none; }

@@ -118,6 +118,56 @@ const OPCIONES_LADO: { valor: LadoLinea | ''; texto: string }[] = [
 ];
 
 /** El borde de una manilla a partir de su id ("salida-top" -> "top"). */
+/** Margen que se deja bajo el mapa, igual al del marco de la pagina. */
+const MARGEN_BAJO_MAPA = 24;
+/** Alto minimo del mapa en pantallas bajas: debajo de esto la pagina se desplaza. */
+const ALTO_MINIMO_MAPA = 512;
+
+/**
+ * Caja del mapa: se estira hasta el borde inferior de la ventana (menos el
+ * margen del marco), mida lo que mida lo de arriba (cabecera, barra de
+ * edicion). Se vuelve a medir al cambiar el tamano de la ventana o lo de arriba.
+ */
+function CajaMapa({
+  className,
+  style,
+  children,
+}: {
+  className: string;
+  style: React.CSSProperties;
+  children: React.ReactNode;
+}) {
+  const caja = useRef<HTMLDivElement>(null);
+  const [alto, setAlto] = useState<number | null>(null);
+  useEffect(() => {
+    const medir = () => {
+      const el = caja.current;
+      if (!el) return;
+      const arriba = el.getBoundingClientRect().top + window.scrollY;
+      // Se resta 1 px por el borde de la tarjeta del mapa, para que la pagina no se desplace.
+      setAlto(Math.max(ALTO_MINIMO_MAPA, Math.floor(window.innerHeight - arriba - MARGEN_BAJO_MAPA - 1)));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    // Lo de arriba puede crecer (p. ej. la barra de edicion del mapa): se vuelve a medir.
+    const ro = new ResizeObserver(medir);
+    if (caja.current?.parentElement) ro.observe(caja.current.parentElement);
+    return () => {
+      window.removeEventListener('resize', medir);
+      ro.disconnect();
+    };
+  }, []);
+  return (
+    <div
+      ref={caja}
+      className={className}
+      style={{ height: alto ?? 'max(32rem, calc(100vh - 15rem))', ...style }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ladoDeManilla(id: string | null | undefined): LadoLinea | undefined {
   const lado = id?.split('-')[1];
   return lado === 'top' || lado === 'right' || lado === 'bottom' || lado === 'left' ? lado : undefined;
@@ -1019,9 +1069,9 @@ function Nodos() {
             </span>
           </div>
         )}
-        <div
+        <CajaMapa
           className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
-          style={{ height: 'max(32rem, calc(100vh - 15rem))', ...estiloFondoMapa(fondo) }}
+          style={estiloFondoMapa(fondo)}
         >
           <DecoracionFondo fondo={fondo} />
           <ReactFlow
@@ -1083,7 +1133,7 @@ function Nodos() {
             <PuntosFondo fondo={fondo} />
             <Controls showInteractive={false} />
           </ReactFlow>
-        </div>
+        </CajaMapa>
       </section>
 
       {/* Detalle de la tarea elegida, en una ventana emergente sobre el mapa. */}

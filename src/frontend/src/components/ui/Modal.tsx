@@ -20,6 +20,7 @@ export default function Modal({
   titulo,
   acciones,
   ancho = 'lg',
+  claseVentana,
   bloqueado = false,
   onCerrar,
   children,
@@ -28,6 +29,8 @@ export default function Modal({
   /** Botones de la cabecera, junto a la X. */
   acciones?: React.ReactNode;
   ancho?: keyof typeof ANCHOS;
+  /** Fondo propio de la ventana, en lugar del gris pizarra de siempre. */
+  claseVentana?: string;
   bloqueado?: boolean;
   onCerrar: () => void;
   children: React.ReactNode;
@@ -62,7 +65,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
-        className={`tf-modal-entra flex max-h-[90vh] w-full ${ANCHOS[ancho]} flex-col overflow-hidden rounded-3xl border border-white/10 bg-slate-900 shadow-2xl`}
+        className={`tf-modal-entra flex max-h-[90vh] w-full ${ANCHOS[ancho]} flex-col overflow-hidden rounded-3xl border border-white/10 ${claseVentana ?? 'bg-slate-900'} shadow-2xl`}
       >
         <div className="flex items-start justify-between gap-3 border-b border-white/10 px-6 py-4">
           <h2 id={idTitulo} className="min-w-0 text-lg font-bold leading-snug text-white">

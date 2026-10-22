@@ -2,12 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import Marco from '@/components/Marco';
 import EquipoProyecto from '@/components/panel/EquipoProyecto';
 import Modal from '@/components/ui/Modal';
-import GalaxiaProyectos from '@/components/panel/GalaxiaProyectos';
-import RelojProyecto from '@/components/tesoro/RelojProyecto';
+import ConstelacionProyectos from '@/components/panel/ConstelacionProyectos';
+import BandaAvance from '@/components/panel/BandaAvance';
 import { api, ErrorApi, ProgresoPersonalItem, ProyectoItem, Sesion } from '@/lib/api';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { useSesion } from '@/lib/sesion';
@@ -96,14 +95,9 @@ export default function Panel() {
     ? 'Panel de Supervisión'
     : 'Panel de Proyectos';
 
-  const subtituloVista = esTrabajador
-    ? 'Rendimiento personal, jornadas y proyectos asignados'
-    : esSupervisor
-    ? 'Resumen general de proyectos supervisados y flujo de trabajo del equipo'
-    : 'Gestión centralizada de proyectos, tareas y equipo';
-
   return (
-    <Marco activo="/panel" titulo={tituloVista} subtitulo={subtituloVista}>
+    // En el Panel solo queda el mapa: el titulo no se muestra en la cabecera.
+    <Marco activo="/panel" titulo={tituloVista} tituloOculto>
       {aviso && (
         <p
           role="alert"
@@ -211,85 +205,28 @@ export default function Panel() {
         </div>
       )}
 
-      {/* -------------------- Panel Superior de Supervisión -------------------- */}
-      {esSupervisor && (
-        <div className="mb-8 space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-            Resumen Operativo de Supervisión
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-sm backdrop-blur">
-              <p className="text-xs text-slate-400">Proyectos Asignados / Supervisados</p>
-              <p className="mt-1 text-2xl font-bold text-white">{proyectos.length}</p>
-              <p className="mt-1 text-[11px] text-slate-500">Bajo supervisión activa</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-sm backdrop-blur">
-              <p className="text-xs text-slate-400">Total Tareas del Equipo</p>
-              <p className="mt-1 text-2xl font-bold text-sky-400">
-                {proyectos.reduce((acc, p) => acc + p.totalTareas, 0)}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-500">Distribuidas en proyectos</p>
-            </div>
-            <div className="flex flex-col justify-between rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 shadow-sm backdrop-blur">
-              <div>
-                <p className="text-xs font-semibold text-sky-300">Mapa de Nodos y Reportes</p>
-                <p className="mt-1 text-xs text-slate-300">
-                  Visualiza el árbol completo del equipo o revisa reportes de horas.
-                </p>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <Link
-                  href="/reportes"
-                  className="rounded-lg bg-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/30"
-                >
-                  Ver Reportes
-                </Link>
-                <Link
-                  href="/chat"
-                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/5"
-                >
-                  Chat Equipo
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* -------------------- Proyectos -------------------- */}
-      <div className="mb-4 flex flex-wrap items-end gap-2 border-b border-[var(--tf-borde)]">
-        <h2 className="-mb-px border-b-2 border-sky-400 px-3 py-2 text-sm font-semibold text-[var(--tf-texto)]">
-          {esTrabajador ? 'Mis Proyectos' : 'Proyectos del Sistema'}
-          <span className="ml-2 rounded-full bg-[var(--tf-hover)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--tf-texto-tenue)]">
-            {proyectos.length}
-          </span>
-        </h2>
-        <p className="ml-auto hidden pb-2 text-xs text-[var(--tf-texto-tenue)] sm:block">
-          {esTrabajador ? 'Proyectos donde tienes asignaciones' : 'Elige una galaxia y luego un proyecto'}
-        </p>
-      </div>
-
-      <div>
-        <section>
-          {cargando ? (
-            <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
-              Cargando proyectos…
-            </p>
-          ) : (
-            // Los proyectos como planetas de dos galaxias (en proceso y
-            // completados). Tocar uno abre su ventana, con el acceso al mapa.
-            <GalaxiaProyectos
-              proyectos={proyectos}
-              seleccionado={detalleAbierto ? seleccionado : null}
-              onElegir={(id) => {
-                setSeleccionado(id);
-                setDetalleAbierto(true);
-              }}
-              onCrear={() => setModalAbierto(true)}
-            />
-          )}
-        </section>
-      </div>
+      {/* -------------------- Proyectos: solo el mapa -------------------- */}
+      <section aria-label={esTrabajador ? 'Mis proyectos' : 'Proyectos'}>
+        {cargando ? (
+          <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
+            Cargando proyectos…
+          </p>
+        ) : (
+          // Los proyectos como constelacion alrededor de la esfera de tareas.
+          // Cualquier rol puede crear proyectos, asi que la esfera siempre
+          // ofrece "Nuevo proyecto".
+          <ConstelacionProyectos
+            proyectos={proyectos}
+            esTrabajador={esTrabajador}
+            onElegir={(id) => {
+              setSeleccionado(id);
+              setDetalleAbierto(true);
+            }}
+            onIrAlMapa={irATareas}
+            onCrear={() => setModalAbierto(true)}
+          />
+        )}
+      </section>
 
       {proyecto && detalleAbierto && (
         <ModalDetalleProyecto
@@ -361,10 +298,9 @@ function TarjetaMetrica({
 }
 
 /**
- * Detalle del proyecto en una ventana emergente: a la izquierda su reloj de
- * arena y el acceso al mapa de nodos, a la derecha la descripcion,
- * el equipo y los datos. Asi lo importante queda a la vista sin bajar. Se
- * cierra con la X, con Escape o con un clic fuera.
+ * Detalle del proyecto en una ventana emergente, solo con lo esencial: el
+ * avance (una barra con un segmento por tarea) con el acceso al mapa, la
+ * descripcion y el equipo. Se cierra con la X, con Escape o con un clic fuera.
  */
 function ModalDetalleProyecto({
   proyecto,
@@ -390,8 +326,6 @@ function ModalDetalleProyecto({
   onIrAlMapa: () => void;
   onCambio: () => void;
 }) {
-  const colorPrimario = useColorPrimario();
-
   return (
     <Modal
       titulo={proyecto.nombre}
@@ -420,55 +354,23 @@ function ModalDetalleProyecto({
         </>
       }
     >
-      <div className="grid gap-6 md:grid-cols-[17rem_1fr]">
-        {/* Reloj y accesos: lo que se busca al abrir un proyecto. */}
-        <div className="flex flex-col">
-          <RelojProyecto proyecto={proyecto} onCambio={onCambio} />
-          <button
-            onClick={onIrAlMapa}
-            style={{ backgroundColor: colorPrimario }}
-            className="w-full rounded-xl py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
-          >
-            {esTrabajador ? 'Iniciar tarea / Registrar avance' : 'Ir al mapa de nodos'}
-          </button>
-        </div>
-
-        <div className="min-w-0">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-            Descripción
-          </p>
-          <p className="mb-4 text-sm leading-relaxed text-slate-300">
+      <BandaAvance
+        proyecto={proyecto}
+        textoMapa={esTrabajador ? 'Registrar avance' : 'Ir al mapa'}
+        onIrAlMapa={onIrAlMapa}
+        onCambio={onCambio}
+      />
+      <div className="mt-4">
+        <EquipoProyecto key={proyecto.id} proyectoId={proyecto.id} puedeGestionar={puedeEditar}>
+          <p className={`text-sm leading-relaxed ${proyecto.descripcion ? 'text-slate-300' : 'text-slate-500'}`}>
             {proyecto.descripcion || 'Sin descripción'}
           </p>
-
-          <EquipoProyecto key={proyecto.id} proyectoId={proyecto.id} puedeGestionar={puedeEditar} />
-
-          <Fila
-            etiqueta="Creado el"
-            valor={new Date(proyecto.creadoEn).toLocaleDateString('es-CL', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          />
-          <Fila
-            etiqueta="Tareas asociadas"
-            valor={`${proyecto.totalTareas} tarea${proyecto.totalTareas === 1 ? '' : 's'}`}
-          />
-        </div>
+        </EquipoProyecto>
       </div>
     </Modal>
   );
 }
 
-function Fila({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between border-b border-white/5 py-2 text-sm">
-      <span className="text-slate-400">{etiqueta}</span>
-      <span className="font-medium text-white">{valor}</span>
-    </div>
-  );
-}
 
 function ModalCrearProyecto({
   onCerrar,
