@@ -31,6 +31,9 @@ export default function Conversacion({
   onCargarAnteriores,
   onEscribiendo,
   onVolver,
+  siempreVolver = false,
+  borradorInicial = '',
+  onBorrador,
 }: {
   yoId: string;
   contacto: ContactoChat | null;
@@ -43,9 +46,13 @@ export default function Conversacion({
   onCargarAnteriores: () => void;
   onEscribiendo: () => void;
   onVolver: () => void;
+  /** En el chat flotante la lista nunca esta al lado: el boton se ve siempre. */
+  siempreVolver?: boolean;
+  borradorInicial?: string;
+  onBorrador?: (texto: string) => void;
 }) {
   const colorPrimario = useColorPrimario();
-  const [borrador, setBorrador] = useState('');
+  const [borrador, setBorrador] = useState(borradorInicial);
   const [enviando, setEnviando] = useState(false);
   const listaRef = useRef<HTMLDivElement>(null);
   const ultimoAvisoRef = useRef(0);
@@ -66,6 +73,7 @@ export default function Conversacion({
     if (!cuerpo || enviando) return;
     setEnviando(true);
     setBorrador('');
+    onBorrador?.('');
     try {
       await onEnviar(cuerpo);
     } finally {
@@ -75,6 +83,7 @@ export default function Conversacion({
 
   function alEscribir(valor: string) {
     setBorrador(valor);
+    onBorrador?.(valor);
     const ahora = Date.now();
     if (valor && ahora - ultimoAvisoRef.current > INTERVALO_ESCRIBIENDO_MS) {
       ultimoAvisoRef.current = ahora;
@@ -89,7 +98,7 @@ export default function Conversacion({
       <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
         <button
           onClick={onVolver}
-          className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white/5 md:hidden"
+          className={`grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white/5 ${siempreVolver ? '' : 'md:hidden'}`}
           title="Volver a la lista"
         >
           ‹

@@ -1,9 +1,9 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { Socket } from 'socket.io-client';
 import { api, MensajeChat } from '@/lib/api';
-import { socketChat } from '@/lib/socket';
+import { leerPresencia, leerPresenciaServidor, socketChat, suscribirPresencia } from '@/lib/socket';
 
 /** Identificador del canal general en la URL y en la API (`?con=general`). */
 export const CANAL_GENERAL = 'general';
@@ -43,7 +43,7 @@ export function ProveedorChat({
   usuarioId: string;
   children: React.ReactNode;
 }) {
-  const [enLinea, setEnLinea] = useState<ReadonlySet<string>>(new Set());
+  const enLinea = useSyncExternalStore(suscribirPresencia, leerPresencia, leerPresenciaServidor);
   const [noLeidos, setNoLeidos] = useState(0);
   const [conectado, setConectado] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -64,35 +64,19 @@ export function ProveedorChat({
     refrescarNoLeidos();
 
     const alConectar = () => setConectado(true);
-    const alDesconectar = () => {
-      setConectado(false);
-      // Sin socket no sabemos quien sigue en linea: mejor no afirmar nada.
-      setEnLinea(new Set());
-    };
-    const alListar = (ids: string[]) => setEnLinea(new Set(ids));
-    const alCambiar = ({ usuarioId: id, enLinea: activo }: { usuarioId: string; enLinea: boolean }) =>
-      setEnLinea((prev) => {
-        const sig = new Set(prev);
-        if (activo) sig.add(id);
-        else sig.delete(id);
-        return sig;
-      });
+    const alDesconectar = () => setConectado(false);
     const alMensaje = (m: MensajeChat) => {
       if (m.receptorId === usuarioId) refrescarNoLeidos();
     };
 
     s.on('connect', alConectar);
     s.on('disconnect', alDesconectar);
-    s.on('presencia:lista', alListar);
-    s.on('presencia:cambio', alCambiar);
     s.on('mensaje:nuevo', alMensaje);
     if (!s.connected) s.connect();
 
     return () => {
       s.off('connect', alConectar);
       s.off('disconnect', alDesconectar);
-      s.off('presencia:lista', alListar);
-      s.off('presencia:cambio', alCambiar);
       s.off('mensaje:nuevo', alMensaje);
     };
   }, [usuarioId, refrescarNoLeidos]);

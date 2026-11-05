@@ -26,6 +26,7 @@ import ConfirmarSalida from './ConfirmarSalida';
 import InterruptorJornada from './ui/InterruptorJornada';
 import { ProveedorChat } from '@/lib/chat';
 import { cerrarSocketChat } from '@/lib/socket';
+import ChatFlotante from '@/components/chat/ChatFlotante';
 import InsigniaChat from '@/components/chat/InsigniaChat';
 import LogoTimeFlow from '@/components/login/LogoTimeFlow';
 import '@/components/login/login.css';
@@ -292,6 +293,9 @@ export default function Marco({
     return s;
   });
 
+  // En /chat la pantalla completa reemplaza al desplegable.
+  const conChatFlotante = Boolean(usuario?.permisos?.includes(PERMISOS.CHAT_USAR)) && activo !== '/chat';
+
   const contenido = (
     <ContextoSesion.Provider value={usuario}>
       <AvisoVersion />
@@ -452,9 +456,10 @@ export default function Marco({
             </div>
           </header>
 
-          <div className="min-h-0 flex-1 overflow-auto p-6">{children}</div>
+          <div className={`min-h-0 flex-1 overflow-auto p-6 ${conChatFlotante ? 'pb-16' : ''}`}>{children}</div>
         </div>
       </div>
+      {usuario && conChatFlotante && <ChatFlotante yoId={usuario.id} />}
     </ContextoSesion.Provider>
   );
 

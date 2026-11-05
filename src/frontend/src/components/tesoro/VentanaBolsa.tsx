@@ -253,7 +253,7 @@ export default function VentanaBolsa() {
   return (
     <div
       role="status"
-      className="fixed bottom-4 right-4 z-[60] flex items-center gap-2 rounded-xl border border-orange-400/25 bg-slate-900/95 py-2 pl-3 pr-2 shadow-xl backdrop-blur"
+      className="fixed bottom-14 right-4 z-[60] flex md:bottom-4 md:right-[24rem] items-center gap-2 rounded-xl border border-orange-400/25 bg-slate-900/95 py-2 pl-3 pr-2 shadow-xl backdrop-blur"
     >
       <RelojArena llenado={0.5} tamano={18} animada={false} />
       <span className="max-w-[12rem] truncate text-xs text-slate-300">{bolsa.titulo}</span>
