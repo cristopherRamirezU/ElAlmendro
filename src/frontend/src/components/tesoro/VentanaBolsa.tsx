@@ -3,19 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTesoro } from '@/lib/tesoro';
-import RelojArena from './RelojArena';
 import ContenidoBolsa from './ContenidoBolsa';
 
 /**
  * Lienzo de cada vista de la ventana aparte, en pixeles de contenido: entera
- * (reloj, objetivos y evidencia) o encogida a solo el reloj retro. El
+ * (contador, objetivos y evidencia) o encogida a solo el contador. El
  * contenido se dibuja siempre a este tamano y se escala para calzar en la
  * ventana: asi nunca aparece una barra de desplazamiento, aunque el navegador
  * la abra de otro tamano.
  */
 const LIENZO = {
   completo: { width: 380, height: 640 },
-  reloj: { width: 300, height: 220 },
+  reloj: { width: 300, height: 150 },
 } as const;
 
 /** La API de ventana flotante del navegador (Chrome y Edge). */
@@ -45,6 +44,18 @@ function hayGestoReciente() {
 }
 
 /**
+ * Las rutas relativas de una hoja (las fuentes, por ejemplo) se calculan desde
+ * la hoja original: al copiar su texto a otro documento hay que dejarlas
+ * absolutas o dejarian de encontrarse.
+ */
+function absolutizarUrls(css: string, base: string) {
+  return css.replace(
+    /url\((['"]?)(?!data:|blob:|#)([^'")]+)\1\)/g,
+    (_, __, ruta: string) => `url("${new URL(ruta, base).href}")`,
+  );
+}
+
+/**
  * Copia los estilos de la pagina a la ventana nueva: es otro documento y no
  * hereda nada, asi que sin esto llegaria sin formato.
  */
@@ -55,7 +66,7 @@ function copiarEstilos(destino: Window) {
         .map((r) => r.cssText)
         .join('\n');
       const estilo = destino.document.createElement('style');
-      estilo.textContent = css;
+      estilo.textContent = absolutizarUrls(css, hoja.href ?? document.baseURI);
       destino.document.head.appendChild(estilo);
     } catch {
       // Hoja de otro origen: no se puede leer, pero si enlazar.
@@ -121,10 +132,10 @@ export default function VentanaBolsa() {
       nueva.document.title = `Tarea · ${bolsa.titulo}`;
       nueva.document.body.style.margin = '0';
       nueva.document.body.style.overflow = 'hidden';
-      nueva.document.body.style.background = '#0f172a';
+      nueva.document.body.style.background = '#0e1526';
 
       const caja = nueva.document.createElement('div');
-      caja.className = 'flex h-screen justify-center overflow-hidden bg-slate-950 text-slate-100';
+      caja.className = 'tf-ventana-aparte flex h-screen justify-center overflow-hidden text-slate-100';
       nueva.document.body.appendChild(caja);
 
       // Cerrar la ventana es cerrar la tarea: no hay otra forma de verla.
@@ -212,33 +223,33 @@ export default function VentanaBolsa() {
     const lienzo = soloReloj ? LIENZO.reloj : LIENZO.completo;
     return createPortal(
       <div className="flex shrink-0 flex-col overflow-hidden" style={{ ...lienzo, zoom: escala }}>
-        <div className="flex shrink-0 items-center gap-1 border-b border-white/10 bg-white/5 px-2 py-1.5">
-          <span className="min-w-0 flex-1 truncate text-[10px] font-semibold uppercase tracking-wide text-orange-200/70">
-            {soloReloj ? 'Cronómetro' : 'Tarea'}
-          </span>
-          <button
-            onClick={() => cambiarTamano(!soloReloj)}
-            title={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
-            className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-          >
-            {soloReloj ? '⤢' : '—'}
-          </button>
-          <button
-            onClick={() => ventanaAparte?.close()}
-            title="Cerrar la tarea"
-            aria-label="Cerrar la tarea"
-            className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
-          >
-            ×
-          </button>
-        </div>
         <ContenidoBolsa
           bolsaId={bolsa.id}
           titulo={bolsa.titulo}
           modo={soloReloj ? 'reloj' : 'completo'}
+          acciones={
+            <>
+              <button
+                onClick={() => cambiarTamano(!soloReloj)}
+                title={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
+                aria-label={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
+                className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              >
+                {soloReloj ? '⤢' : '—'}
+              </button>
+              <button
+                onClick={() => ventanaAparte?.close()}
+                title="Cerrar la tarea"
+                aria-label="Cerrar la tarea"
+                className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              >
+                ×
+              </button>
+            </>
+          }
           onCambio={notificarCambio}
-          // El reloj de la ventana aparte pertenece a otro documento: el vuelo
-          // hacia el reloj del proyecto sale del centro de la pagina principal.
+          // El vuelo hacia el reloj del proyecto sale del centro de la pagina
+          // principal: la ventana aparte es otro documento.
           onGuardada={() =>
             volarAlCofre(new DOMRect(window.innerWidth / 2 - 40, window.innerHeight / 2 - 40, 80, 80))
           }
@@ -253,13 +264,12 @@ export default function VentanaBolsa() {
   return (
     <div
       role="status"
-      className="fixed bottom-14 right-4 z-[60] flex md:bottom-4 md:right-[24rem] items-center gap-2 rounded-xl border border-orange-400/25 bg-slate-900/95 py-2 pl-3 pr-2 shadow-xl backdrop-blur"
+      className="tf-ventana-aparte fixed bottom-14 right-4 z-[60] flex items-center gap-2 rounded-2xl border border-white/15 py-2 pl-3 pr-2 shadow-xl md:bottom-4 md:right-[24rem]"
     >
-      <RelojArena llenado={0.5} tamano={18} animada={false} />
       <span className="max-w-[12rem] truncate text-xs text-slate-300">{bolsa.titulo}</span>
       <button
         onClick={abrirAparte}
-        className="rounded-lg bg-orange-500 px-2.5 py-1 text-[11px] font-bold text-slate-950 transition hover:bg-orange-400"
+        className="tf-boton-marca rounded-lg px-2.5 py-1 text-[11px] font-semibold text-white"
       >
         Abrir ventana
       </button>

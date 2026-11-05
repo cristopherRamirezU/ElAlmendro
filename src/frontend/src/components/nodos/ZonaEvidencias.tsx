@@ -111,7 +111,9 @@ export default function ZonaEvidencias({
   function cancelarEliminar(id: string) {
     setPorEliminar(null);
     requestAnimationFrame(() =>
-      document.querySelector<HTMLButtonElement>(`[data-eliminar-adjunto="${id}"]`)?.focus(),
+      (input.current?.ownerDocument ?? document)
+        .querySelector<HTMLButtonElement>(`[data-eliminar-adjunto="${id}"]`)
+        ?.focus(),
     );
   }
 

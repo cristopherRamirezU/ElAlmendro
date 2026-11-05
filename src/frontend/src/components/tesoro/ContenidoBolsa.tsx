@@ -1,16 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Actividad, api, ErrorApi, Evidencia, Sesion, Subtarea, URL_API } from '@/lib/api';
+import { useCallback, useEffect, useState } from 'react';
+import { Actividad, api, ErrorApi, Evidencia, Sesion, Subtarea } from '@/lib/api';
 import { duracion } from '@/lib/formato';
-import RelojArena from './RelojArena';
-import RelojRetro, { type BotonReloj, type EstadoReloj } from './RelojRetro';
+import ContadorTarea, {
+  TEXTO_ESTADO,
+  type AccionContador,
+  type EstadoContador,
+} from '@/components/nodos/ContadorTarea';
+import ZonaEvidencias from '@/components/nodos/ZonaEvidencias';
 import { llenadoDeBolsa, porcentajeLlenado } from './llenado';
 
 /**
- * El panel de una tarea abierta: su reloj de arena, el reloj retro con el
- * cronometro y sus tres botones (comenzar, pausar, terminar), la evidencia y
- * la lista de objetivos.
+ * La tarea en su ventana aparte, con el mismo diseno que su ventana del mapa
+ * de nodos: el contador (comenzar, pausar, terminar) y, debajo, los objetivos
+ * y las evidencias.
  *
  * No depende del contexto del tesoro ni de donde se dibuje, porque se usa en
  * dos sitios: la ventana independiente del navegador y la pantalla suelta
@@ -20,33 +24,33 @@ export default function ContenidoBolsa({
   bolsaId,
   titulo,
   modo = 'completo',
+  acciones,
   onCambio,
   onGuardada,
 }: {
   bolsaId: string;
   titulo: string;
   /**
-   * `completo` es el panel entero; `reloj` deja solo el reloj retro, para
-   * cuando la ventana se encoge hasta ocupar nada.
+   * `completo` es el panel entero; `reloj` deja solo el contador, para cuando
+   * la ventana se encoge hasta ocupar nada.
    */
   modo?: 'completo' | 'reloj';
+  /** Botones de la cabecera: encoger y cerrar la ventana. */
+  acciones?: React.ReactNode;
   /** Algo cambio: la vista de fondo deberia recargar. */
   onCambio?: () => void;
-  /** La tarea se termino; recibe el recuadro de su reloj para animar el vuelo. */
-  onGuardada?: (origen: DOMRect | null) => void;
+  /** La tarea se termino. */
+  onGuardada?: () => void;
 }) {
   const [actividad, setActividad] = useState<Actividad | null>(null);
   const [sesion, setSesion] = useState<Sesion | null>(null);
   const [evidencias, setEvidencias] = useState<Evidencia[]>([]);
-  const [subiendo, setSubiendo] = useState(false);
-  const archivo = useRef<HTMLInputElement>(null);
   const [segundos, setSegundos] = useState(0);
   const [nuevoObjetivo, setNuevoObjetivo] = useState('');
   const [agregando, setAgregando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [pestana, setPestana] = useState<'objetivos' | 'evidencia'>('objetivos');
-  const relojRef = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(async () => {
     const [a, s, ev] = await Promise.all([
@@ -59,28 +63,6 @@ export default function ContenidoBolsa({
     setEvidencias(ev);
     setSegundos(s?.actividad.id === bolsaId ? s.segundosAcumulados : 0);
   }, [bolsaId]);
-
-  /**
-   * Adjunta el respaldo del trabajo. Solo puede hacerse mientras la tarea
-   * sigue abierta: una vez terminada, el servidor ya no acepta archivos nuevos.
-   */
-  async function adjuntar(f: File) {
-    setAviso(null);
-    setSubiendo(true);
-    try {
-      const formulario = new FormData();
-      formulario.append('archivo', f);
-      formulario.append('actividadId', bolsaId);
-      await api.subirArchivo('/evidencias', formulario);
-      setEvidencias(await api.get<Evidencia[]>(`/evidencias?actividadId=${bolsaId}`));
-      onCambio?.();
-    } catch (err) {
-      setAviso(err instanceof ErrorApi ? err.message : 'No se pudo subir el archivo.');
-    } finally {
-      setSubiendo(false);
-      if (archivo.current) archivo.current.value = '';
-    }
-  }
 
   useEffect(() => {
     setAviso(null);
@@ -139,8 +121,7 @@ export default function ContenidoBolsa({
    * completada —el tiempo no puede quedar abierto en una tarea terminada—; si
    * no, basta con cambiar el estado.
    */
-  async function terminar() {
-    const caja = relojRef.current?.getBoundingClientRect() ?? null;
+  async function terminarTarea() {
     let bien = true;
     await accion(async () => {
       try {
@@ -154,7 +135,7 @@ export default function ContenidoBolsa({
         throw err;
       }
     });
-    if (bien) onGuardada?.(caja);
+    if (bien) onGuardada?.();
   }
 
   const objetivos = actividad?.subtareas ?? [];
@@ -170,7 +151,7 @@ export default function ContenidoBolsa({
   // aqui el boton lo dice antes de intentarlo.
   const hayRespaldo = evidencias.length > 0;
 
-  const estadoReloj: EstadoReloj = terminada
+  const estadoContador: EstadoContador = terminada
     ? 'terminado'
     : corriendo
       ? 'corriendo'
@@ -180,39 +161,34 @@ export default function ContenidoBolsa({
           ? 'ocupado'
           : 'detenido';
 
-  // ----------------------------------------------- los tres botones del reloj
-
-  /** Rojo izquierdo: comienza la tarea, o la reanuda si quedo en pausa. */
-  const botonComenzar: BotonReloj = pausada
+  /** Boton principal: pausa si corre, reanuda si quedo en pausa, o comienza la tarea. */
+  const principal: AccionContador = corriendo
     ? {
-        texto: 'Reanudar',
-        titulo: 'Reanudar el cronómetro',
+        texto: 'Pausar',
+        titulo: 'Pausar el cronómetro',
         deshabilitado: ocupado,
-        onClick: () => accion(() => api.post(`/sesiones/${sesion!.id}/reanudar`)),
+        onClick: () => accion(() => api.post(`/sesiones/${sesion!.id}/pausar`)),
       }
-    : {
-        texto: 'Comenzar',
-        titulo: terminada
-          ? 'La tarea ya está terminada'
-          : sesion && !enEstaTarea
-            ? `El cronómetro está ocupado en «${sesion.actividad.titulo}»`
-            : corriendo
-              ? 'El cronómetro ya está corriendo'
+    : pausada
+      ? {
+          texto: 'Reanudar',
+          titulo: 'Reanudar el cronómetro',
+          deshabilitado: ocupado,
+          onClick: () => accion(() => api.post(`/sesiones/${sesion!.id}/reanudar`)),
+        }
+      : {
+          texto: terminada ? 'Tarea terminada' : 'Comenzar',
+          titulo: terminada
+            ? 'La tarea ya está terminada'
+            : sesion
+              ? `El cronómetro está ocupado en «${sesion.actividad.titulo}»`
               : 'Comenzar a cronometrar esta tarea',
-        deshabilitado: ocupado || terminada || Boolean(sesion),
-        onClick: () => accion(() => api.post('/sesiones/iniciar', { actividadId: bolsaId })),
-      };
+          deshabilitado: ocupado || terminada || Boolean(sesion),
+          onClick: () => accion(() => api.post('/sesiones/iniciar', { actividadId: bolsaId })),
+        };
 
-  /** Amarillo central: pausa el cronometro que corre. */
-  const botonPausar: BotonReloj = {
-    texto: 'Pausar',
-    titulo: corriendo ? 'Pausar el cronómetro' : 'No hay cronómetro corriendo en esta tarea',
-    deshabilitado: ocupado || !corriendo,
-    onClick: () => accion(() => api.post(`/sesiones/${sesion!.id}/pausar`)),
-  };
-
-  /** Rojo derecho: termina la tarea (exige evidencia). */
-  const botonTerminar: BotonReloj = {
+  /** Termina la tarea (exige evidencia). */
+  const terminar: AccionContador = {
     texto: 'Terminar',
     titulo: terminada
       ? 'La tarea ya está terminada'
@@ -220,224 +196,187 @@ export default function ContenidoBolsa({
         ? 'Adjunta una evidencia del trabajo hecho para poder terminarla'
         : 'Terminar la tarea',
     deshabilitado: ocupado || terminada || !hayRespaldo,
-    onClick: terminar,
+    onClick: terminarTarea,
   };
 
-  const tiempo = enEstaTarea ? segundos : 0;
+  const contador = (
+    <ContadorTarea
+      compacto={modo === 'reloj'}
+      segundos={terminada && !enEstaTarea ? (actividad?.segundosTrabajados ?? 0) : enEstaTarea ? segundos : 0}
+      detalle={`${TEXTO_ESTADO[estadoContador]} · total ${duracion(actividad?.segundosTrabajados ?? 0)}`}
+      estado={estadoContador}
+      principal={principal}
+      terminar={terminar}
+    />
+  );
 
-  // El componente sigue montado en los tres modos: el reloj no se reinicia
+  // El componente sigue montado en los dos modos: el contador no se reinicia
   // al encoger la ventana ni al volver a abrirla.
 
   if (modo === 'reloj') {
     return (
-      <div className="flex min-h-0 flex-1 flex-col justify-center p-2">
-        <RelojRetro
-          compacto
-          segundos={tiempo}
-          titulo={titulo}
-          estado={estadoReloj}
-          izquierda={botonComenzar}
-          centro={botonPausar}
-          derecha={botonTerminar}
-        />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-medium text-white" title={titulo}>
+            {titulo}
+          </h2>
+          {acciones}
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col justify-center p-2.5">{contador}</div>
       </div>
     );
   }
 
   return (
-    // Ocupa justo el alto de la ventana: cabecera, reloj y, abajo, las
+    // Ocupa justo el alto de la ventana: cabecera, contador y, abajo, las
     // pestanas de objetivos y evidencia en el espacio que queda. Si una lista
-    // es larga, solo se desplaza esa zona; el reloj queda siempre a la vista.
-    <div className="flex min-h-0 flex-1 flex-col gap-2.5 p-3">
-      {/* Cabecera: el reloj de arena de la tarea junto a su nombre y avance. */}
-      <div className="flex shrink-0 items-center gap-2.5">
-        <div ref={relojRef} className="shrink-0">
-          <RelojArena llenado={llenado} tamano={30} terminado={terminada} fluyendo={corriendo} />
-        </div>
+    // es larga, solo se desplaza esa zona; el contador queda siempre a la vista.
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-start gap-3 border-b border-white/10 px-4 py-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[10px] text-slate-500">{actividad?.proyecto.nombre ?? ''}</p>
-          <h2 className="truncate text-sm font-bold leading-snug text-white" title={titulo}>
+          <h2
+            className="truncate text-lg font-medium leading-snug tracking-[-0.01em] text-white"
+            title={titulo}
+          >
             {titulo}
           </h2>
+          <p className="truncate text-[11px] text-[#8fa0d0]">
+            {actividad?.proyecto.nombre ?? ''}
+            {actividad ? ` · ${porcentajeLlenado(llenado)}%` : ''}
+          </p>
         </div>
-        <span className="shrink-0 text-lg font-bold text-orange-300">{porcentajeLlenado(llenado)}%</span>
+        <div className="flex shrink-0 items-center gap-2">{acciones}</div>
       </div>
 
-      {aviso && (
-        <p
-          role="alert"
-          className="shrink-0 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[11px] text-rose-300"
-        >
-          {aviso}
-        </p>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
+        <div className="shrink-0">{contador}</div>
 
-      <div className="shrink-0">
-        <RelojRetro
-          segundos={tiempo}
-          titulo={titulo}
-          estado={estadoReloj}
-          avance={llenado}
-          objetivos={objetivos.length > 0 ? `${listos}/${objetivos.length}` : undefined}
-          total={duracion(actividad?.segundosTrabajados ?? 0)}
-          izquierda={botonComenzar}
-          centro={botonPausar}
-          derecha={botonTerminar}
-        />
-      </div>
-
-      {/* Un solo aviso de una linea, el que corresponda. */}
-      {terminada ? (
-        <p className="shrink-0 text-center text-[11px] text-emerald-200">
-          Tarea terminada ·{' '}
-          <button
-            onClick={() =>
-              accion(() => api.patch(`/actividades/${bolsaId}/estado`, { estado: 'EN_PROGRESO' }))
-            }
-            disabled={ocupado}
-            className="font-medium text-slate-400 underline underline-offset-2 hover:text-slate-200 disabled:opacity-40"
+        {aviso && (
+          <p
+            role="alert"
+            className="shrink-0 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300"
           >
-            reabrirla
-          </button>
-        </p>
-      ) : sesion && !enEstaTarea ? (
-        <p className="shrink-0 truncate text-center text-[11px] text-slate-400" title={sesion.actividad.titulo}>
-          Cronómetro ocupado en «{sesion.actividad.titulo}»
-        </p>
-      ) : !hayRespaldo ? (
-        <p className="shrink-0 text-center text-[11px] text-sky-200">
-          Adjunta una evidencia para poder terminarla.
-        </p>
-      ) : null}
+            {aviso}
+          </p>
+        )}
 
-      {/* ------------------------------------------ pestanas */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5">
-        <div role="tablist" aria-label="Contenido de la tarea" className="flex shrink-0 border-b border-white/10">
-          <Pestana activa={pestana === 'objetivos'} onClick={() => setPestana('objetivos')}>
-            Objetivos
-            <Contador>{objetivos.length > 0 ? `${listos}/${objetivos.length}` : '0'}</Contador>
-          </Pestana>
-          <Pestana activa={pestana === 'evidencia'} onClick={() => setPestana('evidencia')}>
-            Evidencia
-            <Contador alerta={!terminada && !hayRespaldo}>{evidencias.length}</Contador>
-          </Pestana>
-        </div>
+        {/* Un solo aviso de una linea, el que corresponda. */}
+        {terminada ? (
+          <p className="shrink-0 text-center text-[11px] text-[#8fa0d0]">
+            Tarea terminada ·{' '}
+            <button
+              onClick={() =>
+                accion(() => api.patch(`/actividades/${bolsaId}/estado`, { estado: 'EN_PROGRESO' }))
+              }
+              disabled={ocupado}
+              className="font-semibold text-[#9fb4ff] hover:text-white disabled:opacity-40"
+            >
+              reabrirla
+            </button>
+          </p>
+        ) : sesion && !enEstaTarea ? (
+          <p className="shrink-0 truncate text-center text-[11px] text-[#8fa0d0]" title={sesion.actividad.titulo}>
+            Cronómetro ocupado en «{sesion.actividad.titulo}»
+          </p>
+        ) : !hayRespaldo ? (
+          <p className="shrink-0 text-center text-[11px] text-[#8fa0d0]">
+            Adjunta una evidencia para poder terminarla.
+          </p>
+        ) : null}
 
-        <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-2.5">
-          {pestana === 'objetivos' ? (
-            <>
-              {!terminada &&
-                (agregando ? (
-                  <input
-                    autoFocus
-                    value={nuevoObjetivo}
-                    onChange={(e) => setNuevoObjetivo(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') agregarObjetivo();
-                      if (e.key === 'Escape') {
-                        setNuevoObjetivo('');
-                        setAgregando(false);
-                      }
-                    }}
-                    onBlur={agregarObjetivo}
-                    aria-label="Nuevo objetivo"
-                    placeholder="Nuevo objetivo…"
-                    className="mb-1.5 w-full rounded-lg border border-white/15 bg-slate-950/60 px-2.5 py-1.5 text-xs text-white outline-none placeholder:text-slate-500 focus:border-orange-400/60"
-                  />
+        {/* ------------------------------------------ pestanas */}
+        <div className="tf-vidrio flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl">
+          <div role="tablist" aria-label="Contenido de la tarea" className="flex shrink-0 border-b border-white/10">
+            <Pestana activa={pestana === 'objetivos'} onClick={() => setPestana('objetivos')}>
+              Objetivos
+              <Contador>{objetivos.length > 0 ? `${listos}/${objetivos.length}` : '0'}</Contador>
+            </Pestana>
+            <Pestana activa={pestana === 'evidencia'} onClick={() => setPestana('evidencia')}>
+              Evidencia
+              <Contador>{evidencias.length}</Contador>
+            </Pestana>
+          </div>
+
+          <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto p-3">
+            {pestana === 'objetivos' ? (
+              <>
+                {!terminada &&
+                  (agregando ? (
+                    <input
+                      autoFocus
+                      value={nuevoObjetivo}
+                      onChange={(e) => setNuevoObjetivo(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') agregarObjetivo();
+                        if (e.key === 'Escape') {
+                          setNuevoObjetivo('');
+                          setAgregando(false);
+                        }
+                      }}
+                      onBlur={agregarObjetivo}
+                      aria-label="Nuevo objetivo"
+                      placeholder="Nuevo objetivo…"
+                      className="mb-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-slate-500 focus:border-[#7f9dff]"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setAgregando(true)}
+                      className="mb-2 w-full rounded-lg border border-dashed border-white/15 py-2 text-[11px] font-semibold text-[#9fb4ff] transition hover:bg-white/5 hover:text-white"
+                    >
+                      + Agregar objetivo
+                    </button>
+                  ))}
+
+                {objetivos.length === 0 ? (
+                  <p className="px-2 py-2 text-center text-[11px] text-slate-500">
+                    Cada objetivo es un paso pequeño de la tarea.
+                  </p>
                 ) : (
-                  <button
-                    onClick={() => setAgregando(true)}
-                    className="mb-1.5 w-full rounded-lg border border-dashed border-orange-400/30 py-1.5 text-[11px] font-semibold text-orange-300 transition hover:bg-orange-500/10"
-                  >
-                    + Agregar objetivo
-                  </button>
-                ))}
-
-              {objetivos.length === 0 ? (
-                <p className="px-2 py-2 text-center text-[11px] text-slate-500">
-                  Cada objetivo es un paso pequeño de la tarea.
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-0.5">
-                  {objetivos.map((m) => (
-                    <li key={m.id}>
-                      <button
-                        onClick={() => alternarObjetivo(m)}
-                        disabled={terminada}
-                        aria-pressed={m.completada}
-                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-white/5 disabled:opacity-60"
-                      >
-                        <span
-                          className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] ${
-                            m.completada
-                              ? 'border-orange-400 bg-orange-400 text-slate-900'
-                              : 'border-white/25 text-transparent'
-                          }`}
-                          aria-hidden
+                  <ul className="flex flex-col gap-0.5">
+                    {objetivos.map((m) => (
+                      <li key={m.id}>
+                        <button
+                          onClick={() => alternarObjetivo(m)}
+                          disabled={terminada}
+                          aria-pressed={m.completada}
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-white/5 disabled:opacity-60"
                         >
-                          ✓
-                        </span>
-                        <span
-                          className={`min-w-0 flex-1 truncate text-xs ${
-                            m.completada ? 'text-slate-500 line-through' : 'text-slate-200'
-                          }`}
-                        >
-                          {m.titulo}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          ) : (
-            <>
-              {!terminada && (
-                <button
-                  onClick={() => archivo.current?.click()}
-                  disabled={subiendo}
-                  className="mb-1.5 w-full rounded-lg border border-dashed border-sky-400/30 py-1.5 text-[11px] font-semibold text-sky-300 transition hover:bg-sky-500/10 disabled:opacity-50"
-                >
-                  {subiendo ? 'Subiendo…' : '+ Adjuntar archivo'}
-                </button>
-              )}
-              <input
-                ref={archivo}
-                type="file"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) adjuntar(f);
+                          <span
+                            className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] ${
+                              m.completada
+                                ? 'border-[#7f9dff] bg-[#7f9dff] text-slate-900'
+                                : 'border-white/25 text-transparent'
+                            }`}
+                            aria-hidden
+                          >
+                            ✓
+                          </span>
+                          <span
+                            className={`min-w-0 flex-1 truncate text-xs ${
+                              m.completada ? 'text-slate-500 line-through' : 'text-slate-200'
+                            }`}
+                          >
+                            {m.titulo}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : (
+              <ZonaEvidencias
+                actividadId={bolsaId}
+                evidencias={evidencias}
+                terminada={terminada}
+                onCambio={(lista) => {
+                  setEvidencias(lista);
+                  onCambio?.();
                 }}
+                onRecargar={cargar}
               />
-
-              {evidencias.length === 0 ? (
-                <p className="px-2 py-2 text-center text-[11px] leading-relaxed text-slate-500">
-                  {terminada
-                    ? 'Esta tarea se cerró sin archivos adjuntos.'
-                    : 'Sube una captura, un archivo o un informe. Después de terminarla ya no se pueden agregar.'}
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-1">
-                  {evidencias.map((ev) => (
-                    <li key={ev.id}>
-                      <a
-                        href={`${URL_API}/evidencias/${ev.id}/descargar`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] text-slate-200 transition hover:bg-white/10"
-                      >
-                        <span className="truncate">{ev.nombreArchivo}</span>
-                        <span className="ml-auto shrink-0 text-[10px] text-slate-500">
-                          {(ev.tamanoBytes / 1024).toFixed(0)} KB
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -458,10 +397,8 @@ function Pestana({
       role="tab"
       aria-selected={activa}
       onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 py-2 text-[11px] font-semibold uppercase tracking-wide transition ${
-        activa
-          ? 'border-b-2 border-orange-400 text-white'
-          : 'border-b-2 border-transparent text-slate-400 hover:text-slate-200'
+      className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
+        activa ? 'border-[#7f9dff] text-white' : 'border-transparent text-[#8fa0d0] hover:text-white'
       }`}
     >
       {children}
@@ -469,13 +406,9 @@ function Pestana({
   );
 }
 
-function Contador({ alerta = false, children }: { alerta?: boolean; children: React.ReactNode }) {
+function Contador({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold normal-case ${
-        alerta ? 'bg-sky-500/20 text-sky-200' : 'bg-white/10 text-slate-300'
-      }`}
-    >
+    <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-slate-300">
       {children}
     </span>
   );

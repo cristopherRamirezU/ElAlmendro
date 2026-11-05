@@ -8,7 +8,7 @@ import { PERMISOS } from '@/lib/rbac';
 import { useSesion, useTienePermiso } from '@/lib/sesion';
 import ResponsableTarea from './ResponsableTarea';
 import ComentariosTarea from './ComentariosTarea';
-import ContadorTarea, { type AccionContador, type EstadoContador } from './ContadorTarea';
+import ContadorTarea, { TEXTO_ESTADO, type AccionContador, type EstadoContador } from './ContadorTarea';
 import ZonaEvidencias from './ZonaEvidencias';
 import Modal from '@/components/ui/Modal';
 import { useTesoro } from '@/lib/tesoro';
@@ -217,11 +217,7 @@ export default function PanelTarea({
     >
       <ContadorTarea
         segundos={terminada && !enEstaTarea ? actividad.segundosTrabajados : enEstaTarea ? segundos : 0}
-        detalle={`${
-          { corriendo: 'Corriendo', pausado: 'En pausa', terminado: 'Terminada', ocupado: 'Detenido', detenido: 'Detenido' }[
-            estadoContador
-          ]
-        } · total ${duracion(actividad.segundosTrabajados)}`}
+        detalle={`${TEXTO_ESTADO[estadoContador]} · total ${duracion(actividad.segundosTrabajados)}`}
         estado={estadoContador}
         principal={principal}
         terminar={terminar}
