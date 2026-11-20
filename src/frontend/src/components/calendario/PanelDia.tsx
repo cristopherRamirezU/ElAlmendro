@@ -1,18 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import {
-  DiaDetalle,
-  MARGEN_PRESENCIA,
-  SesionDetalle,
-  TrabajadorDia,
-  ventanaHoraria,
-} from '@/lib/calendario';
+import { DiaDetalle, MARGEN_PRESENCIA, SesionDetalle, TrabajadorDia } from '@/lib/calendario';
 import { duracion, hora } from '@/lib/formato';
 import { desfase, zonaActual } from '@/lib/zona';
-import Indicador from '@/components/ui/Indicador';
 import Insignia from '@/components/ui/Insignia';
-import LineaTiempo, { EjeHoras } from './LineaTiempo';
 
 /** Estados de una sesion de trabajo, con su lectura y su color. */
 const ESTADO_SESION: Record<string, { texto: string; clase: string }> = {
@@ -26,12 +18,8 @@ const ESTADO_SESION: Record<string, { texto: string; clase: string }> = {
 };
 
 /**
- * Detalle de un dia.
- *
- * Muestra a la vez las horas imputadas y las de presencia. El documento de
- * arquitectura describe esa diferencia como algo que el administrador deberia
- * poder observar —tiempo disponible no imputado a ninguna actividad— y hasta
- * ahora no aparecia en ninguna pantalla.
+ * Detalle de un dia: el filtro de equipo o persona, los avisos del dia y lo
+ * que trabajo cada uno (sus sesiones, con horas y tramos).
  */
 export default function PanelDia({
   dia,
@@ -70,36 +58,10 @@ function Contenido({
     [dia, foco],
   );
 
-  const ventana = useMemo(() => ventanaHoraria([dia]), [dia]);
   const alertas = useMemo(() => reunirAlertas(visibles), [visibles]);
-
-  const imputadas = visibles.reduce((t, w) => t + w.segundosImputados, 0);
-  const presencia = visibles.reduce((t, w) => t + w.segundosPresencia, 0);
-  const sesiones = visibles.reduce((t, w) => t + w.sesiones.length, 0);
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-2">
-        <Indicador titulo="Imputadas" valor={duracion(imputadas)} detalle="cronometradas" />
-        <Indicador
-          titulo="Presencia"
-          valor={presencia > 0 ? duracion(presencia) : '—'}
-          detalle={
-            presencia > imputadas
-              ? `${duracion(presencia - imputadas)} sin imputar`
-              : 'jornada registrada'
-          }
-        />
-        <Indicador titulo="Sesiones" valor={String(sesiones)} />
-        <Indicador
-          titulo="Trabajadores"
-          valor={`${visibles.filter((w) => w.sesiones.length > 0 || w.jornada).length}/${
-            visibles.length
-          }`}
-          detalle="con registro"
-        />
-      </div>
-
       {/* El conmutador de equipo o persona: filtra todo lo que hay debajo. */}
       {dia.trabajadores.length > 1 && (
         <div className="flex flex-wrap gap-1.5">
@@ -126,16 +88,6 @@ function Contenido({
           </ul>
         </div>
       )}
-
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Linea de tiempo
-        </h3>
-        <div className="pl-8">
-          <EjeHoras ventana={ventana} />
-        </div>
-        <LineaTiempo fecha={dia.fecha} trabajadores={visibles} ventana={ventana} />
-      </section>
 
       <section className="flex flex-col gap-4">
         {visibles.map((w) => (
