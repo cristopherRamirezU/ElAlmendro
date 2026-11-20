@@ -1,7 +1,7 @@
 'use client';
 
 import { DateTime } from 'luxon';
-import { Detalle, ventanaHoraria, ZONA } from '@/lib/calendario';
+import { Detalle, ventanaHoraria, zonaActual } from '@/lib/calendario';
 import { duracion } from '@/lib/formato';
 import LineaTiempo, { EjeHoras } from './LineaTiempo';
 
@@ -39,7 +39,7 @@ export default function SemanaHoras({
 
       <div className="flex flex-col gap-2">
         {detalle.dias.map((dia) => {
-          const d = DateTime.fromISO(dia.fecha, { zone: ZONA });
+          const d = DateTime.fromISO(dia.fecha, { zone: zonaActual() });
           const conRegistro = dia.resumen.conRegistro > 0;
 
           return (

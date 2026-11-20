@@ -11,6 +11,7 @@ import {
   ROLES_CON_PERMISOS_EXTRA,
 } from '@/lib/rbac';
 import Marco from '@/components/Marco';
+import SelectorZona from '@/components/ui/SelectorZona';
 import { api, ErrorApi, RolCatalogoItem, UsuarioItem } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
 import { useSesion } from '@/lib/sesion';
@@ -648,12 +649,14 @@ function ModalCrearUsuario({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Zona Horaria</label>
-            <input
-              type="text"
+            <label htmlFor="crear-zona" className="mb-1 block text-xs font-semibold text-slate-300">
+              Zona Horaria
+            </label>
+            <SelectorZona
+              id="crear-zona"
               value={zonaHoraria}
-              onChange={(e) => setZonaHoraria(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400 font-mono text-xs"
+              onChange={setZonaHoraria}
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
             />
           </div>
 
@@ -877,6 +880,18 @@ function ModalEditarUsuario({
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="editar-zona" className="mb-1 block text-xs font-semibold text-slate-300">
+              Zona Horaria
+            </label>
+            <SelectorZona
+              id="editar-zona"
+              value={zonaHoraria}
+              onChange={setZonaHoraria}
+              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
             />
           </div>
 

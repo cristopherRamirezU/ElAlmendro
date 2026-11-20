@@ -12,6 +12,14 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 /** Para construir enlaces directos (descargas) fuera del cliente `api.*`. */
 export const URL_API = `${BASE}/api`;
 
+/**
+ * URL de la foto de perfil de un usuario. La version va en la URL: al cambiar
+ * la foto cambia la URL y el navegador no muestra la vieja desde su cache.
+ */
+export function urlFotoPerfil(usuarioId: string, version: string): string {
+  return `${URL_API}/fotos-perfil/${usuarioId}?v=${encodeURIComponent(version)}`;
+}
+
 export class ErrorApi extends Error {
   constructor(public readonly estado: number, mensaje: string) {
     super(mensaje);
@@ -98,6 +106,10 @@ export interface Usuario {
   organizacionTema?: string | null;
   /** Fondo del mapa de nodos elegido por el usuario (null = el de siempre). */
   fondoMapa?: string | null;
+  /** Zona IANA en que trabaja (la eligio en Mi cuenta). */
+  zonaHoraria?: string;
+  /** Version de la foto de perfil (null = iniciales). */
+  fotoPerfil?: string | null;
 }
 
 export interface OrganizacionMia {
@@ -277,7 +289,7 @@ export interface MensajeChat {
   cuerpo: string;
   creadoEn: string;
   leidoEn: string | null;
-  emisor: { id: string; nombreCompleto: string };
+  emisor: { id: string; nombreCompleto: string; fotoPerfil?: string | null };
 }
 
 export interface ResumenMensaje {
@@ -289,6 +301,7 @@ export interface ResumenMensaje {
 export interface ContactoChat {
   id: string;
   nombreCompleto: string;
+  fotoPerfil?: string | null;
   rol: Rol;
   email: string;
   enLinea: boolean;

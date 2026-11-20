@@ -12,6 +12,7 @@ const TRABAJADORA = {
   rol: 'TRABAJADOR',
   permisos: [],
   organizacionId: 'org-1',
+  zonaHoraria: 'America/Santiago',
 } as UsuarioActual;
 const ADMIN = { ...TRABAJADORA, id: 'admin-1', rol: 'ADMINISTRADOR' } as UsuarioActual;
 const SUPERVISOR = { ...TRABAJADORA, id: 'sup-1', rol: 'SUPERVISOR' } as UsuarioActual;

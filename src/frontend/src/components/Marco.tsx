@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { PERMISOS, PermisoCodigo } from '@/lib/rbac';
 import { api, ErrorApi, Jornada, Sesion, Usuario } from '@/lib/api';
-import { iniciales } from '@/lib/formato';
+import Avatar from '@/components/ui/Avatar';
 import { ContextoSesion } from '@/lib/sesion';
 import AvisoVersion from './AvisoVersion';
 import ConfirmarSalida from './ConfirmarSalida';
@@ -437,12 +437,17 @@ export default function Marco({
               {acciones}
               <Link
                 href="/cuenta"
-                style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
-                className="grid h-9 w-9 place-items-center rounded-full text-xs font-bold transition hover:brightness-125"
+                className="rounded-full transition hover:brightness-125"
                 title={`${usuario?.nombreCompleto ?? ''} · Mi cuenta`}
                 aria-label={`Mi cuenta (${usuario?.nombreCompleto ?? ''})`}
               >
-                {iniciales(usuario?.nombreCompleto ?? '')}
+                <Avatar
+                  id={usuario?.id ?? ''}
+                  nombre={usuario?.nombreCompleto ?? ''}
+                  foto={usuario?.fotoPerfil}
+                  style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
+                  className="h-9 w-9 text-xs font-bold"
+                />
               </Link>
               {/* En celular la barra lateral no se ve: aqui queda la salida. */}
               <button

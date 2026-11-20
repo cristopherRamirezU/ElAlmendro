@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Eye, EyeOff, KeyRound, LogOut, MonitorSmartphone, X } from 'lucide-react';
+import { Camera, Check, Eye, EyeOff, Globe, KeyRound, LogOut, MonitorSmartphone, Trash2, X } from 'lucide-react';
 import Marco from '@/components/Marco';
-import { api, ErrorApi } from '@/lib/api';
+import Avatar from '@/components/ui/Avatar';
+import SelectorZona from '@/components/ui/SelectorZona';
+import { api, ErrorApi, type Usuario } from '@/lib/api';
 import { useSesion } from '@/lib/sesion';
-import { limpiarCacheSesion } from '@/lib/cacheSesion';
+import { guardarCacheSesion, leerCacheSesion, limpiarCacheSesion } from '@/lib/cacheSesion';
+import { colorConAlfa, useColorPrimario } from '@/lib/color';
+import { esZonaValida, nombreZona, ZONA_POR_DEFECTO, zonaDelNavegador } from '@/lib/zona';
 import { cerrarSocketChat } from '@/lib/socket';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
 import { CONTRASENA_MAXIMO, contrasenaValida, reglasContrasena } from '@/lib/contrasena';
@@ -20,7 +24,7 @@ const NOMBRE_ROL: Record<string, string> = {
 
 export default function CuentaPage() {
   return (
-    <Marco activo="/cuenta" titulo="Mi cuenta" subtitulo="Tus datos, tu contraseña y tus sesiones">
+    <Marco activo="/cuenta" titulo="Mi cuenta" subtitulo="Tus datos, tu foto, tu zona horaria y tu seguridad">
       <ContenidoCuenta />
     </Marco>
   );
@@ -44,6 +48,8 @@ function ContenidoCuenta() {
         </p>
       </section>
 
+      <FotoPerfil />
+      <ZonaHoraria />
       <CambiarContrasena />
       <CerrarTodas />
     </div>
@@ -56,6 +62,271 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor?: string | null }) 
       <dt className="text-xs text-[var(--tf-texto-tenue)]">{etiqueta}</dt>
       <dd className="truncate font-medium text-[var(--tf-texto)]">{valor || '—'}</dd>
     </div>
+  );
+}
+
+// --------------------------------------------------------- foto de perfil
+
+/** Lado de la foto que se sube: sobra para los avatares y pesa pocos KB. */
+const LADO_FOTO = 256;
+/** Tope del archivo original, antes de reducirlo en el navegador. */
+const MAXIMO_ORIGINAL_MB = 15;
+
+/** Actualiza el usuario en la cache de sesion: la cabecera y el chat lo ven al instante. */
+function actualizarUsuarioEnCache(cambios: Partial<Usuario>) {
+  const cache = leerCacheSesion();
+  if (cache?.usuario) guardarCacheSesion({ ...cache, usuario: { ...cache.usuario, ...cambios } });
+}
+
+/**
+ * Recorta al centro y reduce la imagen a un cuadrado de 256 px. Se hace aqui
+ * y no en la API: sube un archivo chico y ademas se descarta cualquier dato
+ * extra del original (ubicacion GPS de la foto, por ejemplo).
+ */
+async function prepararFoto(archivo: File): Promise<Blob> {
+  const url = URL.createObjectURL(archivo);
+  try {
+    const imagen = new Image();
+    imagen.src = url;
+    await imagen.decode();
+    const lado = Math.min(imagen.naturalWidth, imagen.naturalHeight);
+    if (!lado) throw new Error('vacia');
+
+    const lienzo = document.createElement('canvas');
+    lienzo.width = LADO_FOTO;
+    lienzo.height = LADO_FOTO;
+    const g = lienzo.getContext('2d');
+    if (!g) throw new Error('sin canvas');
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(
+      imagen,
+      (imagen.naturalWidth - lado) / 2,
+      (imagen.naturalHeight - lado) / 2,
+      lado,
+      lado,
+      0,
+      0,
+      LADO_FOTO,
+      LADO_FOTO,
+    );
+    // WebP si el navegador sabe generarlo; si no, toBlob entrega PNG, que la API tambien acepta.
+    const blob = await new Promise<Blob | null>((ok) => lienzo.toBlob(ok, 'image/webp', 0.88));
+    if (!blob) throw new Error('sin blob');
+    return blob;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function FotoPerfil() {
+  const usuario = useSesion();
+  const colorPrimario = useColorPrimario();
+  const entrada = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+
+  async function elegir(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0];
+    e.target.value = '';
+    if (!archivo) return;
+    setMensaje(null);
+    if (!archivo.type.startsWith('image/')) {
+      setMensaje({ tipo: 'error', texto: 'Elige una imagen (JPG, PNG o WebP).' });
+      return;
+    }
+    if (archivo.size > MAXIMO_ORIGINAL_MB * 1024 * 1024) {
+      setMensaje({ tipo: 'error', texto: `La imagen no puede superar ${MAXIMO_ORIGINAL_MB} MB.` });
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      let foto: Blob;
+      try {
+        foto = await prepararFoto(archivo);
+      } catch {
+        throw new ErrorApi(400, 'No se pudo leer la imagen. Prueba con una foto JPG o PNG.');
+      }
+      const formulario = new FormData();
+      formulario.append('foto', foto, 'foto');
+      const r = await api.subirArchivo<{ fotoPerfil: string }>('/auth/yo/foto', formulario);
+      actualizarUsuarioEnCache({ fotoPerfil: r.fotoPerfil });
+      setMensaje({ tipo: 'exito', texto: 'Foto actualizada. Tus compañeros la verán en el chat.' });
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err instanceof ErrorApi ? err.message : 'No se pudo subir la foto.' });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function quitar() {
+    setMensaje(null);
+    setEnviando(true);
+    try {
+      await api.delete('/auth/yo/foto');
+      actualizarUsuarioEnCache({ fotoPerfil: null });
+      setMensaje({ tipo: 'exito', texto: 'Foto quitada: se mostrarán tus iniciales.' });
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err instanceof ErrorApi ? err.message : 'No se pudo quitar la foto.' });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-6">
+      <h2 className="flex items-center gap-2 font-bold text-[var(--tf-texto)]">
+        <Camera size={18} aria-hidden /> Foto de perfil
+      </h2>
+      <p className="mt-1 text-sm text-[var(--tf-texto-tenue)]">
+        Aparece en el chat y en la cabecera. Se recorta en cuadrado al centro.
+      </p>
+
+      <div className="mt-4 flex flex-wrap items-center gap-4">
+        <Avatar
+          id={usuario?.id ?? ''}
+          nombre={usuario?.nombreCompleto ?? ''}
+          foto={usuario?.fotoPerfil}
+          style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
+          className="h-20 w-20 text-2xl font-bold"
+        />
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={entrada}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={elegir}
+            className="hidden"
+            aria-hidden
+            tabIndex={-1}
+          />
+          <button
+            type="button"
+            onClick={() => entrada.current?.click()}
+            disabled={enviando}
+            className="rounded-xl bg-[var(--color-primario)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+          >
+            {enviando ? 'Guardando…' : usuario?.fotoPerfil ? 'Cambiar foto' : 'Subir foto'}
+          </button>
+          {usuario?.fotoPerfil && (
+            <button
+              type="button"
+              onClick={quitar}
+              disabled={enviando}
+              className="flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-40"
+            >
+              <Trash2 size={15} aria-hidden /> Quitar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {mensaje && <Aviso {...mensaje} />}
+    </section>
+  );
+}
+
+// ----------------------------------------------------------- zona horaria
+
+function ZonaHoraria() {
+  const usuario = useSesion();
+  const guardada = esZonaValida(usuario?.zonaHoraria) ? usuario!.zonaHoraria! : ZONA_POR_DEFECTO;
+  const [zona, setZona] = useState(guardada);
+  const [enviando, setEnviando] = useState(false);
+  const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+  const [ahora, setAhora] = useState(() => new Date());
+  const delEquipo = useMemo(() => zonaDelNavegador(), []);
+
+  // Si la sesion llega despues (o cambia en otra pestaña), el selector la sigue.
+  useEffect(() => setZona(guardada), [guardada]);
+
+  // La vista previa de la hora avanza sola.
+  useEffect(() => {
+    const id = window.setInterval(() => setAhora(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  async function guardar() {
+    setMensaje(null);
+    setEnviando(true);
+    try {
+      const r = await api.patch<{ zonaHoraria: string }>('/auth/yo/zona-horaria', { zonaHoraria: zona });
+      actualizarUsuarioEnCache({ zonaHoraria: r.zonaHoraria });
+      setMensaje({ tipo: 'exito', texto: 'Zona horaria guardada. Tus horas y tus días ya se cuentan en ella.' });
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: err instanceof ErrorApi ? err.message : 'No se pudo guardar la zona.' });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const horaEn = (z: string) =>
+    ahora.toLocaleString('es-CL', { timeZone: z, weekday: 'long', hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <section className="rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-6">
+      <h2 className="flex items-center gap-2 font-bold text-[var(--tf-texto)]">
+        <Globe size={18} aria-hidden /> Zona horaria
+      </h2>
+      <p className="mt-1 text-sm text-[var(--tf-texto-tenue)]">
+        La zona en la que trabajas. Con ella se muestran todas las horas en la app y se cuentan tus días de
+        trabajo (calendario, avance semanal y mensual).
+      </p>
+
+      <div className="mt-4 flex flex-col gap-2">
+        <label htmlFor="zona-horaria" className="text-xs font-semibold text-[var(--tf-texto-tenue)]">
+          Zona
+        </label>
+        <SelectorZona
+          id="zona-horaria"
+          value={zona}
+          onChange={setZona}
+          disabled={enviando}
+          className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-fondo)] px-3 py-2.5 text-sm text-[var(--tf-texto)] outline-none transition focus:border-[var(--color-primario)] focus:ring-2 focus:ring-[var(--color-primario)]/30"
+        />
+        <p className="text-xs text-[var(--tf-texto-tenue)]">
+          Ahora allí es <span className="font-medium text-[var(--tf-texto)]">{horaEn(zona)}</span>
+          {delEquipo && delEquipo !== zona && (
+            <>
+              {' · '}
+              <button
+                type="button"
+                onClick={() => setZona(delEquipo)}
+                className="font-medium text-[var(--color-primario)] underline-offset-2 hover:underline"
+              >
+                Usar la de este equipo ({nombreZona(delEquipo)})
+              </button>
+            </>
+          )}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={guardar}
+        disabled={enviando || zona === guardada}
+        className="mt-4 rounded-xl bg-[var(--color-primario)] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {enviando ? 'Guardando…' : 'Guardar zona horaria'}
+      </button>
+
+      {mensaje && <Aviso {...mensaje} />}
+    </section>
+  );
+}
+
+function Aviso({ tipo, texto }: { tipo: 'exito' | 'error'; texto: string }) {
+  return (
+    <p
+      role={tipo === 'error' ? 'alert' : 'status'}
+      className={`mt-4 rounded-xl border p-3 text-sm ${
+        tipo === 'exito'
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+          : 'border-rose-500/30 bg-rose-500/10 text-rose-400'
+      }`}
+    >
+      {texto}
+    </p>
   );
 }
 

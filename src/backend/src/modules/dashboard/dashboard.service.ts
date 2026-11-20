@@ -48,40 +48,32 @@ export class DashboardService {
     };
   }
 
-  /** Segundos trabajados por todo el equipo en el periodo indicado. */
+  /**
+   * Segundos trabajados por todo el equipo en el periodo indicado. "Hoy" es
+   * el hoy de cada trabajador, en su propia zona horaria.
+   */
   private async segundos(periodo: 'hoy' | 'semana', orgId?: string | null): Promise<number> {
-    const filas = orgId
-      ? await this.prisma.$queryRaw<{ segundos: number }[]>`
-          SELECT COALESCE(SUM(
-                   EXTRACT(EPOCH FROM (COALESCE(t."terminoEn", now()) - t."inicioEn"))
-                 ), 0)::int AS segundos
-            FROM tramos_sesion t
-            JOIN usuarios u ON u.id = t."usuarioId"
-           WHERE u."organizacionId" = ${orgId}::uuid
-             AND (t."inicioEn" AT TIME ZONE 'America/Santiago')::date
-                 >= (CASE WHEN ${periodo} = 'hoy'
-                          THEN (now() AT TIME ZONE 'America/Santiago')::date
-                          ELSE (now() AT TIME ZONE 'America/Santiago')::date - 6
-                     END)
-        `
-      : await this.prisma.$queryRaw<{ segundos: number }[]>`
-          SELECT COALESCE(SUM(
-                   EXTRACT(EPOCH FROM (COALESCE(t."terminoEn", now()) - t."inicioEn"))
-                 ), 0)::int AS segundos
-            FROM tramos_sesion t
-           WHERE (t."inicioEn" AT TIME ZONE 'America/Santiago')::date
-                 >= (CASE WHEN ${periodo} = 'hoy'
-                          THEN (now() AT TIME ZONE 'America/Santiago')::date
-                          ELSE (now() AT TIME ZONE 'America/Santiago')::date - 6
-                     END)
-        `;
+    const filas = await this.prisma.$queryRaw<{ segundos: number }[]>`
+      SELECT COALESCE(SUM(
+               EXTRACT(EPOCH FROM (COALESCE(t."terminoEn", now()) - t."inicioEn"))
+             ), 0)::int AS segundos
+        FROM tramos_sesion t
+        JOIN usuarios u ON u.id = t."usuarioId"
+       WHERE (${orgId ?? null}::uuid IS NULL OR u."organizacionId" = ${orgId ?? null}::uuid)
+         AND (t."inicioEn" AT TIME ZONE u."zonaHoraria")::date
+             >= (CASE WHEN ${periodo} = 'hoy'
+                      THEN (now() AT TIME ZONE u."zonaHoraria")::date
+                      ELSE (now() AT TIME ZONE u."zonaHoraria")::date - 6
+                 END)
+    `;
     return Number(filas[0]?.segundos ?? 0);
   }
 
   /**
    * Métricas individuales de rendimiento para la vista de Trabajador ("Mis Avances / Mi Progreso").
    */
-  async progresoPersonal(usuarioId: string) {
+  async progresoPersonal(usuarioId: string, zona: string) {
+    // Semana, mes y dias se cuentan en la zona horaria del propio trabajador.
     const [semana, mes, dias, jornadas, tareas] = await Promise.all([
       this.prisma.$queryRaw<{ segundos: number }[]>`
         SELECT COALESCE(SUM(
@@ -89,7 +81,7 @@ export class DashboardService {
                ), 0)::int AS segundos
           FROM tramos_sesion t
          WHERE t."usuarioId" = ${usuarioId}::uuid
-           AND (t."inicioEn" AT TIME ZONE 'America/Santiago')::date >= date_trunc('week', now() AT TIME ZONE 'America/Santiago')::date
+           AND (t."inicioEn" AT TIME ZONE ${zona})::date >= date_trunc('week', now() AT TIME ZONE ${zona})::date
       `,
       this.prisma.$queryRaw<{ segundos: number }[]>`
         SELECT COALESCE(SUM(
@@ -97,30 +89,28 @@ export class DashboardService {
                ), 0)::int AS segundos
           FROM tramos_sesion t
          WHERE t."usuarioId" = ${usuarioId}::uuid
-           AND (t."inicioEn" AT TIME ZONE 'America/Santiago')::date >= date_trunc('month', now() AT TIME ZONE 'America/Santiago')::date
+           AND (t."inicioEn" AT TIME ZONE ${zona})::date >= date_trunc('month', now() AT TIME ZONE ${zona})::date
       `,
       this.prisma.$queryRaw<{ dias: number }[]>`
         SELECT COUNT(DISTINCT dia)::int AS dias
           FROM (
-            SELECT (t."inicioEn" AT TIME ZONE 'America/Santiago')::date AS dia
+            SELECT (t."inicioEn" AT TIME ZONE ${zona})::date AS dia
               FROM tramos_sesion t
              WHERE t."usuarioId" = ${usuarioId}::uuid
-               AND (t."inicioEn" AT TIME ZONE 'America/Santiago')::date >= date_trunc('month', now() AT TIME ZONE 'America/Santiago')::date
+               AND (t."inicioEn" AT TIME ZONE ${zona})::date >= date_trunc('month', now() AT TIME ZONE ${zona})::date
             UNION
-            SELECT (j."inicioEn" AT TIME ZONE 'America/Santiago')::date AS dia
+            SELECT (j."inicioEn" AT TIME ZONE ${zona})::date AS dia
               FROM jornadas j
              WHERE j."usuarioId" = ${usuarioId}::uuid
-               AND (j."inicioEn" AT TIME ZONE 'America/Santiago')::date >= date_trunc('month', now() AT TIME ZONE 'America/Santiago')::date
+               AND (j."inicioEn" AT TIME ZONE ${zona})::date >= date_trunc('month', now() AT TIME ZONE ${zona})::date
           ) sub
       `,
-      this.prisma.jornada.count({
-        where: {
-          usuarioId,
-          inicioEn: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
-        },
-      }),
+      this.prisma.$queryRaw<{ total: number }[]>`
+        SELECT COUNT(*)::int AS total
+          FROM jornadas j
+         WHERE j."usuarioId" = ${usuarioId}::uuid
+           AND (j."inicioEn" AT TIME ZONE ${zona})::date >= date_trunc('month', now() AT TIME ZONE ${zona})::date
+      `.then((f) => Number(f[0]?.total ?? 0)),
       this.prisma.actividad.groupBy({
         by: ['estado'],
         where: {

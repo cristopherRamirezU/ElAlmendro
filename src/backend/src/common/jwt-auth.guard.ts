@@ -75,6 +75,8 @@ export async function cargarUsuarioVigente(
       nombreCompleto: true,
       activo: true,
       fondoMapa: true,
+      zonaHoraria: true,
+      fotoPerfil: true,
       permisosExtra: true,
       versionSesion: true,
       organizacionId: true,
@@ -113,5 +115,7 @@ export async function cargarUsuarioVigente(
     organizacionColor: usuario.organizacion?.colorPrimario ?? null,
     organizacionTema: usuario.organizacion?.temaFondo ?? null,
     fondoMapa: usuario.fondoMapa ?? null,
+    zonaHoraria: usuario.zonaHoraria,
+    fotoPerfil: usuario.fotoPerfil ?? null,
   };
 }

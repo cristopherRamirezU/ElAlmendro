@@ -8,8 +8,10 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
  * rejilla mensual y la matriz trabajador x dia; `detalle` alimenta el panel de
  * un dia y la vista semanal por horas.
  *
- * Toda conversion de zona horaria ocurre dentro del motor. Un dia en Santiago
- * no coincide con un dia en UTC y el desfase cambia con el horario de verano:
+ * Toda conversion de zona horaria ocurre dentro del motor, y cada trabajador
+ * se cuenta en SU zona (usuarios."zonaHoraria"): el "4 de septiembre" de quien
+ * trabaja desde Madrid no es el mismo tramo de tiempo que el de Santiago.
+ * Un dia local no coincide con un dia en UTC y el desfase cambia con el horario de verano:
  * calcular esos limites en JavaScript reintroduce el riesgo RA-02.
  *
  * Un tramo o una jornada se atribuyen enteros al dia local en que empiezan,
@@ -53,7 +55,7 @@ export class CalendarioService {
           SELECT generate_series(${desde}::date, ${hasta}::date, interval '1 day')::date AS dia
         ),
         equipo AS (
-          SELECT u.id, u."nombreCompleto"
+          SELECT u.id, u."nombreCompleto", u."zonaHoraria" AS zona
             FROM usuarios u
            WHERE u.rol = 'TRABAJADOR'
              AND u.activo = true
@@ -61,19 +63,20 @@ export class CalendarioService {
              AND (${filtro}::uuid IS NULL OR u.id = ${filtro}::uuid)
         ),
         imputado AS (
-          SELECT (t."inicioEn" AT TIME ZONE 'America/Santiago')::date AS dia,
+          SELECT (t."inicioEn" AT TIME ZONE w.zona)::date AS dia,
                  t."usuarioId",
                  SUM(EXTRACT(EPOCH FROM (
                    COALESCE(t."terminoEn", now()) - t."inicioEn"
                  )))::int                          AS segundos,
                  COUNT(DISTINCT t."sesionId")::int AS sesiones
             FROM tramos_sesion t
-           WHERE t."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
-             AND t."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
+            JOIN equipo w ON w.id = t."usuarioId"
+           WHERE t."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE w.zona)
+             AND t."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE w.zona)
            GROUP BY 1, 2
         ),
         presencia AS (
-          SELECT (j."inicioEn" AT TIME ZONE 'America/Santiago')::date AS dia,
+          SELECT (j."inicioEn" AT TIME ZONE w.zona)::date AS dia,
                  j."usuarioId",
                  SUM(EXTRACT(EPOCH FROM (
                    COALESCE(
@@ -87,18 +90,20 @@ export class CalendarioService {
                  )))::int                                          AS segundos,
                  COUNT(*) FILTER (WHERE j."terminoEn" IS NULL)::int AS abiertas
             FROM jornadas j
-           WHERE j."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
-             AND j."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
+            JOIN equipo w ON w.id = j."usuarioId"
+           WHERE j."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE w.zona)
+             AND j."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE w.zona)
            GROUP BY 1, 2
         ),
         banderas AS (
-          SELECT (s."inicioEn" AT TIME ZONE 'America/Santiago')::date AS dia,
+          SELECT (s."inicioEn" AT TIME ZONE w.zona)::date AS dia,
                  s."usuarioId",
                  COUNT(*) FILTER (WHERE s.estado = 'AUTOCERRADA')::int   AS autocerradas,
                  COUNT(*) FILTER (WHERE s.desenlace = 'INCONCLUSA')::int AS inconclusas
             FROM sesiones_trabajo s
-           WHERE s."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
-             AND s."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
+            JOIN equipo w ON w.id = s."usuarioId"
+           WHERE s."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE w.zona)
+             AND s."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE w.zona)
            GROUP BY 1, 2
         )
         SELECT to_char(d.dia, 'YYYY-MM-DD') AS fecha,
@@ -143,7 +148,7 @@ export class CalendarioService {
       this.trabajadores(organizacionId, filtro),
       this.prisma.$queryRaw<FilaSesion[]>`
         SELECT s.id,
-               to_char((s."inicioEn" AT TIME ZONE 'America/Santiago')::date, 'YYYY-MM-DD') AS fecha,
+               to_char((s."inicioEn" AT TIME ZONE u."zonaHoraria")::date, 'YYYY-MM-DD') AS fecha,
                s."usuarioId",
                s."inicioEn",
                s."terminoEn",
@@ -156,15 +161,16 @@ export class CalendarioService {
           FROM sesiones_trabajo s
           JOIN actividades a ON a.id = s."actividadId"
           JOIN proyectos   p ON p.id = a."proyectoId"
+          JOIN usuarios    u ON u.id = s."usuarioId"
          WHERE p."organizacionId" = ${organizacionId}::uuid
-           AND s."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
-           AND s."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
+           AND s."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE u."zonaHoraria")
+           AND s."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE u."zonaHoraria")
            AND (${filtro}::uuid IS NULL OR s."usuarioId" = ${filtro}::uuid)
          ORDER BY s."inicioEn"
       `,
       this.prisma.$queryRaw<FilaJornada[]>`
         SELECT j.id,
-               to_char((j."inicioEn" AT TIME ZONE 'America/Santiago')::date, 'YYYY-MM-DD') AS fecha,
+               to_char((j."inicioEn" AT TIME ZONE u."zonaHoraria")::date, 'YYYY-MM-DD') AS fecha,
                j."usuarioId",
                j."inicioEn",
                j."terminoEn",
@@ -181,9 +187,10 @@ export class CalendarioService {
                  ) - j."inicioEn"
                ))::int AS segundos
           FROM jornadas j
+          JOIN usuarios u ON u.id = j."usuarioId"
          WHERE j."organizacionId" = ${organizacionId}::uuid
-           AND j."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE 'America/Santiago')
-           AND j."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE 'America/Santiago')
+           AND j."inicioEn" >= ((${desde}::date)::timestamp AT TIME ZONE u."zonaHoraria")
+           AND j."inicioEn" <  (((${hasta}::date) + 1)::timestamp AT TIME ZONE u."zonaHoraria")
            AND (${filtro}::uuid IS NULL OR j."usuarioId" = ${filtro}::uuid)
          ORDER BY j."inicioEn"
       `,
@@ -236,6 +243,7 @@ export class CalendarioService {
           return {
             id: w.id,
             nombre: w.nombre,
+            zonaHoraria: w.zonaHoraria,
             jornada: j
               ? {
                   id: j.id,
@@ -277,10 +285,12 @@ export class CalendarioService {
         activo: true,
         ...(filtro ? { id: filtro } : {}),
       },
-      select: { id: true, nombreCompleto: true },
+      select: { id: true, nombreCompleto: true, zonaHoraria: true },
       orderBy: { nombreCompleto: 'asc' },
     });
-    return filas.map((f) => ({ id: f.id, nombre: f.nombreCompleto }));
+    // La zona viaja con cada trabajador: sus dias se cuentan en ella y la
+    // pantalla dibuja sus horas en ella.
+    return filas.map((f) => ({ id: f.id, nombre: f.nombreCompleto, zonaHoraria: f.zonaHoraria }));
   }
 
   /**

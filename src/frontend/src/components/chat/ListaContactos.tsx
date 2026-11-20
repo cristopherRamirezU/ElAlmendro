@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react';
 import { ContactoChat, ResumenMensaje } from '@/lib/api';
 import { CANAL_GENERAL } from '@/lib/chat';
-import { hora, iniciales } from '@/lib/formato';
+import { hora } from '@/lib/formato';
+import Avatar from '@/components/ui/Avatar';
 import { colorConAlfa, useColorPrimario } from '@/lib/color';
 
 const ROL_TEXTO: Record<string, string> = {
@@ -163,18 +164,17 @@ function FilaContacto({
       }`}
     >
       <span className="relative shrink-0">
-        <span
+        <Avatar
+          id={c.id}
+          nombre={c.nombreCompleto}
+          foto={c.fotoPerfil}
           style={
             c.enLinea
               ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
               : undefined
           }
-          className={`grid h-9 w-9 place-items-center rounded-full text-xs font-bold ${
-            c.enLinea ? '' : 'bg-white/5 text-slate-400'
-          }`}
-        >
-          {iniciales(c.nombreCompleto)}
-        </span>
+          className={`h-9 w-9 text-xs font-bold ${c.enLinea ? '' : 'bg-white/5 text-slate-400'}`}
+        />
         <span
           className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-slate-900 ${
             c.enLinea ? 'bg-emerald-400' : 'bg-slate-600'

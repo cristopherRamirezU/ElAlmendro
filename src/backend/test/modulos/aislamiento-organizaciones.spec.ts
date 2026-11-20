@@ -27,6 +27,7 @@ const admin: UsuarioActual = {
   nombreCompleto: 'Admin A',
   permisos: obtenerPermisosDeRol('ADMINISTRADOR'),
   organizacionId: ORG_A,
+  zonaHoraria: 'America/Santiago',
 };
 
 /** Primer argumento de la ultima llamada a un metodo del mock. */
@@ -219,7 +220,7 @@ describe('Aislamiento entre organizaciones', () => {
           cuerpo: 'hola',
           creadoEn: new Date(),
           leidoEn: null,
-          emisor: { id: 'u1', nombreCompleto: 'U1' },
+          emisor: { id: 'u1', nombreCompleto: 'U1', fotoPerfil: null },
         },
         ORG_A,
       );

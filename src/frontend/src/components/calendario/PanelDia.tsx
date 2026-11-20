@@ -9,6 +9,7 @@ import {
   ventanaHoraria,
 } from '@/lib/calendario';
 import { duracion, hora } from '@/lib/formato';
+import { desfase, zonaActual } from '@/lib/zona';
 import Indicador from '@/components/ui/Indicador';
 import Insignia from '@/components/ui/Insignia';
 import LineaTiempo, { EjeHoras } from './LineaTiempo';
@@ -145,11 +146,20 @@ function Contenido({
                 {duracion(w.segundosImputados)}
                 {w.jornada && ` · jornada ${duracion(w.segundosPresencia)}`}
               </span>
+              {/* Si trabaja en otra zona, se avisa: sus horas van en la suya. */}
+              {w.zonaHoraria !== zonaActual() && (
+                <span
+                  className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-300"
+                  title={`Horas en la zona de ${w.nombre}: ${w.zonaHoraria}`}
+                >
+                  Hora local {desfase(w.zonaHoraria)}
+                </span>
+              )}
             </div>
 
             {w.jornada && !w.jornada.terminoEn && (
               <p className="mb-2 rounded-lg bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
-                Jornada abierta desde las {hora(w.jornada.inicioEn)}: nunca se marco la salida.
+                Jornada abierta desde las {hora(w.jornada.inicioEn, w.zonaHoraria)}: nunca se marco la salida.
               </p>
             )}
 
@@ -163,6 +173,7 @@ function Contenido({
                   <Tarjeta
                     key={s.id}
                     sesion={s}
+                    zona={w.zonaHoraria}
                     abierta={!!expandidas[s.id]}
                     onAlternar={() =>
                       setExpandidas((e) => ({ ...e, [s.id]: !e[s.id] }))
@@ -180,10 +191,13 @@ function Contenido({
 
 function Tarjeta({
   sesion,
+  zona,
   abierta,
   onAlternar,
 }: {
   sesion: SesionDetalle;
+  /** Zona del trabajador: sus horas se muestran en ella. */
+  zona: string;
   abierta: boolean;
   onAlternar: () => void;
 }) {
@@ -204,8 +218,8 @@ function Tarjeta({
       <p className="text-[11px] text-slate-500">{sesion.proyecto}</p>
 
       <p className="mt-1 font-mono text-xs text-slate-400">
-        {hora(sesion.inicioEn)}
-        {sesion.terminoEn ? ` – ${hora(sesion.terminoEn)}` : ' – en curso'}
+        {hora(sesion.inicioEn, zona)}
+        {sesion.terminoEn ? ` – ${hora(sesion.terminoEn, zona)}` : ' – en curso'}
       </p>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -231,8 +245,8 @@ function Tarjeta({
         <ul className="mt-2 flex flex-col gap-0.5 border-t border-white/10 pt-2 font-mono text-[11px] text-slate-400">
           {sesion.tramos.map((t, i) => (
             <li key={i}>
-              {hora(t.inicioEn)}
-              {t.terminoEn ? ` – ${hora(t.terminoEn)}` : ' – en curso'}
+              {hora(t.inicioEn, zona)}
+              {t.terminoEn ? ` – ${hora(t.terminoEn, zona)}` : ' – en curso'}
             </li>
           ))}
         </ul>

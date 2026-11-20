@@ -23,6 +23,6 @@ export class DashboardController {
   /** Indicadores individuales de rendimiento para el dashboard del trabajador. */
   @Get('mi-progreso')
   miProgreso(@Usuario() u: UsuarioActual) {
-    return this.dashboard.progresoPersonal(u.id);
+    return this.dashboard.progresoPersonal(u.id, u.zonaHoraria);
   }
 }

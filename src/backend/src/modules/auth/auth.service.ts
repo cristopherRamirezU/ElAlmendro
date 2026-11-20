@@ -12,6 +12,7 @@ import { firmarSesion } from '../../common/seguridad/sesion';
 import { LoginDto } from './dto/login.dto';
 import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
 import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
+import { exigirZonaHoraria } from '../../common/zona-horaria';
 
 /**
  * Hash de una clave al azar que nadie conoce. Cuando el correo no existe se
@@ -49,6 +50,19 @@ export class AuthService {
       where: { id: usuarioId },
       data: { fondoMapa: dto.fondoMapa },
       select: { fondoMapa: true },
+    });
+  }
+
+  /**
+   * Zona horaria propia: cada persona trabaja en la suya y con ella se cuentan
+   * sus dias y se muestran sus horas.
+   */
+  async actualizarZonaHoraria(usuarioId: string, zona: string) {
+    const zonaHoraria = await exigirZonaHoraria(this.prisma, zona);
+    return this.prisma.usuario.update({
+      where: { id: usuarioId },
+      data: { zonaHoraria },
+      select: { zonaHoraria: true },
     });
   }
 
@@ -131,6 +145,8 @@ export class AuthService {
         rol: usuario.rol,
         permisos,
         organizacionId: usuario.organizacionId,
+        zonaHoraria: usuario.zonaHoraria,
+        fotoPerfil: usuario.fotoPerfil ?? null,
         organizacion: usuario.organizacion ? {
           id: usuario.organizacion.id,
           nombre: usuario.organizacion.nombre,

@@ -65,10 +65,13 @@ export default function LineaTiempo({
   return (
     <div className="flex flex-col gap-1">
       {trabajadores.map((w) => {
+        // Las horas de cada trabajador van en SU zona: es en la que la API
+        // agrupo su dia.
+        const zona = w.zonaHoraria;
         const jornada = w.jornada
           ? barra(
-              horaDelDia(w.jornada.inicioEn, fecha),
-              w.jornada.terminoEn ? horaDelDia(w.jornada.terminoEn, fecha) : 24,
+              horaDelDia(w.jornada.inicioEn, fecha, zona),
+              w.jornada.terminoEn ? horaDelDia(w.jornada.terminoEn, fecha, zona) : 24,
               ventana,
             )
           : null;
@@ -98,8 +101,8 @@ export default function LineaTiempo({
                 <span
                   className="absolute inset-y-1 rounded bg-white/15"
                   style={jornada}
-                  title={`Jornada: ${hora(w.jornada!.inicioEn)}${
-                    w.jornada!.terminoEn ? ` – ${hora(w.jornada!.terminoEn)}` : ' – sin cerrar'
+                  title={`Jornada: ${hora(w.jornada!.inicioEn, zona)}${
+                    w.jornada!.terminoEn ? ` – ${hora(w.jornada!.terminoEn, zona)}` : ' – sin cerrar'
                   }`}
                 />
               )}
@@ -107,8 +110,8 @@ export default function LineaTiempo({
               {w.sesiones.flatMap((s) =>
                 s.tramos.map((t, i) => {
                   const pos = barra(
-                    horaDelDia(t.inicioEn, fecha),
-                    t.terminoEn ? horaDelDia(t.terminoEn, fecha) : 24,
+                    horaDelDia(t.inicioEn, fecha, zona),
+                    t.terminoEn ? horaDelDia(t.terminoEn, fecha, zona) : 24,
                     ventana,
                   );
                   if (!pos) return null;
@@ -120,8 +123,8 @@ export default function LineaTiempo({
                         COLOR[s.estado] ?? 'bg-slate-400'
                       } ${s.desenlace === 'INCONCLUSA' ? 'ring-1 ring-inset ring-orange-700' : ''}`}
                       style={pos}
-                      title={`${s.actividad} · ${hora(t.inicioEn)}${
-                        t.terminoEn ? ` – ${hora(t.terminoEn)}` : ' – en curso'
+                      title={`${s.actividad} · ${hora(t.inicioEn, zona)}${
+                        t.terminoEn ? ` – ${hora(t.terminoEn, zona)}` : ' – en curso'
                       } · ${duracion(s.segundos)}`}
                     />
                   );

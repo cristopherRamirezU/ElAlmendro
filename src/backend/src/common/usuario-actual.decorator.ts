@@ -15,6 +15,10 @@ export interface UsuarioActual {
   organizacionColor?: string | null;
   organizacionTema?: string | null;
   fondoMapa?: string | null;
+  /** Zona IANA en que trabaja la persona: define sus dias y sus horas. */
+  zonaHoraria: string;
+  /** Version de la foto de perfil (null = sin foto, se muestran iniciales). */
+  fotoPerfil?: string | null;
 }
 
 export const Usuario = createParamDecorator(

@@ -14,7 +14,7 @@ const SELECCION_MENSAJE = {
   cuerpo: true,
   creadoEn: true,
   leidoEn: true,
-  emisor: { select: { id: true, nombreCompleto: true } },
+  emisor: { select: { id: true, nombreCompleto: true, fotoPerfil: true } },
 } satisfies Prisma.MensajeChatSelect;
 
 interface UltimoMensajeFila {
@@ -44,7 +44,7 @@ export class ChatService {
     const [usuarios, pendientes, ultimos, ultimoGeneral] = await Promise.all([
       this.prisma.usuario.findMany({
         where: { activo: true, id: { not: yo.id }, ...whereOrg },
-        select: { id: true, nombreCompleto: true, rol: true, email: true },
+        select: { id: true, nombreCompleto: true, rol: true, email: true, fotoPerfil: true },
         orderBy: { nombreCompleto: 'asc' },
       }),
       this.prisma.mensajeChat.groupBy({

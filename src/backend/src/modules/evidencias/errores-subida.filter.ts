@@ -22,6 +22,9 @@ const ERRORES_MULTIPART = [
  */
 @Catch(HttpException)
 export class ErroresSubidaFilter implements ExceptionFilter {
+  /** Limite que se informa al rechazar un archivo grande; una subclase lo cambia. */
+  protected readonly limiteMb: number = TAMANO_MAXIMO_MB;
+
   catch(error: HttpException, host: ArgumentsHost) {
     const res = host.switchToHttp().getResponse<Response>();
     const estado = error.getStatus();
@@ -31,7 +34,7 @@ export class ErroresSubidaFilter implements ExceptionFilter {
     if (estado === HttpStatus.PAYLOAD_TOO_LARGE) {
       res.status(estado).json({
         statusCode: estado,
-        message: `El archivo supera el limite de ${TAMANO_MAXIMO_MB} MB.`,
+        message: `El archivo supera el limite de ${this.limiteMb} MB.`,
       });
       return;
     }

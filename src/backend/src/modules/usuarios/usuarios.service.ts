@@ -16,6 +16,7 @@ import {
 } from '../../common/rbac';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { exigirZonaHoraria, ZONA_POR_DEFECTO } from '../../common/zona-horaria';
 import {
   esViolacionUnica,
   exigirOrganizacion,
@@ -169,6 +170,9 @@ export class UsuariosService {
     const problema = problemaContrasena(dto.contrasena, email);
     if (problema) throw new BadRequestException(problema);
     const hashContrasena = await argon2.hash(dto.contrasena);
+    const zonaHoraria = dto.zonaHoraria?.trim()
+      ? await exigirZonaHoraria(this.prisma, dto.zonaHoraria)
+      : ZONA_POR_DEFECTO;
 
     const usuario = await this.prisma.$transaction(async (tx) => {
       const nuevo = await tx.usuario.create({
@@ -177,7 +181,7 @@ export class UsuariosService {
           nombreCompleto: dto.nombreCompleto.trim(),
           hashContrasena,
           rol: dto.rol as any,
-          zonaHoraria: dto.zonaHoraria || 'America/Santiago',
+          zonaHoraria,
           activo: true,
           organizacionId,
         },
@@ -306,7 +310,7 @@ export class UsuariosService {
     if (cierraSesiones) data.versionSesion = { increment: 1 };
 
     if (dto.zonaHoraria?.trim()) {
-      data.zonaHoraria = dto.zonaHoraria.trim();
+      data.zonaHoraria = await exigirZonaHoraria(this.prisma, dto.zonaHoraria);
     }
 
     if (dto.contrasena) {

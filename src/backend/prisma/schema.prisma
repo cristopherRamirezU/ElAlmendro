@@ -127,6 +127,10 @@ model Usuario {
   zonaHoraria    String   @default("America/Santiago")
   /// Fondo del mapa de nodos que eligio el usuario (null = gris con puntos).
   fondoMapa      String?
+  /// Foto de perfil: identificador de la version vigente (null = iniciales).
+  /// El archivo vive en el almacenamiento S3 bajo fotos-perfil/<id>/<version>;
+  /// cambia en cada subida, asi la URL nueva nunca choca con la cache.
+  fotoPerfil     String?
   /// Permisos que el administrador dio a este trabajador ademas de los de su
   /// rol (codigos de PERMISOS_EXTRA en common/rbac.ts).
   permisosExtra  String[] @default([])

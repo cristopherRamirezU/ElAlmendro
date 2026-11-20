@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ContactoChat, MensajeChat } from '@/lib/api';
-import { diaRelativo, hora, iniciales } from '@/lib/formato';
+import { diaRelativo, hora } from '@/lib/formato';
+import Avatar from '@/components/ui/Avatar';
 import { colorConAlfa, useColorPrimario } from '@/lib/color';
 
 const ROL_TEXTO: Record<string, string> = {
@@ -112,12 +113,13 @@ export default function Conversacion({
           </span>
         ) : (
           <span className="relative">
-            <span
+            <Avatar
+              id={contacto.id}
+              nombre={contacto.nombreCompleto}
+              foto={contacto.fotoPerfil}
               style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
-              className="grid h-9 w-9 place-items-center rounded-full text-xs font-bold"
-            >
-              {iniciales(contacto.nombreCompleto)}
-            </span>
+              className="h-9 w-9 text-xs font-bold"
+            />
             <span
               className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-slate-900 ${
                 contacto.enLinea ? 'bg-emerald-400' : 'bg-slate-600'
@@ -177,7 +179,21 @@ export default function Conversacion({
                   {diaRelativo(m.creadoEn)}
                 </p>
               )}
-              <div className={`flex ${propio ? 'justify-end' : 'justify-start'} ${mismoAutor ? 'mt-0.5' : 'mt-2.5'}`}>
+              <div className={`flex gap-2 ${propio ? 'justify-end' : 'justify-start'} ${mismoAutor ? 'mt-0.5' : 'mt-2.5'}`}>
+                {/* En el canal general cada quien lleva su foto junto al primer
+                    mensaje de una racha; los siguientes dejan el hueco alineado. */}
+                {esGeneral && !propio &&
+                  (mismoAutor ? (
+                    <span aria-hidden className="w-7 shrink-0" />
+                  ) : (
+                    <Avatar
+                      id={m.emisor.id}
+                      nombre={m.emisor.nombreCompleto}
+                      foto={m.emisor.fotoPerfil}
+                      style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
+                      className="mt-4 h-7 w-7 text-[10px] font-bold"
+                    />
+                  ))}
                 <div className={`max-w-[75%] ${propio ? 'items-end' : 'items-start'} flex flex-col`}>
                   {esGeneral && !propio && !mismoAutor && (
                     <span

@@ -16,6 +16,7 @@ const ACTOR = {
   rol: 'TRABAJADOR',
   permisos: [],
   organizacionId: 'org-1',
+  zonaHoraria: 'America/Santiago',
 } as UsuarioActual;
 
 describe('ActividadesService', () => {

@@ -19,6 +19,7 @@ const usuario = (rol: UsuarioActual['rol'], organizacionId: string | null): Usua
   nombreCompleto: 'U1',
   permisos: [],
   organizacionId,
+  zonaHoraria: 'America/Santiago',
 });
 
 describe('Aislamiento Multi-SaaS (common/organizacion)', () => {

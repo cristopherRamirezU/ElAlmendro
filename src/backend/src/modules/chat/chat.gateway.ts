@@ -35,7 +35,7 @@ export interface MensajeEmitido {
   cuerpo: string;
   creadoEn: Date;
   leidoEn: Date | null;
-  emisor: { id: string; nombreCompleto: string };
+  emisor: { id: string; nombreCompleto: string; fotoPerfil: string | null };
 }
 
 /**

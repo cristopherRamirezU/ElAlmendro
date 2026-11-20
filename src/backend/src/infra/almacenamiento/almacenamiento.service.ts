@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -40,6 +41,10 @@ export class AlmacenamientoService {
         ContentType: tipoMime,
       }),
     );
+  }
+
+  async eliminar(clave: string): Promise<void> {
+    await this.cliente.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: clave }));
   }
 
   async descargar(clave: string): Promise<{ flujo: Readable; tipoMime?: string; tamanoBytes?: number }> {

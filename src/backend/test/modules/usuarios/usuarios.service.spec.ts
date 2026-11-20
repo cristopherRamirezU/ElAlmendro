@@ -22,6 +22,7 @@ const actor = (rol: string, id = 'actor-1'): UsuarioActual =>
     nombreCompleto: 'Actor',
     permisos: [],
     organizacionId: 'org-1',
+    zonaHoraria: 'America/Santiago',
   }) as UsuarioActual;
 
 const ADMIN = actor('ADMINISTRADOR');

@@ -7,14 +7,22 @@ import { DateTime } from 'luxon';
  * ventana horaria y la posicion de cada barra dependen del dia local, y hacerlo
  * con `Date` obliga a razonar sobre el desfase del navegador, que no tiene por
  * que coincidir con el del trabajador.
+ *
+ * La rejilla (meses, semanas, "hoy") va en la zona de quien mira; las horas de
+ * cada trabajador, en la zona de ese trabajador, que es en la que la API ya
+ * agrupo sus dias.
  */
-export const ZONA = 'America/Santiago';
+import { zonaActual } from './zona';
+
+export { zonaActual };
 
 // ------------------------------------------------------------------ contratos
 
 export interface TrabajadorRef {
   id: string;
   nombre: string;
+  /** Zona en que trabaja: sus dias y sus horas se leen en ella. */
+  zonaHoraria: string;
 }
 
 export interface AlertasDia {
@@ -86,6 +94,7 @@ export interface JornadaDetalle {
 export interface TrabajadorDia {
   id: string;
   nombre: string;
+  zonaHoraria: string;
   jornada: JornadaDetalle | null;
   segundosImputados: number;
   segundosPresencia: number;
@@ -171,15 +180,15 @@ export interface CeldaMes {
 }
 
 export function hoyLocal(): string {
-  return DateTime.now().setZone(ZONA).toFormat('yyyy-MM-dd');
+  return DateTime.now().setZone(zonaActual()).toFormat('yyyy-MM-dd');
 }
 
 /** Primer dia del mes indicado como `AAAA-MM`; el actual si el valor no sirve. */
 export function mesDesde(valor: string | null): DateTime {
   const base = valor
-    ? DateTime.fromFormat(valor, 'yyyy-MM', { zone: ZONA })
-    : DateTime.now().setZone(ZONA);
-  return (base.isValid ? base : DateTime.now().setZone(ZONA)).startOf('month');
+    ? DateTime.fromFormat(valor, 'yyyy-MM', { zone: zonaActual() })
+    : DateTime.now().setZone(zonaActual());
+  return (base.isValid ? base : DateTime.now().setZone(zonaActual())).startOf('month');
 }
 
 export function claveMes(mes: DateTime): string {
@@ -196,8 +205,8 @@ export function rangoDelMes(mes: DateTime): { desde: string; hasta: string } {
 
 /** Lunes a domingo que contiene al dia indicado. */
 export function rangoDeSemana(fecha: string): { desde: string; hasta: string } {
-  const d = DateTime.fromISO(fecha, { zone: ZONA });
-  const base = d.isValid ? d : DateTime.now().setZone(ZONA);
+  const d = DateTime.fromISO(fecha, { zone: zonaActual() });
+  const base = d.isValid ? d : DateTime.now().setZone(zonaActual());
   return {
     desde: base.startOf('week').toFormat('yyyy-MM-dd'),
     hasta: base.endOf('week').toFormat('yyyy-MM-dd'),
@@ -231,8 +240,8 @@ export function celdasDelMes(mes: DateTime): CeldaMes[] {
 /** Dias del rango, en orden. */
 export function diasEntre(desde: string, hasta: string): string[] {
   const dias: string[] = [];
-  let d = DateTime.fromISO(desde, { zone: ZONA });
-  const fin = DateTime.fromISO(hasta, { zone: ZONA });
+  let d = DateTime.fromISO(desde, { zone: zonaActual() });
+  const fin = DateTime.fromISO(hasta, { zone: zonaActual() });
   while (d <= fin) {
     dias.push(d.toFormat('yyyy-MM-dd'));
     d = d.plus({ days: 1 });
@@ -247,9 +256,9 @@ export function diasEntre(desde: string, hasta: string): string[] {
  * indicado. Se recorta a [0, 24] para que una sesion que cruza medianoche
  * —habitual en trabajo freelance— dibuje su barra hasta el borde y no fuera.
  */
-export function horaDelDia(iso: string, fecha: string): number {
-  const punto = DateTime.fromISO(iso, { zone: ZONA });
-  const base = DateTime.fromISO(fecha, { zone: ZONA }).startOf('day');
+export function horaDelDia(iso: string, fecha: string, zona: string = zonaActual()): number {
+  const punto = DateTime.fromISO(iso, { zone: zona });
+  const base = DateTime.fromISO(fecha, { zone: zona }).startOf('day');
   return Math.min(24, Math.max(0, punto.diff(base, 'hours').hours));
 }
 
@@ -273,8 +282,8 @@ export function ventanaHoraria(dias: DiaDetalle[]): { desde: number; hasta: numb
 
       for (const r of rangos) {
         hay = true;
-        minimo = Math.min(minimo, horaDelDia(r.inicioEn, dia.fecha));
-        maximo = Math.max(maximo, r.terminoEn ? horaDelDia(r.terminoEn, dia.fecha) : 24);
+        minimo = Math.min(minimo, horaDelDia(r.inicioEn, dia.fecha, t.zonaHoraria));
+        maximo = Math.max(maximo, r.terminoEn ? horaDelDia(r.terminoEn, dia.fecha, t.zonaHoraria) : 24);
       }
     }
   }

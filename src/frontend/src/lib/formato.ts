@@ -1,8 +1,10 @@
+import { zonaActual } from './zona';
+
 /**
  * Toda marca llega desde la API en UTC. La conversion a la zona local ocurre
- * aqui y solo aqui: es la unica capa que puede hacerlo.
+ * aqui y solo aqui: es la unica capa que puede hacerlo. La zona es la que
+ * cada persona eligio en "Mi cuenta" (zonaActual).
  */
-const ZONA = 'America/Santiago';
 
 /** Segundos a HH:MM:SS, formato del cronometro. */
 export function cronometro(segundos: number): string {
@@ -25,9 +27,10 @@ export function duracion(segundos: number): string {
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
-export function hora(iso: string): string {
+/** Hora en la zona de quien mira, o en otra (p. ej. la del trabajador). */
+export function hora(iso: string, zona: string = zonaActual()): string {
   return new Date(iso).toLocaleTimeString('es-CL', {
-    timeZone: ZONA,
+    timeZone: zona,
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -61,8 +64,10 @@ export function iniciales(nombre: string): string {
 
 /** "jueves 4 de septiembre de 2026", para el encabezado del detalle de un dia. */
 export function fechaLarga(clave: string): string {
+  // Una fecha de calendario (sin hora): se lee a mediodia UTC para que ningun
+  // desfase la mueva de dia.
   return new Date(`${clave}T12:00:00Z`).toLocaleDateString('es-CL', {
-    timeZone: ZONA,
+    timeZone: 'UTC',
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -77,14 +82,15 @@ export function horasBreves(segundos: number): string {
 
 /** "Hoy", "Ayer" o "lunes 14 de septiembre": separador de dias del chat. */
 export function diaRelativo(iso: string): string {
-  const opciones: Intl.DateTimeFormatOptions = { timeZone: ZONA, year: 'numeric', month: '2-digit', day: '2-digit' };
+  const zona = zonaActual();
+  const opciones: Intl.DateTimeFormatOptions = { timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit' };
   const clave = new Date(iso).toLocaleDateString('es-CL', opciones);
   const hoy = new Date();
   if (clave === hoy.toLocaleDateString('es-CL', opciones)) return 'Hoy';
   const ayer = new Date(hoy.getTime() - 24 * 60 * 60 * 1000);
   if (clave === ayer.toLocaleDateString('es-CL', opciones)) return 'Ayer';
   return new Date(iso).toLocaleDateString('es-CL', {
-    timeZone: ZONA,
+    timeZone: zona,
     weekday: 'long',
     day: 'numeric',
     month: 'long',

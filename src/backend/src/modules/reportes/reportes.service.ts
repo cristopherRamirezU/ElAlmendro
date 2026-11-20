@@ -5,7 +5,8 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
  * US-07 — agregacion de horas.
  *
  * Todas las consultas resuelven la suma dentro del motor y convierten a la zona
- * local en la propia consulta. Un dia en Santiago no coincide con un dia en
+ * de cada trabajador (usuarios."zonaHoraria") en la propia consulta. Un dia
+ * local no coincide con un dia en
  * UTC, de modo que agrupar por la fecha UTC repartiria mal las horas de las
  * primeras y ultimas horas de cada jornada.
  */
@@ -19,7 +20,7 @@ export class ReportesService {
       { dia: string; segundos: number; sesiones: number }[]
     >`
       SELECT to_char(
-               (t."inicioEn" AT TIME ZONE 'America/Santiago')::date, 'YYYY-MM-DD'
+               (t."inicioEn" AT TIME ZONE u."zonaHoraria")::date, 'YYYY-MM-DD'
              ) AS dia,
              SUM(EXTRACT(EPOCH FROM (t."terminoEn" - t."inicioEn"))) AS segundos,
              COUNT(DISTINCT t."sesionId")::int AS sesiones
@@ -59,7 +60,7 @@ export class ReportesService {
         JOIN actividades a ON a.id = s."actividadId"
         JOIN usuarios    u ON u.id = s."usuarioId"
         LEFT JOIN tramos_sesion t ON t."sesionId" = s.id
-       WHERE (s."inicioEn" AT TIME ZONE 'America/Santiago')::date = ${fecha}::date
+       WHERE (s."inicioEn" AT TIME ZONE u."zonaHoraria")::date = ${fecha}::date
          AND (${usuarioId ?? null}::uuid IS NULL OR s."usuarioId" = ${usuarioId ?? null}::uuid)
          AND (${organizacionId ?? null}::uuid IS NULL OR u."organizacionId" = ${organizacionId ?? null}::uuid)
        GROUP BY s.id, a.titulo, u."nombreCompleto"
@@ -78,7 +79,7 @@ export class ReportesService {
              ), 0)::int                              AS segundos,
              COUNT(DISTINCT s.id)::int               AS sesiones,
              COUNT(DISTINCT s."actividadId")::int    AS actividades,
-             COUNT(DISTINCT (t."inicioEn" AT TIME ZONE 'America/Santiago')::date)::int AS dias
+             COUNT(DISTINCT (t."inicioEn" AT TIME ZONE u."zonaHoraria")::date)::int AS dias
         FROM usuarios u
    LEFT JOIN organizaciones o ON o.id = u."organizacionId"
         JOIN sesiones_trabajo s ON s."usuarioId" = u.id

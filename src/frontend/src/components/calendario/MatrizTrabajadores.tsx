@@ -8,7 +8,7 @@ import {
   SIN_REGISTRO,
   TrabajadorRef,
   tramoEscala,
-  ZONA,
+  zonaActual,
   diasEntre,
 } from '@/lib/calendario';
 import { duracion, fechaLarga, iniciales } from '@/lib/formato';
@@ -56,7 +56,7 @@ export default function MatrizTrabajadores({
           <div className="grid gap-0.5" style={{ gridTemplateColumns: columnas }}>
             <div />
             {dias.map((fecha) => {
-              const d = DateTime.fromISO(fecha, { zone: ZONA });
+              const d = DateTime.fromISO(fecha, { zone: zonaActual() });
               return (
                 <div key={fecha} className="pb-1 text-center">
                   <span className="block text-[10px] font-medium text-slate-400">{d.day}</span>

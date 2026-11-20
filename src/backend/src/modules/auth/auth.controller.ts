@@ -1,10 +1,27 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Patch,
+  Post,
+  Req,
+  Res,
+  UploadedFile,
+  UseFilters,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
 import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
+import { ActualizarZonaHorariaDto } from './dto/actualizar-zona-horaria.dto';
+import { ErroresFotoFilter, FotoPerfilService, OPCIONES_SUBIDA_FOTO } from './foto-perfil.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
 import { borrarCookieSesion, COOKIE_LEGADO, emitirCookieSesion } from '../../common/seguridad/sesion';
@@ -12,7 +29,10 @@ import { borrarCookieSesion, COOKIE_LEGADO, emitirCookieSesion } from '../../com
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly fotos: FotoPerfilService,
+  ) {}
 
   /** US-01 — inicia sesion y deja el token en una cookie httpOnly. */
   @Post('login')
@@ -58,6 +78,30 @@ export class AuthController {
   @Patch('yo/preferencias')
   actualizarPreferencias(@Usuario() usuario: UsuarioActual, @Body() dto: ActualizarPreferenciasDto) {
     return this.auth.actualizarPreferencias(usuario.id, dto);
+  }
+
+  /** Zona horaria propia: con ella se cuentan sus dias y se muestran sus horas. */
+  @UseGuards(JwtAuthGuard)
+  @Patch('yo/zona-horaria')
+  actualizarZonaHoraria(@Usuario() usuario: UsuarioActual, @Body() dto: ActualizarZonaHorariaDto) {
+    return this.auth.actualizarZonaHoraria(usuario.id, dto.zonaHoraria);
+  }
+
+  /** Sube (o reemplaza) la propia foto de perfil: JPG, PNG o WebP de hasta 2 MB. */
+  @UseGuards(JwtAuthGuard)
+  @Post('yo/foto')
+  @HttpCode(200)
+  @UseFilters(ErroresFotoFilter)
+  @UseInterceptors(FileInterceptor('foto', OPCIONES_SUBIDA_FOTO))
+  subirFoto(@Usuario() usuario: UsuarioActual, @UploadedFile() archivo: Express.Multer.File) {
+    return this.fotos.subir(usuario, archivo);
+  }
+
+  /** Quita la foto: vuelven las iniciales. */
+  @UseGuards(JwtAuthGuard)
+  @Delete('yo/foto')
+  quitarFoto(@Usuario() usuario: UsuarioActual) {
+    return this.fotos.quitar(usuario);
   }
 
   /**

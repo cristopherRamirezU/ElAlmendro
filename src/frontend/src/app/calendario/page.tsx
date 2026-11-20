@@ -21,7 +21,7 @@ import {
   Resumen,
   TrabajadorRef,
   Vista,
-  ZONA,
+  zonaActual,
 } from '@/lib/calendario';
 
 const VISTAS: { valor: Vista; texto: string }[] = [
@@ -62,8 +62,8 @@ function Calendario() {
 
   const ancla = useMemo(() => {
     const bruto = parametros.get('ancla');
-    const leida = bruto ? DateTime.fromISO(bruto, { zone: ZONA }) : null;
-    return leida?.isValid ? leida : DateTime.now().setZone(ZONA);
+    const leida = bruto ? DateTime.fromISO(bruto, { zone: zonaActual() }) : null;
+    return leida?.isValid ? leida : DateTime.now().setZone(zonaActual());
   }, [parametros]);
 
   const mes = useMemo(() => rangoDelMes(ancla), [ancla]);
@@ -339,8 +339,8 @@ function SelectorTrabajador({
 }
 
 function rotulo({ desde, hasta }: { desde: string; hasta: string }): string {
-  const a = DateTime.fromISO(desde, { zone: ZONA });
-  const b = DateTime.fromISO(hasta, { zone: ZONA });
+  const a = DateTime.fromISO(desde, { zone: zonaActual() });
+  const b = DateTime.fromISO(hasta, { zone: zonaActual() });
   return a.month === b.month
     ? `${a.day} – ${b.day} ${b.toFormat('LLL yyyy', { locale: 'es' })}`
     : `${a.toFormat('d LLL', { locale: 'es' })} – ${b.toFormat('d LLL yyyy', { locale: 'es' })}`;
