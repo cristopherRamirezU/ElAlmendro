@@ -68,7 +68,13 @@ export class ReportesService {
     `;
   }
 
-  /** Horas por trabajador en un periodo. */
+  /**
+   * Horas por trabajador en un periodo.
+   *
+   * - marcajes: cuantas veces marco el inicio de su dia (jornadas abiertas en el periodo).
+   * - nodos: en cuantos proyectos distintos trabajo.
+   * - actividades: en cuantas tareas distintas trabajo.
+   */
   async porTrabajador(desde: Date, hasta: Date, organizacionId?: string | null) {
     const filas = await this.prisma.$queryRaw<any[]>`
       SELECT u.id,
@@ -79,10 +85,17 @@ export class ReportesService {
              ), 0)::int                              AS segundos,
              COUNT(DISTINCT s.id)::int               AS sesiones,
              COUNT(DISTINCT s."actividadId")::int    AS actividades,
+             COUNT(DISTINCT a."proyectoId")::int     AS nodos,
+             (SELECT COUNT(*)
+                FROM jornadas j
+               WHERE j."usuarioId" = u.id
+                 AND j."inicioEn" >= ${desde}
+                 AND j."inicioEn" < ${hasta})::int   AS marcajes,
              COUNT(DISTINCT (t."inicioEn" AT TIME ZONE u."zonaHoraria")::date)::int AS dias
         FROM usuarios u
    LEFT JOIN organizaciones o ON o.id = u."organizacionId"
         JOIN sesiones_trabajo s ON s."usuarioId" = u.id
+        JOIN actividades      a ON a.id = s."actividadId"
         JOIN tramos_sesion    t ON t."sesionId"  = s.id
        WHERE t."terminoEn" IS NOT NULL
          AND t."inicioEn" >= ${desde}
@@ -92,7 +105,14 @@ export class ReportesService {
        ORDER BY segundos DESC
     `;
 
-    return filas.map((f) => ({ ...f, segundos: Number(f.segundos) }));
+    return filas.map((f) => ({
+      ...f,
+      segundos: Number(f.segundos),
+      marcajes: Number(f.marcajes),
+      nodos: Number(f.nodos),
+      // Promedio por dia trabajado; lo usa tambien la exportacion.
+      promedioDiario: Math.round(Number(f.segundos) / Math.max(1, Number(f.dias))),
+    }));
   }
 
   /** Reparto de horas por actividad, para el grafico del reporte. */

@@ -30,8 +30,10 @@ const COLUMNAS_TRABAJADOR: Columna<Fila>[] = [
   { clave: 'trabajador', titulo: 'Trabajador', ancho: 30 },
   { clave: 'segundos', titulo: 'Horas', formato: 'duracion', ancho: 14 },
   { clave: 'dias', titulo: 'Dias', formato: 'entero', ancho: 10 },
-  { clave: 'sesiones', titulo: 'Sesiones', formato: 'entero', ancho: 12 },
-  { clave: 'actividades', titulo: 'Actividades', formato: 'entero', ancho: 14 },
+  { clave: 'marcajes', titulo: 'Marcaje', formato: 'entero', ancho: 12 },
+  { clave: 'nodos', titulo: 'Nodos', formato: 'entero', ancho: 10 },
+  { clave: 'actividades', titulo: 'Tareas', formato: 'entero', ancho: 10 },
+  { clave: 'promedioDiario', titulo: 'Promedio diario', formato: 'duracion', ancho: 16 },
 ];
 
 const COLUMNAS_ACTIVIDAD: Columna<Fila>[] = [

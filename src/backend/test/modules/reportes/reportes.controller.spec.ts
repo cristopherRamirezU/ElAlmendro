@@ -266,7 +266,7 @@ describe('ReportesController', () => {
       );
 
       expect(archivo.getStream().read().toString('utf8')).toContain(
-        'Trabajador,Horas,Dias,Sesiones,Actividades',
+        'Trabajador,Horas,Dias,Marcaje,Nodos,Tareas,Promedio diario',
       );
     });
   });

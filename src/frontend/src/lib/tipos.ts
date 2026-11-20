@@ -24,8 +24,13 @@ export interface HorasTrabajador {
   organizacionNombre?: string | null;
   segundos: number;
   sesiones: number;
+  /** Tareas distintas en que trabajo en el periodo. */
   actividades: number;
   dias: number;
+  /** Veces que marco el inicio de su dia (jornadas) en el periodo. */
+  marcajes: number;
+  /** Proyectos (nodos raiz) distintos en que trabajo en el periodo. */
+  nodos: number;
 }
 
 export interface HorasActividad {

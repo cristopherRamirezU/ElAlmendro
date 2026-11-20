@@ -35,6 +35,13 @@ const RANGOS = [
   { dias: 90, texto: 'Últimos 3 meses' },
 ];
 
+type Vista = 'registro' | 'gantt';
+
+const VISTAS: { clave: Vista; texto: string }[] = [
+  { clave: 'registro', texto: 'Registro' },
+  { clave: 'gantt', texto: 'Gantt' },
+];
+
 export default function Reportes() {
   return (
     <Suspense
@@ -59,6 +66,7 @@ function ReportesContenido() {
   const esSuperAdmin = usuario?.rol === 'SUPER_ADMIN';
 
   const [dias, setDias] = useState(30);
+  const [vista, setVista] = useState<Vista>('registro');
   const [organizaciones, setOrganizaciones] = useState<OrganizacionItem[]>([]);
   const [orgSeleccionada, setOrgSeleccionada] = useState<string>(
     searchParams.get('organizacionId') || ''
@@ -241,6 +249,27 @@ function ReportesContenido() {
         />
       </div>
 
+      {/* Dos ventanas: el registro por trabajador y el grafico por actividad. */}
+      <div role="tablist" aria-label="Vista del reporte" className="mb-4 flex gap-1 border-b border-white/10">
+        {VISTAS.map((v) => (
+          <button
+            key={v.clave}
+            type="button"
+            role="tab"
+            aria-selected={vista === v.clave}
+            onClick={() => setVista(v.clave)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition ${
+              vista === v.clave
+                ? 'border-sky-400 text-white'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            {v.texto}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'registro' && (
       <section className="mb-4 rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-bold text-white">
@@ -269,9 +298,12 @@ function ReportesContenido() {
                     <th className="pb-2 font-medium">Organización</th>
                   )}
                   <th className="pb-2 text-right font-medium">Horas</th>
-                  <th className="pb-2 text-right font-medium">Días</th>
-                  <th className="pb-2 text-right font-medium">Sesiones</th>
-                  <th className="pb-2 text-right font-medium">Actividades</th>
+                  <th className="pb-2 text-right font-medium" title="Días con horas cronometradas">Días</th>
+                  <th className="pb-2 text-right font-medium" title="Veces que marcó el inicio del día en la app">
+                    Marcaje
+                  </th>
+                  <th className="pb-2 text-right font-medium" title="Proyectos distintos en que trabajó">Nodos</th>
+                  <th className="pb-2 text-right font-medium" title="Tareas distintas en que trabajó">Tareas</th>
                   <th className="pb-2 text-right font-medium">Promedio diario</th>
                 </tr>
               </thead>
@@ -286,7 +318,8 @@ function ReportesContenido() {
                     )}
                     <td className="py-2.5 text-right font-mono text-slate-200">{duracion(t.segundos)}</td>
                     <td className="py-2.5 text-right text-slate-400">{t.dias}</td>
-                    <td className="py-2.5 text-right text-slate-400">{t.sesiones}</td>
+                    <td className="py-2.5 text-right text-slate-400">{t.marcajes}</td>
+                    <td className="py-2.5 text-right text-slate-400">{t.nodos}</td>
                     <td className="py-2.5 text-right text-slate-400">{t.actividades}</td>
                     <td className="py-2.5 text-right font-mono text-slate-400">
                       {duracion(Math.round(t.segundos / Math.max(1, t.dias)))}
@@ -298,7 +331,9 @@ function ReportesContenido() {
           </div>
         )}
       </section>
+      )}
 
+      {vista === 'gantt' && (
       <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
         <h2 className="mb-4 font-bold text-white">
           {orgActual ? `Horas por actividad — ${orgActual.nombre}` : 'Horas por actividad'}
@@ -313,6 +348,7 @@ function ReportesContenido() {
           <GraficoBarras datos={grafico} unidad="h" />
         )}
       </section>
+      )}
     </Marco>
   );
 }
