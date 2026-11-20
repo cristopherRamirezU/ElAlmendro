@@ -17,6 +17,7 @@ import { ProyectosModule } from './modules/proyectos/proyectos.module';
 import { EvidenciasModule } from './modules/evidencias/evidencias.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { OrganizacionesModule } from './modules/organizaciones/organizaciones.module';
+import { RegistroModule } from './modules/registro/registro.module';
 
 /**
  * Raiz de la capa de negocio.
@@ -44,6 +45,7 @@ import { OrganizacionesModule } from './modules/organizaciones/organizaciones.mo
     EvidenciasModule,
     ChatModule,
     OrganizacionesModule,
+    RegistroModule,
     // HistorialModule, NotificacionesModule,
   ],
   controllers: [SaludController, ApiRaizController],

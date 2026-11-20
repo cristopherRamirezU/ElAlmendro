@@ -24,6 +24,8 @@ export const REGLAS = {
   cambioContrasena: { maximo: 5, ventanaMs: 15 * MINUTO, bloqueoMs: 15 * MINUTO },
   /** Archivos subidos por una persona: evita llenar el disco a proposito. */
   subidaArchivos: { maximo: 60, ventanaMs: 60 * MINUTO, bloqueoMs: 15 * MINUTO },
+  /** Registros publicos de empresas desde una IP: nadie crea cinco empresas en una hora. */
+  registroIp: { maximo: 5, ventanaMs: 60 * MINUTO, bloqueoMs: 60 * MINUTO },
 } satisfies Record<string, ReglaLimite>;
 
 interface Registro {

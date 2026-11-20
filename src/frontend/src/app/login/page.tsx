@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, ErrorApi, Usuario } from '@/lib/api';
 import { guardarCacheSesion, limpiarCacheSesion } from '@/lib/cacheSesion';
@@ -20,6 +20,13 @@ export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
+
+  // Quien viene de crear su empresa llega con su correo (?correo=...): solo
+  // le falta escribir la contrasena.
+  useEffect(() => {
+    const correo = new URLSearchParams(window.location.search).get('correo');
+    if (correo && CORREO_VALIDO.test(correo)) setEmail(correo.slice(0, 254));
+  }, []);
   const [verContrasena, setVerContrasena] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
