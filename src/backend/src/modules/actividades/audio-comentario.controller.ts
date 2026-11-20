@@ -39,8 +39,8 @@ class SubirAudioDto {
 export class AudioComentarioController {
   constructor(private readonly audios: AudioComentarioService) {}
 
-  /** Graba (o reemplaza) el comentario de voz de la tarea. */
-  @Post(':id/audio')
+  /** Agrega un comentario de voz a la tarea. */
+  @Post(':id/audios')
   @HttpCode(200)
   @UseFilters(ErroresAudioFilter)
   @UseInterceptors(FileInterceptor('audio', OPCIONES_SUBIDA_AUDIO))
@@ -53,25 +53,31 @@ export class AudioComentarioController {
     return this.audios.subir(id, u, archivo, dto.segundos);
   }
 
-  @Delete(':id/audio')
-  quitar(@Usuario() u: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
-    return this.audios.quitar(id, u);
+  /** Quien lo grabo o un administrador. */
+  @Delete(':id/audios/:audioId')
+  quitar(
+    @Usuario() u: UsuarioActual,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('audioId', ParseUUIDPipe) audioId: string,
+  ) {
+    return this.audios.quitar(id, audioId, u);
   }
 
-  /** El audio en si. La URL lleva la version (?v=...): puede quedar en cache. */
-  @Get(':id/audio')
+  /** El audio en si. Cada audio es inmutable: puede quedar en cache. */
+  @Get(':id/audios/:audioId')
   async obtener(
     @Usuario() u: UsuarioActual,
     @Param('id', ParseUUIDPipe) id: string,
+    @Param('audioId', ParseUUIDPipe) audioId: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { flujo, tipo, tamanoBytes } = await this.audios.obtener(id, u);
+    const { flujo, tipo, tamanoBytes } = await this.audios.obtener(id, audioId, u);
     res.set({
       'Content-Type': tipo,
       ...(tamanoBytes ? { 'Content-Length': String(tamanoBytes) } : {}),
       'Content-Security-Policy': "default-src 'none'; sandbox",
       'X-Content-Type-Options': 'nosniff',
-      'Cache-Control': 'private, max-age=604800',
+      'Cache-Control': 'private, max-age=604800, immutable',
     });
     return new StreamableFile(flujo);
   }

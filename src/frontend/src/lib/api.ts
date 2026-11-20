@@ -223,10 +223,20 @@ export interface Actividad {
   subtareas: Subtarea[];
   /** Solo en el detalle: quien creo la tarea o un administrador. */
   puedeEditarInstrucciones?: boolean;
-  /** Version del comentario de voz (null = sin audio). */
-  audioComentario?: string | null;
-  /** Duracion del comentario de voz, en segundos. */
-  audioComentarioSegundos?: number | null;
+  /** Solo en el detalle: comentarios de voz, del mas antiguo al mas nuevo. */
+  audios?: AudioComentario[];
+  /** Solo en el detalle: quien trabaja la tarea puede grabarle audios. */
+  puedeGrabarAudio?: boolean;
+}
+
+/** Un comentario de voz de una tarea. */
+export interface AudioComentario {
+  id: string;
+  segundos: number | null;
+  creadoEn: string;
+  autor: { id: string; nombreCompleto: string };
+  /** Quien lo grabo o un administrador. */
+  puedeEliminar: boolean;
 }
 
 /** Persona asignable: lo que devuelve /usuarios/trabajadores. */

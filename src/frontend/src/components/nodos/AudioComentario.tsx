@@ -14,12 +14,14 @@ import { minutosSegundos } from '@/lib/grabadora';
  */
 export function ReproductorComentarioVoz({
   actividadId,
-  version,
+  audioId,
   segundos,
+  etiqueta,
 }: {
   actividadId: string;
-  version: string;
+  audioId: string;
   segundos?: number | null;
+  etiqueta?: string;
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [fallo, setFallo] = useState(false);
@@ -29,7 +31,7 @@ export function ReproductorComentarioVoz({
     let local: string | null = null;
     setUrl(null);
     setFallo(false);
-    fetch(`${URL_API}/actividades/${actividadId}/audio?v=${encodeURIComponent(version)}`, {
+    fetch(`${URL_API}/actividades/${actividadId}/audios/${audioId}`, {
       credentials: 'include',
     })
       .then((r) => {
@@ -46,9 +48,9 @@ export function ReproductorComentarioVoz({
       vigente = false;
       if (local) URL.revokeObjectURL(local);
     };
-  }, [actividadId, version]);
+  }, [actividadId, audioId]);
 
-  return <ReproductorLocal url={url} segundos={segundos} fallo={fallo} />;
+  return <ReproductorLocal url={url} segundos={segundos} fallo={fallo} etiqueta={etiqueta} />;
 }
 
 /** Reproductor sobre una URL local (grabacion recien hecha o audio ya descargado). */

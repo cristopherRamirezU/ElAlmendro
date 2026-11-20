@@ -154,6 +154,7 @@ model Usuario {
   evidenciasSubidas     Evidencia[]         @relation("EvidenciaSubidaPor")
   evidenciasEliminadas  Evidencia[]         @relation("EvidenciaEliminadaPor")
   comentarios           Comentario[]
+  audiosComentario      AudioComentario[]
   derivacionesEmitidas  Derivacion[]        @relation("DerivacionDe")
   derivacionesRecibidas Derivacion[]        @relation("DerivacionA")
   auditoria             RegistroAuditoria[]
@@ -249,12 +250,6 @@ model Actividad {
 
   titulo           String
   descripcion      String?
-  /// Comentario de voz que acompana a los comentarios (descripcion): version
-  /// vigente del audio (null = sin audio). El archivo vive en S3 bajo
-  /// audios-comentario/<id>/<version>.
-  audioComentario         String?
-  /// Duracion del audio en segundos, medida al grabarlo.
-  audioComentarioSegundos Int?
   estado           EstadoActividad @default(PENDIENTE)
   prioridad        Prioridad       @default(MEDIA)
   responsableId    String          @db.Uuid
@@ -283,6 +278,7 @@ model Actividad {
   sesiones            SesionTrabajo[]
   evidencias          Evidencia[]
   comentarios         Comentario[]
+  audiosComentario    AudioComentario[]
   derivaciones        Derivacion[]    @relation("ActividadDerivada")
   derivacionesOrigen  Derivacion[]    @relation("NodoOrigen")
   derivacionesDestino Derivacion[]    @relation("NodoDestino")
@@ -390,6 +386,24 @@ model TramoSesion {
 }
 
 // ------------------- Evidencia / Comentario / Auditoria --------------------
+
+// Comentarios de voz de una tarea: cada persona que trabaja en ella puede
+// grabar los suyos. El archivo vive en S3 (claveObjeto); aqui queda quien lo
+// grabo, cuanto dura y cuando.
+model AudioComentario {
+  id          String    @id @default(uuid()) @db.Uuid
+  actividadId String    @db.Uuid
+  actividad   Actividad @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  autorId     String    @db.Uuid
+  autor       Usuario   @relation(fields: [autorId], references: [id])
+  claveObjeto String    @unique
+  tipoMime    String
+  segundos    Int?
+  creadoEn    DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([actividadId, creadoEn])
+  @@map("audios_comentario")
+}
 
 model Evidencia {
   id            String         @id @default(uuid()) @db.Uuid

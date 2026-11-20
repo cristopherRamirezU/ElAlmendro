@@ -19,6 +19,7 @@ import {
 } from './dto/subtarea.dto';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
 import { PERMISOS } from '../../common/rbac';
+import { puedeEliminarAudio, puedeGrabarAudio } from './audio-comentario.service';
 import {
   exigirOrganizacion,
   filtroActividadOrganizacion,
@@ -76,15 +77,28 @@ export class ActividadesService {
           orderBy: { creadoEn: 'desc' },
           include: { autor: { select: { nombreCompleto: true } } },
         },
+        audiosComentario: {
+          orderBy: { creadoEn: 'asc' },
+          select: {
+            id: true,
+            segundos: true,
+            creadoEn: true,
+            autor: { select: { id: true, nombreCompleto: true } },
+          },
+        },
       },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
 
     const tiempos = await this.segundosPorActividad([actividad.id]);
+    const { audiosComentario, ...resto } = actividad;
     return {
-      ...actividad,
+      ...resto,
       segundosTrabajados: tiempos.get(actividad.id) ?? 0,
       puedeEditarInstrucciones: puedeEditarInstrucciones(u, actividad.creadoPorId),
+      // Comentarios de voz: cada quien graba los suyos y borra los propios.
+      audios: (audiosComentario ?? []).map((a) => ({ ...a, puedeEliminar: puedeEliminarAudio(u, a.autor.id) })),
+      puedeGrabarAudio: puedeGrabarAudio(u, actividad),
     };
   }
 
