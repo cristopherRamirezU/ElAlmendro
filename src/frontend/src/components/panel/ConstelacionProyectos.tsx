@@ -1,10 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Palette } from 'lucide-react';
+import { ChevronDown, Palette, Search, X } from 'lucide-react';
 import type { ProyectoItem } from '@/lib/api';
 import { fuenteEscena, fuenteTitulo } from '@/lib/fuentes';
-import { EscenaConstelacion, FONDOS, type Filtro, type Fondo, type ProyectoEscena } from './escenaConstelacion';
+import {
+  EscenaConstelacion,
+  FONDOS,
+  coincideBusqueda,
+  enFiltro,
+  normalizarTexto,
+  type Filtro,
+  type Fondo,
+  type ProyectoEscena,
+} from './escenaConstelacion';
 
 /** Un proyecto esta completado si se cerro o si todas sus tareas terminaron. */
 export function proyectoCompletado(p: ProyectoItem) {
@@ -83,8 +92,9 @@ const FILTROS: { valor: Filtro; texto: string }[] = [
  * dos anillos alrededor de una mini esfera de tareas (en proceso adentro,
  * completados afuera). Pasar el mouse por un proyecto acerca la camara y
  * despliega su tarjetita con "Ir al mapa" y "Ver proyecto"; pasarlo por la
- * esfera despliega "Nuevo proyecto". Los filtros solo atenuan lo que no
- * corresponde, sin cambiar de pantalla.
+ * esfera despliega "Nuevo proyecto". Los filtros y el buscador (arriba a la
+ * izquierda, se combina con la pestaña) solo atenuan lo que no corresponde,
+ * sin cambiar de pantalla.
  */
 export default function ConstelacionProyectos({
   proyectos,
@@ -109,6 +119,8 @@ export default function ConstelacionProyectos({
   const filtros = useRef<HTMLDivElement>(null);
   const escena = useRef<EscenaConstelacion | null>(null);
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  // Buscador por nombre: se combina con la pestaña elegida.
+  const [busqueda, setBusqueda] = useState('');
   // Proyecto de la tarjetita: lo elige el motor al enfocar uno y se queda
   // mientras la tarjetita se recoge.
   const [enfocado, setEnfocado] = useState<string | null>(null);
@@ -200,8 +212,18 @@ export default function ConstelacionProyectos({
   }, [filtro]);
 
   useEffect(() => {
+    if (escena.current) escena.current.busqueda = busqueda;
+  }, [busqueda]);
+
+  useEffect(() => {
     if (escena.current) escena.current.fondo = fondo;
   }, [fondo]);
+
+  // Proyectos de la pestaña actual que coinciden con lo buscado.
+  const buscado = normalizarTexto(busqueda);
+  const enPestana = items.filter((p) => enFiltro(p, filtro));
+  const coincidentes = enPestana.filter((p) => coincideBusqueda(p.nombre, buscado));
+  const idsCoincidentes = new Set(coincidentes.map((p) => p.id));
 
   const proyecto = proyectos.find((p) => p.id === enfocado) ?? null;
 
@@ -246,6 +268,46 @@ export default function ConstelacionProyectos({
             </button>
           );
         })}
+      </div>
+
+      {/* ------------------------- buscador: esquina superior izquierda */}
+      <div role="search" className="absolute left-4 top-3.5 z-[4] w-40 lg:w-56">
+        <label className="relative block">
+          <span className="sr-only">Buscar proyecto por nombre</span>
+          <Search
+            size={14}
+            aria-hidden
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#56618a]"
+          />
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setBusqueda('');
+            }}
+            placeholder="Buscar proyecto…"
+            autoComplete="off"
+            className={`${fuenteTitulo.className} w-full rounded-full border border-[rgba(110,150,255,0.25)] bg-[rgba(10,15,34,0.6)] py-1.5 pl-8 pr-8 text-xs font-light text-[#c9d2f5] outline-none transition-colors placeholder:text-[#56618a] focus:border-[rgba(127,157,255,0.6)] [&::-webkit-search-cancel-button]:hidden`}
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[#8f9acb] transition-colors hover:text-white"
+            >
+              <X size={13} aria-hidden />
+            </button>
+          )}
+        </label>
+        {buscado && (
+          <p aria-live="polite" className="mt-1.5 pl-3 text-[11px] font-light text-[#8f9acb]">
+            {coincidentes.length === 0
+              ? 'Sin resultados en esta pestaña'
+              : `${coincidentes.length} de ${enPestana.length} ${enPestana.length === 1 ? 'proyecto' : 'proyectos'}`}
+          </p>
+        )}
       </div>
 
       {/* ------------- cajon del proyecto enfocado: solo sus dos accesos */}
@@ -320,7 +382,7 @@ export default function ConstelacionProyectos({
 
       {/* Lo mismo para teclado y lectores de pantalla: el canvas no se enfoca. */}
       <ul className="sr-only">
-        {proyectos.map((p) => (
+        {proyectos.filter((p) => idsCoincidentes.has(p.id)).map((p) => (
           <li key={p.id}>
             <button
               type="button"

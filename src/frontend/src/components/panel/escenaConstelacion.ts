@@ -16,6 +16,21 @@
 
 export type Filtro = 'todos' | 'proceso' | 'completados';
 
+/** Texto para comparar al buscar: sin mayusculas ni tildes ("Orión" = "orion"). */
+export function normalizarTexto(t: string) {
+  return t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+}
+
+/** El proyecto corresponde a la pestaña elegida. */
+export function enFiltro(p: { completado: boolean }, f: Filtro) {
+  return f === 'todos' || (f === 'proceso' && !p.completado) || (f === 'completados' && p.completado);
+}
+
+/** El nombre contiene el texto buscado (ya normalizado); sin texto, todos coinciden. */
+export function coincideBusqueda(nombre: string, buscado: string) {
+  return !buscado || normalizarTexto(nombre).includes(buscado);
+}
+
 /** Lo que la escena necesita de cada proyecto. */
 export interface ProyectoEscena {
   id: string;
@@ -608,6 +623,9 @@ export class EscenaConstelacion {
   private alCrear: () => void;
 
   private filtroActual: Filtro = 'todos';
+  /** Texto del buscador, ya normalizado; vacio = sin buscar. */
+  private buscado = '';
+  private nombresBusqueda = new Map<string, string>();
   private conBoton = true;
 
   private proyectos: ProyectoEscena[] = [];
@@ -761,6 +779,11 @@ export class EscenaConstelacion {
     this.filtroActual = f;
   }
 
+  /** Busqueda por nombre: se combina con la pestaña y atenua lo que no coincide. */
+  set busqueda(t: string) {
+    this.buscado = normalizarTexto(t);
+  }
+
   set fondo(f: Fondo) {
     if (f === this.fondoActual) return;
     this.fondoActual = f;
@@ -790,6 +813,7 @@ export class EscenaConstelacion {
       if (c) c.p = p;
     }
     this.nombres.clear();
+    this.nombresBusqueda.clear();
     this.reacomodar(false);
     this.armarEsfera();
     this.primeraCarga = false;
@@ -912,8 +936,16 @@ export class EscenaConstelacion {
   }
 
   private visible(p: ProyectoEscena) {
-    const f = this.filtroActual;
-    return f === 'todos' || (f === 'proceso' && !p.completado) || (f === 'completados' && p.completado);
+    if (!enFiltro(p, this.filtroActual)) return false;
+    if (!this.buscado) return true;
+    // Se consulta por cada punto de la esfera en cada cuadro: el nombre
+    // normalizado se guarda en vez de recalcularlo.
+    let nombre = this.nombresBusqueda.get(p.nombre);
+    if (nombre === undefined) {
+      nombre = normalizarTexto(p.nombre);
+      this.nombresBusqueda.set(p.nombre, nombre);
+    }
+    return nombre.includes(this.buscado);
   }
 
   // ------------------------------------------------------------ armado
