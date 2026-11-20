@@ -248,11 +248,11 @@ export default function Registro() {
                     />
                     <span>
                       Acepto los{' '}
-                      <a href="[URL TÉRMINOS]" className="text-[#7dd3fc] hover:text-[#bae6fd]">
+                      <a href="/terminos" target="_blank" rel="noopener" className="text-[#7dd3fc] hover:text-[#bae6fd]">
                         términos de uso
                       </a>{' '}
                       y la{' '}
-                      <a href="[URL PRIVACIDAD]" className="text-[#7dd3fc] hover:text-[#bae6fd]">
+                      <a href="/privacidad" target="_blank" rel="noopener" className="text-[#7dd3fc] hover:text-[#bae6fd]">
                         política de privacidad
                       </a>
                       .

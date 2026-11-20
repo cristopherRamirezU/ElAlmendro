@@ -3,6 +3,7 @@ import Link from 'next/link';
 import MarcaTimeFlow, { NombreMarca } from '@/components/sitio/MarcaTimeFlow';
 import ListaPlan from '@/components/sitio/ListaPlan';
 import { fuenteTitulo } from '@/lib/fuentes';
+import { DATOS_LEGALES } from '@/lib/sitio';
 
 export const metadata: Metadata = {
   title: 'TimeFlow · El tiempo de tu equipo, en un mapa',
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
     'TimeFlow organiza cada proyecto como un mapa de tareas, registra la jornada y las sesiones de trabajo de cada persona y muestra quién trabajó en qué, cuándo y cuánto. Plan Básico gratis.',
 };
 
-/** Correo de contacto comercial: pendiente de definir. */
-const CORREO_CONTACTO = '[CORREO DE CONTACTO]';
+/** Correo de contacto: se completa en lib/sitio.ts. */
+const CORREO_CONTACTO = DATOS_LEGALES.correo;
 
 const FUNCIONES = [
   {
@@ -241,6 +242,12 @@ export default function Inicio() {
             </Link>
             <Link href="/registro" className="text-[#b6c2e2] no-underline hover:text-white">
               Crear cuenta
+            </Link>
+            <Link href="/terminos" className="text-[#b6c2e2] no-underline hover:text-white">
+              Términos de uso
+            </Link>
+            <Link href="/privacidad" className="text-[#b6c2e2] no-underline hover:text-white">
+              Privacidad
             </Link>
             <a href={`mailto:${CORREO_CONTACTO}`} className="text-[#b6c2e2] no-underline hover:text-white">
               Contacto
