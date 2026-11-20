@@ -249,6 +249,12 @@ model Actividad {
 
   titulo           String
   descripcion      String?
+  /// Comentario de voz que acompana a los comentarios (descripcion): version
+  /// vigente del audio (null = sin audio). El archivo vive en S3 bajo
+  /// audios-comentario/<id>/<version>.
+  audioComentario         String?
+  /// Duracion del audio en segundos, medida al grabarlo.
+  audioComentarioSegundos Int?
   estado           EstadoActividad @default(PENDIENTE)
   prioridad        Prioridad       @default(MEDIA)
   responsableId    String          @db.Uuid

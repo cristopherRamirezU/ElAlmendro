@@ -223,6 +223,10 @@ export interface Actividad {
   subtareas: Subtarea[];
   /** Solo en el detalle: quien creo la tarea o un administrador. */
   puedeEditarInstrucciones?: boolean;
+  /** Version del comentario de voz (null = sin audio). */
+  audioComentario?: string | null;
+  /** Duracion del comentario de voz, en segundos. */
+  audioComentarioSegundos?: number | null;
 }
 
 /** Persona asignable: lo que devuelve /usuarios/trabajadores. */

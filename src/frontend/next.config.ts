@@ -31,10 +31,13 @@ function politicaContenido(): string {
     'default-src': ["'self'"],
     'script-src': ["'self'", "'unsafe-inline'", ...(desarrollo ? ["'unsafe-eval'"] : [])],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", 'data:', 'blob:'],
+    // La API sirve las fotos de perfil (en desarrollo esta en otro puerto).
+    'img-src': ["'self'", 'data:', 'blob:', ...origenesApi().slice(0, 1)],
     'font-src': ["'self'", 'data:'],
     'connect-src': ["'self'", ...origenesApi()],
-    'media-src': ["'self'"],
+    // blob: los comentarios de voz se escuchan desde memoria (grabacion recien
+    // hecha o audio descargado con la sesion).
+    'media-src': ["'self'", 'blob:'],
     'worker-src': ["'self'", 'blob:'],
     'manifest-src': ["'self'"],
     'object-src': ["'none'"],
@@ -55,8 +58,10 @@ const CABECERAS_SEGURIDAD = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   {
+    // El microfono solo para el propio sitio: los comentarios de voz de las
+    // tareas lo usan. Un iframe ajeno sigue sin acceso.
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()',
+    value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()',
   },
 ];
 
