@@ -124,8 +124,8 @@ const OPCIONES_LADO: { valor: LadoLinea | ''; texto: string }[] = [
 ];
 
 /** El borde de una manilla a partir de su id ("salida-top" -> "top"). */
-/** Margen que se deja bajo el mapa, igual al del marco de la pagina. */
-const MARGEN_BAJO_MAPA = 24;
+/** Margen que se deja bajo el mapa para aprovechar al máximo la pantalla. */
+const MARGEN_BAJO_MAPA = 12;
 /** Alto minimo del mapa en pantallas bajas: debajo de esto la pagina se desplaza. */
 const ALTO_MINIMO_MAPA = 512;
 
@@ -870,14 +870,14 @@ function Nodos() {
     if (buscandoProyecto) {
       return (
         <Marco activo="/nodos" titulo="Mapa de nodos" subtitulo="Localizando tu tarea en curso...">
-          <div className="grid place-items-center rounded-2xl border border-white/10 bg-slate-900 p-16 text-center backdrop-blur">
+          <div className="grid place-items-center rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] p-16 text-center backdrop-blur">
             <div className="flex flex-col items-center gap-3">
               <span className="relative flex h-5 w-5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-5 w-5 rounded-full bg-emerald-500" />
               </span>
-              <p className="text-sm font-semibold text-white">Abriendo tu tarea activa...</p>
-              <p className="text-xs text-slate-400">Te estamos llevando directo al cronómetro de tu proyecto.</p>
+              <p className="text-sm font-semibold text-[var(--tf-texto)]">Abriendo tu tarea activa...</p>
+              <p className="text-xs text-[var(--tf-texto-tenue)]">Te estamos llevando directo al cronómetro de tu proyecto.</p>
             </div>
           </div>
         </Marco>
@@ -886,8 +886,8 @@ function Nodos() {
 
     return (
       <Marco activo="/nodos" titulo="Mapa de nodos" subtitulo="Flujo de tareas y derivaciones">
-        <div className="grid place-items-center rounded-2xl border border-dashed border-white/15 p-16 text-center">
-          <p className="mb-4 max-w-sm text-sm text-slate-400">
+        <div className="grid place-items-center rounded-2xl border border-dashed border-[var(--tf-borde-fuerte)] p-16 text-center">
+          <p className="mb-4 max-w-sm text-sm text-[var(--tf-texto-tenue)]">
             No tienes proyectos o tareas asignadas por el momento. Entra a Proyectos para explorar o crear un nuevo proyecto.
           </p>
           <Link
@@ -907,18 +907,20 @@ function Nodos() {
       activo="/nodos"
       titulo="Mapa de nodos"
       subtitulo={`Tareas de "${nombreProyecto}"`}
+      permitirOcultarCabecera
+      compacto
       acciones={
         <div className="flex items-center gap-2">
           {esTrabajador ? (
-            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
+            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-azul)]">
               Vista Colaborativa
             </span>
           ) : esSupervisor ? (
-            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-300">
+            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-violeta)]">
               Vista Supervisor
             </span>
           ) : (
-            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-ambar)]">
               Vista Administrador
             </span>
           )}
@@ -928,17 +930,17 @@ function Nodos() {
       {aviso && (
         <p
           role="alert"
-          className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-300"
+          className="mb-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-rojo)]"
         >
           {aviso}
         </p>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
+      <section className="overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] backdrop-blur">
         {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-white/10 px-4 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--tf-borde)] px-4 py-2">
           <h2
-            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-white`}
+            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)]`}
             title={nombreProyecto ?? undefined}
           >
             {nombreProyecto}
@@ -948,11 +950,11 @@ function Nodos() {
               <button
                 onClick={() => setVerDerivaciones(true)}
                 title="Traspasos de responsable, con su motivo y su fecha"
-                className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white"
+                className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)]"
               >
                 <span aria-hidden>⇄</span>
                 Derivaciones
-                <span className="rounded-full bg-sky-500/20 px-1.5 text-[10px] font-bold text-sky-200">
+                <span className="rounded-full bg-sky-500/20 px-1.5 text-[10px] font-bold text-[var(--tf-acento-azul)]">
                   {derivaciones.length}
                 </span>
               </button>
@@ -965,8 +967,8 @@ function Nodos() {
                 title="Arrastra las tareas y déjalas donde quieras"
                 className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
                   editando
-                    ? 'border-amber-400/50 bg-amber-500/20 font-semibold text-amber-200'
-                    : 'border-white/10 bg-slate-950/60 text-slate-400 hover:text-slate-200'
+                    ? 'border-amber-500/50 bg-amber-500/20 font-semibold text-[var(--tf-acento-ambar)]'
+                    : 'border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
                 }`}
               >
                 <span aria-hidden>✥</span>
@@ -979,7 +981,7 @@ function Nodos() {
                   onClick={deshacer}
                   disabled={historial.length === 0}
                   title="Deshacer el último movimiento (Ctrl+Z)"
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span aria-hidden>↶</span>
                   Deshacer
@@ -988,13 +990,13 @@ function Nodos() {
                   onClick={restablecer}
                   disabled={!hayMovidos}
                   title="Devolver todos los nodos al acomodo automático en esta orientación"
-                  className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Restablecer
                 </button>
               </>
             )}
-            <div className="flex rounded-lg border border-white/10 bg-slate-950/60 p-0.5" role="radiogroup">
+            <div className="flex rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-0.5" role="radiogroup">
               {ORIENTACIONES.map((o) => (
                 <button
                   key={o.valor}
@@ -1004,8 +1006,8 @@ function Nodos() {
                   onClick={() => cambiarOrientacion(o.valor)}
                   className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
                     orientacion === o.valor
-                      ? 'bg-sky-500/20 font-semibold text-sky-200'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-sky-500/20 font-semibold text-[var(--tf-acento-azul)]'
+                      : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
                   }`}
                 >
                   <span aria-hidden>{o.icono}</span>
@@ -1019,9 +1021,9 @@ function Nodos() {
           <div
             role="group"
             aria-label="Bordes de la línea seleccionada"
-            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-400/20 bg-amber-500/5 px-4 py-2 text-xs text-slate-300"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-xs text-[var(--tf-texto)]"
           >
-            <span className="min-w-0 truncate font-semibold text-amber-200">
+            <span className="min-w-0 truncate font-semibold text-[var(--tf-acento-ambar)]">
               Línea hacia «{actividades.find((a) => a.id === lineaSeleccionada.target)?.titulo}»
             </span>
             <label className="flex items-center gap-1.5">
@@ -1034,7 +1036,7 @@ function Nodos() {
                     salida: (e.target.value || undefined) as LadoLinea | undefined,
                   })
                 }
-                className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
+                className="rounded-md border border-[var(--tf-borde)] bg-[var(--tf-input)] px-1.5 py-1 text-xs text-[var(--tf-texto)] outline-none focus:border-amber-400"
               >
                 {OPCIONES_LADO.map((o) => (
                   <option key={o.valor} value={o.valor}>
@@ -1053,7 +1055,7 @@ function Nodos() {
                     entrada: (e.target.value || undefined) as LadoLinea | undefined,
                   })
                 }
-                className="rounded-md border border-white/15 bg-slate-950 px-1.5 py-1 text-xs text-white outline-none focus:border-amber-400"
+                className="rounded-md border border-[var(--tf-borde)] bg-[var(--tf-input)] px-1.5 py-1 text-xs text-[var(--tf-texto)] outline-none focus:border-amber-400"
               >
                 {OPCIONES_LADO.map((o) => (
                   <option key={o.valor} value={o.valor}>
@@ -1066,11 +1068,11 @@ function Nodos() {
               onClick={() => guardarLados(lineaSeleccionada.target, null)}
               disabled={!ladosLineaSeleccionada.salida && !ladosLineaSeleccionada.entrada}
               title="Que el mapa vuelva a elegir solo por dónde sale y llega esta línea"
-              className="rounded-lg border border-white/10 bg-slate-950/60 px-2.5 py-1 text-xs text-slate-300 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
             >
               Línea automática
             </button>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[11px] text-[var(--tf-texto-tenue)]">
               También puedes arrastrar un extremo de la línea a cualquier punto de un borde del nodo: queda justo donde la sueltas.
             </span>
           </div>
@@ -1154,21 +1156,21 @@ function Nodos() {
 
       {verDerivaciones && (
         <Modal titulo="Derivaciones" onCerrar={() => setVerDerivaciones(false)}>
-          <p className="mb-4 text-xs text-slate-400">Traspasos de responsable, con su motivo y su fecha.</p>
+          <p className="mb-4 text-xs text-[var(--tf-texto-tenue)]">Traspasos de responsable, con su motivo y su fecha.</p>
           {derivaciones.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-xs text-slate-500">
+            <p className="rounded-xl border border-dashed border-[var(--tf-borde-fuerte)] p-6 text-center text-xs text-[var(--tf-texto-suave)]">
               Sin derivaciones registradas.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
               {derivaciones.map((d) => (
-                <div key={d.id} className="rounded-xl border border-white/10 p-3">
-                  <p className="text-sm font-semibold leading-snug text-white">{d.actividad.titulo}</p>
-                  <p className="mt-1 text-xs text-slate-400">
+                <div key={d.id} className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+                  <p className="text-sm font-semibold leading-snug text-[var(--tf-texto)]">{d.actividad.titulo}</p>
+                  <p className="mt-1 text-xs text-[var(--tf-texto-tenue)]">
                     {d.deUsuario.nombreCompleto} → {d.aUsuario.nombreCompleto}
                   </p>
-                  <p className="mt-1.5 rounded-lg bg-white/5 px-2 py-1 text-[11px] text-slate-300">{d.motivo}</p>
-                  <p className="mt-1 text-[10px] text-slate-500">
+                  <p className="mt-1.5 rounded-lg bg-[var(--tf-hover)] px-2 py-1 text-[11px] text-[var(--tf-texto)]">{d.motivo}</p>
+                  <p className="mt-1 text-[10px] text-[var(--tf-texto-suave)]">
                     {new Date(d.ocurridoEn).toLocaleDateString('es-CL')}
                   </p>
                 </div>

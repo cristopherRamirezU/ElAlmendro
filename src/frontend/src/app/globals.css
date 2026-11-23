@@ -19,6 +19,12 @@
   --tf-borde-fuerte: rgba(255, 255, 255, 0.17);
   --tf-hover: rgba(255, 255, 255, 0.05);
   --tf-sombra: 0 20px 50px -24px rgba(0, 0, 0, 0.75);
+  --tf-acento-azul: #7dd3fc;
+  --tf-acento-verde: #6ee7b7;
+  --tf-acento-ambar: #fcd34d;
+  --tf-acento-rojo: #fda4af;
+  --tf-acento-naranja: #fdba74;
+  --tf-acento-violeta: #c4b5fd;
   color-scheme: dark;
 }
 
@@ -36,6 +42,12 @@
   --tf-borde-fuerte: rgba(255, 255, 255, 0.16);
   --tf-hover: rgba(255, 255, 255, 0.055);
   --tf-sombra: 0 20px 50px -24px rgba(0, 0, 0, 0.8);
+  --tf-acento-azul: #7dd3fc;
+  --tf-acento-verde: #6ee7b7;
+  --tf-acento-ambar: #fcd34d;
+  --tf-acento-rojo: #fda4af;
+  --tf-acento-naranja: #fdba74;
+  --tf-acento-violeta: #c4b5fd;
   color-scheme: dark;
 }
 
@@ -53,6 +65,12 @@
   --tf-borde-fuerte: rgba(15, 23, 42, 0.16);
   --tf-hover: rgba(15, 23, 42, 0.045);
   --tf-sombra: 0 18px 44px -22px rgba(15, 23, 42, 0.14);
+  --tf-acento-azul: #0369a1;
+  --tf-acento-verde: #047857;
+  --tf-acento-ambar: #b45309;
+  --tf-acento-rojo: #be123c;
+  --tf-acento-naranja: #c2410c;
+  --tf-acento-violeta: #6d28d9;
   color-scheme: light;
 }
 
@@ -344,64 +362,80 @@ body {
 @keyframes tf-modal-entra { from { opacity: 0; transform: translateY(14px) scale(0.97); } }
 
 /*
- * Interruptor de jornada: pista gris que se enciende en verde, perilla que
- * salta con rebote y un pulso de luz al encender.
+ * Interruptor de jornada: pista amplia de alto contraste que se enciende en
+ * verde esmeralda, perilla con salto suave y pulso de luz al activar.
  */
 .tf-interruptor {
-  border: 1px solid var(--tf-borde);
-  background: var(--tf-hover);
-  transition: border-color 0.3s ease, background-color 0.3s ease;
+  border: 1.5px solid var(--tf-borde-fuerte);
+  background: var(--tf-superficie-solida);
+  box-shadow: 0 4px 14px -6px rgba(15, 23, 42, 0.22);
+  transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease, transform 0.15s ease;
+}
+.tf-interruptor:hover:not(:disabled) {
+  transform: translateY(-0.5px);
+  box-shadow: 0 8px 20px -8px rgba(15, 23, 42, 0.32);
 }
 .tf-interruptor[data-encendido='true'] {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.55);
+  background: rgba(16, 185, 129, 0.14);
+  box-shadow: 0 6px 18px -6px rgba(16, 185, 129, 0.35);
+}
+:root[data-tema="claro-nube"] .tf-interruptor[data-encendido='true'] {
+  background: #ecfdf5;
+  border-color: rgba(5, 150, 105, 0.5);
 }
 .tf-interruptor:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
 .tf-interruptor-pista {
   position: relative;
-  width: 48px;
-  height: 24px;
+  width: 68px;
+  height: 32px;
   flex-shrink: 0;
   border-radius: 9999px;
-  background: linear-gradient(180deg, #334155, #475569);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  background: linear-gradient(180deg, #475569, #334155);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4);
   transition: background 0.35s ease, box-shadow 0.35s ease;
 }
+:root[data-tema="claro-nube"] .tf-interruptor-pista {
+  background: linear-gradient(180deg, #64748b, #475569);
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.25);
+}
 .tf-interruptor[data-encendido='true'] .tf-interruptor-pista {
-  background: linear-gradient(180deg, #059669, #10b981);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 12px rgba(16, 185, 129, 0.55);
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 14px rgba(16, 185, 129, 0.48);
   animation: tf-interruptor-pulso 0.6s ease-out;
 }
 .tf-interruptor-perilla {
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
+  top: 3px;
+  left: 3px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
   border-radius: 9999px;
-  background: radial-gradient(circle at 35% 30%, #ffffff, #e2e8f0 60%, #cbd5e1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: radial-gradient(circle at 35% 30%, #ffffff, #f1f5f9 65%, #cbd5e1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.18s ease;
 }
-.tf-interruptor[data-encendido='true'] .tf-interruptor-perilla { transform: translateX(24px); }
-.tf-interruptor:active:not(:disabled) .tf-interruptor-perilla { width: 24px; }
-.tf-interruptor[data-encendido='true']:active:not(:disabled) .tf-interruptor-perilla { transform: translateX(20px); }
+.tf-interruptor[data-encendido='true'] .tf-interruptor-perilla { transform: translateX(36px); }
+.tf-interruptor:active:not(:disabled) .tf-interruptor-perilla { width: 30px; }
+.tf-interruptor[data-encendido='true']:active:not(:disabled) .tf-interruptor-perilla { transform: translateX(32px); }
 .tf-interruptor-rotulo {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 7px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.06em;
-  transition: opacity 0.3s ease;
+  letter-spacing: 0.05em;
+  transition: opacity 0.25s ease;
 }
-.tf-interruptor-on { left: 7px; color: #ecfdf5; opacity: 0; }
-.tf-interruptor-off { right: 5px; color: #cbd5e1; opacity: 1; }
+.tf-interruptor-on { left: 9px; color: #ffffff; opacity: 0; }
+.tf-interruptor-off { right: 8px; color: #f8fafc; opacity: 1; }
 .tf-interruptor[data-encendido='true'] .tf-interruptor-on { opacity: 1; }
 .tf-interruptor[data-encendido='true'] .tf-interruptor-off { opacity: 0; }
 @keyframes tf-interruptor-pulso {
   0% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3), 0 0 0 12px rgba(16, 185, 129, 0); }
 }
 
 /* Cajon del proyecto enfocado en la constelacion: sale por debajo de la
@@ -421,11 +455,19 @@ body {
   border-top: 0;
   border-radius: 0 0 14px 14px;
 }
+.tf-constelacion-tarjeta[data-claro='true'] {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(63, 107, 255, 0.35);
+  box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.22);
+}
 .tf-constelacion-tarjeta[data-lado='arriba'] {
   --tf-cajon-oculto: inset(100% 0 0 0);
   border-top: 1px solid rgba(130, 165, 255, 0.6);
   border-bottom: 0;
   border-radius: 14px 14px 0 0;
+}
+.tf-constelacion-tarjeta[data-claro='true'][data-lado='arriba'] {
+  border-top-color: rgba(63, 107, 255, 0.35);
 }
 .tf-constelacion-tarjeta[data-visible='true'] {
   opacity: 1;
@@ -451,6 +493,8 @@ body {
 .tf-cajon-mapa:hover { filter: brightness(1.12); }
 .tf-cajon-ver { color: #cfd8ff; }
 .tf-cajon-ver:hover { background: rgba(110, 150, 255, 0.12); }
+.tf-constelacion-tarjeta[data-claro='true'] .tf-cajon-ver { color: #1e293b; }
+.tf-constelacion-tarjeta[data-claro='true'] .tf-cajon-ver:hover { background: rgba(63, 107, 255, 0.09); }
 
 /* Avance del proyecto en su ventana: un segmento por tarea; los hechos con el
    degradado de la marca y el siguiente con rayas que avanzan. */
@@ -460,6 +504,13 @@ body {
     radial-gradient(120% 140% at 100% 100%, rgba(130, 90, 255, 0.14), transparent 55%),
     #111933;
   border: 1px solid rgba(130, 165, 255, 0.22);
+}
+:root[data-tema="claro-nube"] .tf-banda-avance {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(63, 107, 255, 0.12), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(130, 90, 255, 0.10), transparent 55%),
+    #f1f6fe;
+  border-color: rgba(63, 107, 255, 0.22);
 }
 .tf-boton-marca {
   background: linear-gradient(90deg, #3f6bff, #825aff);
@@ -474,6 +525,10 @@ body {
   background: rgba(110, 150, 255, 0.12);
   box-shadow: inset 0 0 0 1px rgba(130, 165, 255, 0.14);
   transition: background 0.4s, box-shadow 0.4s;
+}
+:root[data-tema="claro-nube"] .tf-segmento {
+  background: rgba(63, 107, 255, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(63, 107, 255, 0.22);
 }
 .tf-segmento-hecho {
   background: linear-gradient(180deg, #6b8cff, #6a55f0);
@@ -496,12 +551,22 @@ body {
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   backdrop-filter: blur(18px) saturate(140%);
 }
+:root[data-tema="claro-nube"] .tf-ventana-tarea {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.12) !important;
+  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.22);
+}
 /* La ventana aparte no tiene nada detras que dejar ver: mismo tono, opaco. */
 .tf-ventana-aparte { background: #0e1526; }
+:root[data-tema="claro-nube"] .tf-ventana-aparte { background: #ffffff; }
 /* Bloques de vidrio dentro de la ventana (comentarios, responsable). */
 .tf-vidrio {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+:root[data-tema="claro-nube"] .tf-vidrio {
+  background: rgba(15, 23, 42, 0.035);
+  border: 1px solid rgba(15, 23, 42, 0.10);
 }
 
 /* Contador de la tarea: un panel de vidrio un poco mas claro que la ventana. */
@@ -509,6 +574,10 @@ body {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.16);
+}
+:root[data-tema="claro-nube"] .tf-contador {
+  background: rgba(241, 246, 254, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.12);
 }
 .tf-boton-vidrio {
   background: linear-gradient(135deg, #5b7dff, #9a6bff);

@@ -14,7 +14,7 @@ export default function Pagina() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-400">
+        <main className="grid min-h-screen place-items-center bg-[var(--tf-fondo)] text-sm text-[var(--tf-texto-tenue)]">
           Cargando…
         </main>
       }
@@ -63,13 +63,13 @@ function Chat() {
       {aviso && (
         <p
           role="alert"
-          className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-300"
+          className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-rojo)]"
         >
           {aviso}
         </p>
       )}
       {!conectado && (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-300">
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-[var(--tf-acento-ambar)]">
           Reconectando con el chat en vivo… los mensajes que envies igual quedan guardados.
         </p>
       )}

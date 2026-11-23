@@ -400,7 +400,7 @@ function ContenidoUsuarios() {
                         </p>
                         {ROLES_CON_PERMISOS_EXTRA.includes(u.rol) && (u.permisosExtra?.length ?? 0) > 0 && (
                           <p
-                            className="mt-1 inline-flex rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-400"
+                            className="mt-1 inline-flex rounded-md border border-sky-500/30 bg-sky-500/12 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--tf-acento-azul)]"
                             title={PERMISOS_EXTRA.filter((p) => u.permisosExtra?.includes(p.codigo))
                               .map((p) => p.nombre)
                               .join(', ')}
@@ -412,8 +412,8 @@ function ContenidoUsuarios() {
 
                       <td className="px-6 py-4">
                         {u.activo ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--tf-acento-verde)]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                             Activo
                           </span>
                         ) : (
@@ -535,20 +535,20 @@ function BadgeRol({ rol }: { rol: Rol }) {
   switch (rol) {
     case 'ADMINISTRADOR':
       return (
-        <span className="inline-flex items-center rounded-lg bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300 border border-indigo-500/30">
+        <span className="inline-flex items-center rounded-lg border border-indigo-500/30 bg-indigo-500/12 px-2.5 py-1 text-xs font-semibold text-[var(--tf-acento-violeta)]">
           Administrador
         </span>
       );
     case 'SUPERVISOR':
       return (
-        <span className="inline-flex items-center rounded-lg bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-300 border border-sky-500/30">
+        <span className="inline-flex items-center rounded-lg border border-sky-500/30 bg-sky-500/12 px-2.5 py-1 text-xs font-semibold text-[var(--tf-acento-azul)]">
           Supervisor
         </span>
       );
     case 'TRABAJADOR':
     default:
       return (
-        <span className="inline-flex items-center rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300 border border-emerald-500/30">
+        <span className="inline-flex items-center rounded-lg border border-emerald-500/30 bg-emerald-500/12 px-2.5 py-1 text-xs font-semibold text-[var(--tf-acento-verde)]">
           Trabajador
         </span>
       );
@@ -602,45 +602,45 @@ function ModalCrearUsuario({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-          <h2 className="text-lg font-bold text-white">Registrar Nuevo Trabajador</h2>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-200">✕</button>
+      <div className="tf-modal-entra w-full max-w-lg rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 text-[var(--tf-texto)] shadow-2xl">
+        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
+          <h2 className="text-lg font-bold text-[var(--tf-texto)]">Registrar Nuevo Trabajador</h2>
+          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">✕</button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Nombre Completo</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre Completo</label>
             <input
               type="text"
               required
               placeholder="Ej: Marcelo Morales"
               value={nombreCompleto}
               onChange={(e) => setNombreCompleto(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Correo Electrónico</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico</label>
             <input
               type="email"
               required
               placeholder="nombre@timeflow.cl"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Contraseña Inicial</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Contraseña Inicial</label>
             <input
               type="password"
               required
@@ -650,17 +650,17 @@ function ModalCrearUsuario({
               placeholder={AYUDA_CONTRASENA}
               value={contrasena}
               onChange={(e) => setContrasena(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Rol en el Sistema (RBAC)</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol en el Sistema (RBAC)</label>
             <select
               value={rol}
               disabled={rolOperador === 'SUPERVISOR'}
               onChange={(e) => setRol(e.target.value as Rol)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400 disabled:bg-white/5 disabled:text-slate-500"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400 disabled:opacity-60 disabled:text-[var(--tf-texto-suave)]"
             >
               <option value="TRABAJADOR">Trabajador (Registro de tiempo y actividades)</option>
               {rolOperador !== 'SUPERVISOR' && (
@@ -671,35 +671,35 @@ function ModalCrearUsuario({
               )}
             </select>
             {rolOperador === 'SUPERVISOR' && (
-              <p className="mt-1 text-xs text-sky-400">
+              <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
                 Como supervisor, gestionas exclusivamente trabajadores a tu cargo.
               </p>
             )}
             {rolSeleccionado && (
-              <p className="mt-1.5 rounded-lg bg-white/5 p-2 text-xs text-slate-400">
+              <p className="mt-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2.5 text-xs text-[var(--tf-texto-tenue)]">
                 {rolSeleccionado.descripcion}
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="crear-zona" className="mb-1 block text-xs font-semibold text-slate-300">
+            <label htmlFor="crear-zona" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
               Zona Horaria
             </label>
             <SelectorZona
               id="crear-zona"
               value={zonaHoraria}
               onChange={setZonaHoraria}
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
-          <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
+          <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
             <button
               type="button"
               onClick={onCerrar}
               disabled={enviando}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
               Cancelar
             </button>
@@ -792,51 +792,51 @@ function ModalEditarUsuario({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+      <div className="tf-modal-entra max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 text-[var(--tf-texto)] shadow-2xl">
+        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
           <div>
-            <h2 className="text-lg font-bold text-white">Editar Usuario</h2>
-            <p className="text-xs text-slate-400">{usuario.email}</p>
+            <h2 className="text-lg font-bold text-[var(--tf-texto)]">Editar Usuario</h2>
+            <p className="text-xs text-[var(--tf-texto-tenue)]">{usuario.email}</p>
           </div>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-200">✕</button>
+          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">✕</button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Nombre Completo</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre Completo</label>
             <input
               type="text"
               required
               value={nombreCompleto}
               onChange={(e) => setNombreCompleto(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Correo Electrónico (Ingreso)</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico (Ingreso)</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Rol Asignado (RBAC)</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol Asignado (RBAC)</label>
             <select
               value={rol}
               disabled={rolOperador === 'SUPERVISOR'}
               onChange={(e) => setRol(e.target.value as Rol)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400 disabled:bg-white/5 disabled:text-slate-500"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400 disabled:opacity-60 disabled:text-[var(--tf-texto-suave)]"
             >
               <option value="TRABAJADOR">Trabajador</option>
               {rolOperador !== 'SUPERVISOR' && (
@@ -847,18 +847,18 @@ function ModalEditarUsuario({
               )}
             </select>
             {rolOperador === 'SUPERVISOR' && (
-              <p className="mt-1 text-xs text-sky-400">
+              <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
                 La asignación o modificación de roles superiores está reservada a administradores.
               </p>
             )}
             {rolSeleccionado && (
-              <p className="mt-1.5 rounded-lg bg-white/5 p-2 text-xs text-slate-400">
+              <p className="mt-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2.5 text-xs text-[var(--tf-texto-tenue)]">
                 {rolSeleccionado.descripcion}
               </p>
             )}
           </div>
 
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
             <input
               type="checkbox"
               id="activo-check"
@@ -866,15 +866,15 @@ function ModalEditarUsuario({
               onChange={(e) => setActivo(e.target.checked)}
               className="h-4 w-4 rounded-sm text-sky-500 focus:ring-sky-400"
             />
-            <label htmlFor="activo-check" className="text-sm font-medium text-slate-200">
+            <label htmlFor="activo-check" className="text-sm font-medium text-[var(--tf-texto)]">
               Usuario Activo (permite iniciar sesión en la plataforma)
             </label>
           </div>
 
           {muestraExtras && (
-            <fieldset className="rounded-xl border border-white/10 bg-white/5 p-3">
-              <legend className="px-1 text-xs font-semibold text-slate-300">Permisos extra</legend>
-              <p className="mb-2 text-[11px] leading-relaxed text-slate-400">
+            <fieldset className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+              <legend className="px-1 text-xs font-semibold text-[var(--tf-texto-tenue)]">Permisos extra</legend>
+              <p className="mb-2 text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">
                 Además de los de su rol de trabajador. Rigen desde su próxima acción en la aplicación.
               </p>
               <div className="space-y-2">
@@ -882,7 +882,7 @@ function ModalEditarUsuario({
                   <label
                     key={p.codigo}
                     htmlFor={`extra-${p.codigo}`}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg p-1.5 transition hover:bg-white/5"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg p-1.5 transition hover:bg-[var(--tf-hover)]"
                   >
                     <input
                       type="checkbox"
@@ -892,8 +892,8 @@ function ModalEditarUsuario({
                       className="mt-0.5 h-4 w-4 shrink-0 rounded-sm text-sky-500 focus:ring-sky-400"
                     />
                     <span>
-                      <span className="block text-sm font-medium text-slate-200">{p.nombre}</span>
-                      <span className="block text-[11px] leading-relaxed text-slate-400">{p.descripcion}</span>
+                      <span className="block text-sm font-medium text-[var(--tf-texto)]">{p.nombre}</span>
+                      <span className="block text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">{p.descripcion}</span>
                     </span>
                   </label>
                 ))}
@@ -902,8 +902,8 @@ function ModalEditarUsuario({
           )}
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
-              Nueva Contraseña <span className="font-normal text-slate-400">(dejar en blanco para conservar la actual)</span>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+              Nueva Contraseña <span className="font-normal text-[var(--tf-texto-suave)]">(dejar en blanco para conservar la actual)</span>
             </label>
             <input
               type="password"
@@ -913,28 +913,28 @@ function ModalEditarUsuario({
               placeholder={`Opcional. ${AYUDA_CONTRASENA}`}
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label htmlFor="editar-zona" className="mb-1 block text-xs font-semibold text-slate-300">
+            <label htmlFor="editar-zona" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
               Zona Horaria
             </label>
             <SelectorZona
               id="editar-zona"
               value={zonaHoraria}
               onChange={setZonaHoraria}
-              className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
-          <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
+          <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
             <button
               type="button"
               onClick={onCerrar}
               disabled={enviando}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
               Cancelar
             </button>

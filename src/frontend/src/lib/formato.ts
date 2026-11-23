@@ -37,19 +37,19 @@ export function hora(iso: string, zona: string = zonaActual()): string {
 }
 
 export const ESTADOS: Record<string, { texto: string; clase: string; punto: string }> = {
-  PENDIENTE:   { texto: 'Por hacer',   clase: 'text-sky-300 bg-sky-500/10 border-sky-500/30',       punto: 'bg-sky-400' },
-  EN_PROGRESO: { texto: 'En progreso', clase: 'text-amber-300 bg-amber-500/10 border-amber-500/30', punto: 'bg-amber-400' },
-  BLOQUEADA:   { texto: 'Bloqueada',   clase: 'text-rose-300 bg-rose-500/10 border-rose-500/30',    punto: 'bg-rose-400' },
-  INCONCLUSA:  { texto: 'Inconclusa',  clase: 'text-orange-300 bg-orange-500/10 border-orange-500/30', punto: 'bg-orange-400' },
-  COMPLETADA:  { texto: 'Completada',  clase: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30', punto: 'bg-emerald-400' },
-  CANCELADA:   { texto: 'Cancelada',   clase: 'text-slate-400 bg-white/5 border-white/10', punto: 'bg-slate-500' },
+  PENDIENTE:   { texto: 'Por hacer',   clase: 'text-[var(--tf-acento-azul)] bg-sky-500/12 border-sky-500/30',       punto: 'bg-sky-500' },
+  EN_PROGRESO: { texto: 'En progreso', clase: 'text-[var(--tf-acento-ambar)] bg-amber-500/12 border-amber-500/30', punto: 'bg-amber-500' },
+  BLOQUEADA:   { texto: 'Bloqueada',   clase: 'text-[var(--tf-acento-rojo)] bg-rose-500/12 border-rose-500/30',    punto: 'bg-rose-500' },
+  INCONCLUSA:  { texto: 'Inconclusa',  clase: 'text-[var(--tf-acento-naranja)] bg-orange-500/12 border-orange-500/30', punto: 'bg-orange-500' },
+  COMPLETADA:  { texto: 'Completada',  clase: 'text-[var(--tf-acento-verde)] bg-emerald-500/12 border-emerald-500/30', punto: 'bg-emerald-500' },
+  CANCELADA:   { texto: 'Cancelada',   clase: 'text-[var(--tf-texto-tenue)] bg-[var(--tf-hover)] border-[var(--tf-borde)]', punto: 'bg-slate-500' },
 };
 
 export const PRIORIDADES: Record<string, string> = {
-  BAJA: 'text-slate-300 bg-white/5',
-  MEDIA: 'text-sky-300 bg-sky-500/10',
-  ALTA: 'text-orange-300 bg-orange-500/10',
-  CRITICA: 'text-rose-300 bg-rose-500/10',
+  BAJA: 'text-[var(--tf-texto-tenue)] bg-[var(--tf-hover)]',
+  MEDIA: 'text-[var(--tf-acento-azul)] bg-sky-500/12',
+  ALTA: 'text-[var(--tf-acento-naranja)] bg-orange-500/12',
+  CRITICA: 'text-[var(--tf-acento-rojo)] bg-rose-500/12',
 };
 
 /** Iniciales para el avatar. */

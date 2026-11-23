@@ -127,7 +127,7 @@ export default function Panel() {
     >
       {(
         [
-          { id: 'constelacion', texto: 'Constelación' },
+          { id: 'constelacion', texto: 'Mapa' },
           { id: 'resumen', texto: 'Resumen' },
         ] as const
       ).map((v) => {
@@ -154,11 +154,17 @@ export default function Panel() {
 
   return (
     // En el Panel solo queda el mapa: el titulo no se muestra en la cabecera.
-    <Marco activo="/panel" titulo={tituloVista} tituloOculto>
+    <Marco
+      activo="/panel"
+      titulo={tituloVista}
+      tituloOculto
+      permitirOcultarCabecera
+      compacto={vistaPanel === 'constelacion' && !esTrabajador}
+    >
       {aviso && (
         <p
           role="alert"
-          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-400 shadow-sm"
+          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-ambar)] shadow-sm"
         >
           {aviso}
         </p>
@@ -186,7 +192,7 @@ export default function Panel() {
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
               </span>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--tf-acento-verde)]">
                   Sesión de trabajo en marcha{' '}
                   {sesionActiva.actividad.proyecto?.nombre
                     ? `· ${sesionActiva.actividad.proyecto.nombre}`
@@ -227,13 +233,13 @@ export default function Panel() {
             </h2>
             {progreso && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-medium text-emerald-400">
+                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-medium text-[var(--tf-acento-verde)]">
                   {progreso.tareasCompletadas} completadas
                 </span>
-                <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 font-medium text-sky-400">
+                <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 font-medium text-[var(--tf-acento-azul)]">
                   {progreso.tareasEnProgreso} en progreso
                 </span>
-                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 font-medium text-amber-400">
+                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 font-medium text-[var(--tf-acento-ambar)]">
                   {progreso.tareasPendientes} pendientes
                 </span>
               </div>
@@ -411,7 +417,7 @@ function ModalDetalleProyecto({
           {puedeEditar && (
             <button
               onClick={onEditar}
-              className="rounded-lg border border-white/10 px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+              className="rounded-lg border border-[var(--tf-borde)] px-2.5 py-1 text-xs font-medium text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
               Editar
             </button>
@@ -420,7 +426,7 @@ function ModalDetalleProyecto({
             <button
               onClick={onEliminar}
               title="Eliminar proyecto (Exclusivo Administrador)"
-              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-rose-400 transition hover:bg-rose-500/20"
+              className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-medium text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/20"
             >
               Eliminar
             </button>
@@ -436,7 +442,7 @@ function ModalDetalleProyecto({
       />
       <div className="mt-4">
         <EquipoProyecto key={proyecto.id} proyectoId={proyecto.id} puedeGestionar={puedeEditar}>
-          <p className={`text-sm leading-relaxed ${proyecto.descripcion ? 'text-slate-300' : 'text-slate-500'}`}>
+          <p className={`text-sm leading-relaxed ${proyecto.descripcion ? 'text-[var(--tf-texto-tenue)]' : 'text-[var(--tf-texto-suave)]'}`}>
             {proyecto.descripcion || 'Sin descripción'}
           </p>
         </EquipoProyecto>
@@ -579,52 +585,52 @@ function ModalEditarProyecto({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-          <h2 className="text-lg font-bold text-white">Editar proyecto</h2>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-200">
+      <div className="tf-modal-entra w-full max-w-md rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 text-[var(--tf-texto)] shadow-2xl">
+        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
+          <h2 className="text-lg font-bold text-[var(--tf-texto)]">Editar proyecto</h2>
+          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">
             ✕
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
             {error}
           </div>
         )}
 
         <form onSubmit={enviar} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Nombre</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre</label>
             <input
               type="text"
               required
               autoFocus
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
-              Descripción <span className="font-normal text-slate-500">(opcional)</span>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+              Descripción <span className="font-normal text-[var(--tf-texto-suave)]">(opcional)</span>
             </label>
             <textarea
               rows={3}
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
-          <div className="mt-6 flex items-center justify-between gap-2 border-t border-white/10 pt-4">
+          <div className="mt-6 flex items-center justify-between gap-2 border-t border-[var(--tf-borde)] pt-4">
             {esAdmin && onEliminar ? (
               <button
                 type="button"
                 onClick={onEliminar}
                 disabled={enviando}
-                className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-400 transition hover:bg-rose-500/20"
+                className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/20"
               >
                 Eliminar Proyecto
               </button>
@@ -637,7 +643,7 @@ function ModalEditarProyecto({
                 type="button"
                 onClick={onCerrar}
                 disabled={enviando}
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+                className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
               >
                 Cancelar
               </button>

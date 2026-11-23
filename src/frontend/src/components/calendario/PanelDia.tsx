@@ -12,12 +12,12 @@ import Insignia from '@/components/ui/Insignia';
 
 /** Estados de una sesión de trabajo, con su lectura y su color. */
 const ESTADO_SESION: Record<string, { texto: string; clase: string }> = {
-  ACTIVA: { texto: 'En curso', clase: 'text-sky-300 bg-sky-500/10 border-sky-500/30' },
-  PAUSADA: { texto: 'En pausa', clase: 'text-sky-300 bg-sky-500/10 border-sky-500/30' },
-  CERRADA: { texto: 'Cerrada', clase: 'text-slate-400 bg-white/5 border-white/10' },
+  ACTIVA: { texto: 'En curso', clase: 'text-[var(--tf-acento-azul)] bg-sky-500/12 border-sky-500/30' },
+  PAUSADA: { texto: 'En pausa', clase: 'text-[var(--tf-acento-azul)] bg-sky-500/12 border-sky-500/30' },
+  CERRADA: { texto: 'Cerrada', clase: 'text-[var(--tf-texto-tenue)] bg-[var(--tf-hover)] border-[var(--tf-borde)]' },
   AUTOCERRADA: {
     texto: 'Autocerrada',
-    clase: 'text-amber-300 bg-amber-500/10 border-amber-500/30',
+    clase: 'text-[var(--tf-acento-ambar)] bg-amber-500/12 border-amber-500/30',
   },
 };
 
@@ -44,10 +44,10 @@ export default function PanelDia({
   prefs?: PreferenciasCalendario;
 }) {
   if (cargando && !dia) {
-    return <p className="text-sm text-slate-400">Cargando el detalle…</p>;
+    return <p className="text-sm text-[var(--tf-texto-tenue)]">Cargando el detalle…</p>;
   }
   if (!dia) {
-    return <p className="text-sm text-slate-400">No hay información para este día.</p>;
+    return <p className="text-sm text-[var(--tf-texto-tenue)]">No hay información para este día.</p>;
   }
 
   return <Contenido dia={dia} foco={foco} onFoco={onFoco} prefs={prefs} />;
@@ -123,15 +123,15 @@ function Contenido({
             type="button"
             onClick={() => setAlertasAbiertas((v) => !v)}
             aria-expanded={alertasAbiertas}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-semibold text-amber-300 transition hover:bg-amber-500/10"
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-semibold text-[var(--tf-acento-ambar)] transition hover:bg-amber-500/10"
           >
             <span>▲ {alertas.length} punto(s) por revisar</span>
-            <span className="text-[11px] font-normal text-amber-200/80">
+            <span className="text-[11px] font-normal text-[var(--tf-acento-ambar)] opacity-85">
               {alertasAbiertas ? 'Ocultar ▴' : 'Ver detalle ▾'}
             </span>
           </button>
           {alertasAbiertas && (
-            <ul className="flex flex-col gap-1 border-t border-amber-500/20 px-3 py-2.5 text-[11px] text-amber-200/85">
+            <ul className="flex flex-col gap-1 border-t border-amber-500/20 px-3 py-2.5 text-[11px] text-[var(--tf-texto)]">
               {alertas.map((a, i) => (
                 <li key={i}>· {a}</li>
               ))}
@@ -142,12 +142,12 @@ function Contenido({
 
       {/* Barra de control cuando hay varias personas con registro. */}
       {conActividad.length > 1 && (
-        <div className="flex items-center justify-between text-[11px] text-slate-400">
+        <div className="flex items-center justify-between text-[11px] text-[var(--tf-texto-tenue)]">
           <span>{conActividad.length} personas con registro</span>
           <button
             type="button"
             onClick={alternarTodos}
-            className="font-medium text-sky-400 transition hover:text-sky-300"
+            className="font-semibold text-[var(--tf-acento-azul)] transition hover:opacity-80"
           >
             {todosAbiertos ? 'Colapsar todos' : 'Expandir todos'}
           </button>
@@ -156,7 +156,7 @@ function Contenido({
 
       {/* Acordeón por trabajador con actividad. */}
       {conActividad.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/15 p-5 text-center text-xs text-slate-500">
+        <p className="rounded-xl border border-dashed border-[var(--tf-borde-fuerte)] p-5 text-center text-xs text-[var(--tf-texto-suave)]">
           Sin actividad registrada para este filtro.
         </p>
       ) : (
@@ -168,7 +168,7 @@ function Contenido({
             return (
               <div
                 key={w.id}
-                className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
+                className="overflow-hidden rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)]"
               >
                 <button
                   type="button"
@@ -176,17 +176,17 @@ function Contenido({
                     setTrabajadoresAbiertos((prev) => ({ ...prev, [w.id]: !abierto }))
                   }
                   aria-expanded={abierto}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-white/5"
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition hover:bg-[var(--tf-hover)]"
                 >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky-500/15 text-[10px] font-bold text-sky-300">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky-500/15 text-[10px] font-bold text-[var(--tf-acento-azul)]">
                     {iniciales(w.nombre)}
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-white">
+                    <span className="block truncate text-sm font-semibold text-[var(--tf-texto)]">
                       {w.nombre}
                     </span>
-                    <span className="block font-mono text-[11px] text-slate-400">
+                    <span className="block font-mono text-[11px] text-[var(--tf-texto-tenue)]">
                       {w.sesiones.length} ses. · {duracion(w.segundosImputados)}
                       {w.jornada && ` · jornada ${duracion(w.segundosPresencia)}`}
                     </span>
@@ -194,7 +194,7 @@ function Contenido({
 
                   {w.zonaHoraria !== zonaActual() && (
                     <span
-                      className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-sky-300"
+                      className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] text-[var(--tf-acento-azul)]"
                       title={`Horas en la zona de ${w.nombre}: ${w.zonaHoraria}`}
                     >
                       {desfase(w.zonaHoraria)}
@@ -203,29 +203,29 @@ function Contenido({
 
                   {avisosPersona > 0 && (
                     <span
-                      className="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300"
+                      className="rounded border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-[var(--tf-acento-ambar)]"
                       title={`${avisosPersona} punto(s) por revisar`}
                     >
                       ▲{avisosPersona}
                     </span>
                   )}
 
-                  <span className="text-xs text-slate-400" aria-hidden>
+                  <span className="text-xs text-[var(--tf-texto-tenue)]" aria-hidden>
                     {abierto ? '▴' : '▾'}
                   </span>
                 </button>
 
                 {abierto && (
-                  <div className="flex flex-col gap-2 border-t border-white/10 bg-slate-950/35 p-3">
+                  <div className="flex flex-col gap-2 border-t border-[var(--tf-borde)] bg-[var(--tf-fondo)]/60 p-3">
                     {w.jornada && !w.jornada.terminoEn && (
-                      <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+                      <p className="rounded-lg bg-amber-500/12 px-2.5 py-1.5 text-[11px] text-[var(--tf-acento-ambar)]">
                         Jornada abierta desde las {hora(w.jornada.inicioEn, w.zonaHoraria)}: nunca
                         se marcó la salida.
                       </p>
                     )}
 
                     {w.sesiones.length === 0 ? (
-                      <p className="rounded-lg border border-dashed border-white/10 p-3 text-center text-xs text-slate-500">
+                      <p className="rounded-lg border border-dashed border-[var(--tf-borde)] p-3 text-center text-xs text-[var(--tf-texto-suave)]">
                         Jornada sin sesiones cronometradas.
                       </p>
                     ) : (
@@ -254,13 +254,13 @@ function Contenido({
 
       {/* Personas sin registro: ocultas por defecto salvo preferencia o clic explícito. */}
       {sinActividad.length > 0 && (
-        <div className="border-t border-white/10 pt-3">
+        <div className="border-t border-[var(--tf-borde)] pt-3">
           {!prefs.mostrarSinRegistroEnDetalle && (
             <button
               type="button"
               onClick={() => setVerSinRegistroLocal((v) => !v)}
               aria-expanded={verSinRegistroLocal}
-              className="w-full rounded-lg border border-white/10 px-3 py-1.5 text-center text-[11px] text-slate-400 transition hover:bg-white/5 hover:text-slate-200"
+              className="w-full rounded-lg border border-[var(--tf-borde)] px-3 py-1.5 text-center text-[11px] font-medium text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
               {verSinRegistroLocal
                 ? `Ocultar ${sinActividad.length} persona(s) sin registro ▴`
@@ -273,10 +273,10 @@ function Contenido({
               {sinActividad.map((w) => (
                 <li
                   key={w.id}
-                  className="flex items-center justify-between rounded-lg border border-dashed border-white/10 px-3 py-2 text-xs text-slate-400"
+                  className="flex items-center justify-between rounded-lg border border-dashed border-[var(--tf-borde)] px-3 py-2 text-xs text-[var(--tf-texto-tenue)]"
                 >
                   <span>{w.nombre}</span>
-                  <span className="text-[11px] text-slate-500">Sin registro este día</span>
+                  <span className="text-[11px] text-[var(--tf-texto-suave)]">Sin registro este día</span>
                 </li>
               ))}
             </ul>
@@ -303,29 +303,29 @@ function Tarjeta({
 }) {
   const estado = ESTADO_SESION[sesion.estado] ?? {
     texto: sesion.estado,
-    clase: 'text-slate-400 bg-white/5 border-white/10',
+    clase: 'text-[var(--tf-texto-tenue)] bg-[var(--tf-hover)] border-[var(--tf-borde)]',
   };
   const cerradaCompletada = sesion.estado === 'CERRADA' && sesion.desenlace === 'COMPLETADA';
 
   return (
-    <div className="rounded-lg border border-white/10 bg-slate-900/70">
+    <div className="rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)]">
       <button
         type="button"
         onClick={onAlternar}
         aria-expanded={abierta}
-        className="flex w-full items-start justify-between gap-2 p-2.5 text-left transition hover:bg-white/[0.03]"
+        className="flex w-full items-start justify-between gap-2 p-2.5 text-left transition hover:bg-[var(--tf-hover)]"
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             {cerradaCompletada && (
-              <span className="text-xs font-bold text-emerald-400" title="Completada">
+              <span className="text-xs font-bold text-[var(--tf-acento-verde)]" title="Completada">
                 ✓
               </span>
             )}
-            <p className="truncate text-sm font-medium text-white">{sesion.actividad}</p>
+            <p className="truncate text-sm font-medium text-[var(--tf-texto)]">{sesion.actividad}</p>
           </div>
 
-          <p className="mt-0.5 font-mono text-[11px] text-slate-400">
+          <p className="mt-0.5 font-mono text-[11px] text-[var(--tf-texto-tenue)]">
             {hora(sesion.inicioEn, zona)}
             {sesion.terminoEn ? ` – ${hora(sesion.terminoEn, zona)}` : ' – en curso'}
             {mostrarProyecto && ` · ${sesion.proyecto}`}
@@ -337,12 +337,12 @@ function Tarjeta({
                 <Insignia clase={estado.clase}>{estado.texto}</Insignia>
               )}
               {sesion.desenlace === 'INCONCLUSA' && (
-                <Insignia clase="text-orange-300 bg-orange-500/10 border-orange-500/30">
+                <Insignia clase="text-[var(--tf-acento-naranja)] bg-orange-500/12 border-orange-500/30">
                   Inconclusa
                 </Insignia>
               )}
               {sesion.desenlace === 'COMPLETADA' && (
-                <Insignia clase="text-emerald-300 bg-emerald-500/10 border-emerald-500/30">
+                <Insignia clase="text-[var(--tf-acento-verde)] bg-emerald-500/12 border-emerald-500/30">
                   Completada
                 </Insignia>
               )}
@@ -351,30 +351,30 @@ function Tarjeta({
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="font-mono text-xs font-medium text-slate-300">
+          <span className="font-mono text-xs font-medium text-[var(--tf-texto)]">
             {duracion(sesion.segundos)}
           </span>
-          <span className="text-[10px] text-slate-500">{abierta ? 'Ocultar ▴' : 'Detalles ▾'}</span>
+          <span className="text-[10px] text-[var(--tf-texto-suave)]">{abierta ? 'Ocultar ▴' : 'Detalles ▾'}</span>
         </div>
       </button>
 
       {abierta && (
-        <div className="flex flex-col gap-2 border-t border-white/10 px-2.5 py-2 text-[11px] text-slate-300">
+        <div className="flex flex-col gap-2 border-t border-[var(--tf-borde)] px-2.5 py-2 text-[11px] text-[var(--tf-texto-tenue)]">
           {!mostrarProyecto && (
-            <p className="text-slate-400">
-              Proyecto: <span className="text-slate-200">{sesion.proyecto}</span>
+            <p className="text-[var(--tf-texto-tenue)]">
+              Proyecto: <span className="font-medium text-[var(--tf-texto)]">{sesion.proyecto}</span>
             </p>
           )}
 
           <div className="flex flex-wrap items-center gap-1.5">
             <Insignia clase={estado.clase}>{estado.texto}</Insignia>
             {sesion.desenlace === 'COMPLETADA' && (
-              <Insignia clase="text-emerald-300 bg-emerald-500/10 border-emerald-500/30">
+              <Insignia clase="text-[var(--tf-acento-verde)] bg-emerald-500/12 border-emerald-500/30">
                 Completada
               </Insignia>
             )}
             {sesion.desenlace === 'INCONCLUSA' && (
-              <Insignia clase="text-orange-300 bg-orange-500/10 border-orange-500/30">
+              <Insignia clase="text-[var(--tf-acento-naranja)] bg-orange-500/12 border-orange-500/30">
                 Inconclusa
               </Insignia>
             )}
@@ -382,10 +382,10 @@ function Tarjeta({
 
           {sesion.tramos.length > 0 && (
             <div>
-              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--tf-texto-suave)]">
                 {sesion.tramos.length} tramo(s)
               </p>
-              <ul className="flex flex-col gap-0.5 font-mono text-[11px] text-slate-400">
+              <ul className="flex flex-col gap-0.5 font-mono text-[11px] text-[var(--tf-texto-tenue)]">
                 {sesion.tramos.map((t, i) => (
                   <li key={i}>
                     {hora(t.inicioEn, zona)}
@@ -397,7 +397,7 @@ function Tarjeta({
           )}
 
           {sesion.notaCierre && (
-            <p className="rounded-lg bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300">
+            <p className="rounded-lg bg-amber-500/12 px-2 py-1 text-[11px] text-[var(--tf-acento-ambar)]">
               {sesion.notaCierre}
             </p>
           )}
@@ -423,8 +423,8 @@ function Chip({
       aria-pressed={activo}
       className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
         activo
-          ? 'border-sky-400/40 bg-sky-500/15 text-sky-300'
-          : 'border-white/15 text-slate-400 hover:bg-white/5'
+          ? 'border-sky-500/40 bg-sky-500/15 text-[var(--tf-acento-azul)]'
+          : 'border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
       }`}
     >
       {children}

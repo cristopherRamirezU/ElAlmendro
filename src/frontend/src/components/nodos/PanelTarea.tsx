@@ -117,7 +117,7 @@ export default function PanelTarea({
       disabled={!actividad}
       title="Abrir la tarea en su ventana aparte, con sus objetivos, siempre visible"
       aria-label="Abrir en ventana aparte"
-      className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+      className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-40"
     >
       ⤢
     </button>
@@ -127,11 +127,11 @@ export default function PanelTarea({
     return (
       <Modal titulo="Cargando tarea…" ancho="lg" claseVentana="tf-ventana-tarea" onCerrar={onCerrar} acciones={botonAbrirAparte}>
         {aviso ? (
-          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
             {aviso}
           </p>
         ) : (
-          <p className="py-10 text-center text-sm text-slate-500">Cargando tarea…</p>
+          <p className="py-10 text-center text-sm text-[var(--tf-texto-suave)]">Cargando tarea…</p>
         )}
       </Modal>
     );
@@ -198,7 +198,7 @@ export default function PanelTarea({
   return (
     <Modal
       titulo={
-        <span className="text-xl font-medium tracking-[-0.01em] text-white">{actividad.titulo}</span>
+        <span className="text-xl font-medium tracking-[-0.01em] text-[var(--tf-texto)]">{actividad.titulo}</span>
       }
       ancho="lg"
       claseVentana="tf-ventana-tarea"
@@ -211,7 +211,7 @@ export default function PanelTarea({
               onClick={handleEliminarNodo}
               title="Eliminar nodo y subnodos"
               aria-label="Eliminar nodo y subnodos"
-              className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-rose-400 transition hover:border-rose-500/40 hover:bg-rose-500/10"
+              className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-acento-rojo)] transition hover:border-rose-500/40 hover:bg-rose-500/10"
             >
               <Trash2 size={14} aria-hidden />
             </button>
@@ -228,17 +228,17 @@ export default function PanelTarea({
       />
 
       {cerrando && enEstaTarea && (
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-          <p className="mb-2 text-xs font-medium text-slate-300">¿Cómo dejas la tarea?</p>
+        <div className="mt-3 rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+          <p className="mb-2 text-xs font-medium text-[var(--tf-texto-tenue)]">¿Cómo dejas la tarea?</p>
           <textarea
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             rows={2}
             placeholder="Nota de cierre (obligatoria si queda inconclusa)"
-            className="mb-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-[#7f9dff]"
+            className="mb-2 w-full rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-[#7f9dff]"
           />
           {!hayRespaldo && (
-            <p className="mb-2 rounded-lg border border-[#7f9dff]/30 bg-[#3f6bff]/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-[#c9d4ff]">
+            <p className="mb-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-[var(--tf-acento-azul)]">
               Para darla por completada sube primero una evidencia del trabajo hecho: después del cierre ya no se
               aceptan archivos.
             </p>
@@ -285,19 +285,19 @@ export default function PanelTarea({
       )}
 
       {!sesion && !puedeCronometrar && !terminada && (
-        <p className="mt-3 text-center text-[11px] text-[#8fa0d0]">
+        <p className="mt-3 text-center text-[11px] text-[var(--tf-texto-tenue)]">
           El cronómetro está reservado para {actividad.responsable?.nombreCompleto}. Puedes ver los comentarios y
           las evidencias.
         </p>
       )}
       {sesion && !enEstaTarea && (
-        <p className="mt-3 text-center text-[11px] text-[#8fa0d0]">
+        <p className="mt-3 text-center text-[11px] text-[var(--tf-texto-tenue)]">
           Tienes otra sesión abierta en «{sesion.actividad.titulo}». Ciérrala para cronometrar esta tarea.
         </p>
       )}
 
       {aviso && (
-        <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+        <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
           {aviso}
         </p>
       )}

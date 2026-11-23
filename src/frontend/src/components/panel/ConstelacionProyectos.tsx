@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Palette, Search, X } from 'lucide-react';
 import type { ProyectoItem } from '@/lib/api';
-import { fuenteEscena, fuenteTitulo } from '@/lib/fuentes';
+import { fuenteEscena } from '@/lib/fuentes';
+import { useTemaFondo } from '@/lib/tema';
 import {
   EscenaConstelacion,
   FONDOS,
+  FONDOS_CLAROS,
   coincideBusqueda,
   enFiltro,
+  esFondoClaro,
   normalizarTexto,
   type Filtro,
   type Fondo,
@@ -22,11 +25,25 @@ export function proyectoCompletado(p: ProyectoItem) {
 
 const avance = (p: ProyectoItem) => (p.totalTareas > 0 ? Math.round((p.tareasCompletadas / p.totalTareas) * 100) : 0);
 
-/** Fondo elegido: se recuerda en este navegador para cada persona. */
-const CLAVE_FONDO = 'tf_constelacion_fondo';
+/** Fondo elegido segun polaridad del tema global: se recuerda en este navegador. */
+const CLAVE_FONDO_LEGADO = 'tf_constelacion_fondo';
+const CLAVE_FONDO_OSCURO = 'tf_constelacion_fondo_oscuro';
+const CLAVE_FONDO_CLARO = 'tf_constelacion_fondo_claro';
 
 /** Nombre y muestra (un degradado que lo evoca) de cada fondo del selector. */
 const DATOS_FONDO: Record<Fondo, { nombre: string; muestra: string }> = {
+  'lienzo-claro': {
+    nombre: 'Lienzo claro',
+    muestra: 'radial-gradient(circle at 25% 30%,rgba(56,189,248,.35),transparent 60%),radial-gradient(circle at 75% 75%,rgba(99,102,241,.28),transparent 60%),#f2f7fd',
+  },
+  'cuadricula-clara': {
+    nombre: 'Cuadrícula técnica',
+    muestra: 'repeating-linear-gradient(0deg,rgba(79,70,229,.16) 0 1px,transparent 1px 7px),repeating-linear-gradient(90deg,rgba(79,70,229,.16) 0 1px,transparent 1px 7px),#f6f9fe',
+  },
+  'bruma-clara': {
+    nombre: 'Bruma suave',
+    muestra: 'linear-gradient(135deg,rgba(139,92,246,.22),rgba(14,165,233,.22) 55%,rgba(52,211,153,.2)),#f8faff',
+  },
   nebulosa: {
     nombre: 'Nebulosa suave',
     muestra: 'radial-gradient(circle at 30% 35%,rgba(91,60,196,.7),transparent 60%),radial-gradient(circle at 75% 70%,rgba(26,127,168,.6),transparent 60%),#050914',
@@ -135,27 +152,53 @@ export default function ConstelacionProyectos({
     crear.current = onCrear;
   });
 
-  // Fondo de la escena: cada quien elige el suyo y queda guardado en su navegador.
-  const [fondo, setFondo] = useState<Fondo>('nebulosa');
+  // Fondo de la escena: se adapta por defecto al tema global (claro u oscuro) y respeta la eleccion guardada por polaridad.
+  const temaFondo = useTemaFondo();
+  const temaEsClaro = temaFondo === 'claro-nube';
+  const [fondo, setFondo] = useState<Fondo>(temaEsClaro ? 'lienzo-claro' : 'nebulosa');
   const [eligiendoFondo, setEligiendoFondo] = useState(false);
+  const [altoLienzo, setAltoLienzo] = useState<number | null>(null);
   const selector = useRef<HTMLDivElement>(null);
   useEffect(() => {
     try {
-      const guardado = window.localStorage.getItem(CLAVE_FONDO) as Fondo | null;
-      if (guardado && FONDOS.includes(guardado)) setFondo(guardado);
+      const clave = temaEsClaro ? CLAVE_FONDO_CLARO : CLAVE_FONDO_OSCURO;
+      const guardado = (window.localStorage.getItem(clave) ??
+        (!temaEsClaro ? window.localStorage.getItem(CLAVE_FONDO_LEGADO) : null)) as Fondo | null;
+      if (guardado && FONDOS.includes(guardado)) {
+        setFondo(guardado);
+      } else {
+        setFondo(temaEsClaro ? 'lienzo-claro' : 'nebulosa');
+      }
     } catch {
-      /* almacenamiento bloqueado: queda la nebulosa */
+      setFondo(temaEsClaro ? 'lienzo-claro' : 'nebulosa');
     }
-  }, []);
+  }, [temaEsClaro]);
   function elegirFondo(f: Fondo) {
     setFondo(f);
     setEligiendoFondo(false);
     try {
-      window.localStorage.setItem(CLAVE_FONDO, f);
+      const clave = temaEsClaro ? CLAVE_FONDO_CLARO : CLAVE_FONDO_OSCURO;
+      window.localStorage.setItem(clave, f);
     } catch {
       /* sin persistencia, pero el cambio aplica igual */
     }
   }
+  useEffect(() => {
+    const medir = () => {
+      const el = raiz.current;
+      if (!el) return;
+      const arriba = el.getBoundingClientRect().top;
+      setAltoLienzo(Math.max(460, Math.floor(window.innerHeight - arriba - 14)));
+    };
+    medir();
+    window.addEventListener('resize', medir);
+    const ro = new ResizeObserver(medir);
+    if (raiz.current?.parentElement) ro.observe(raiz.current.parentElement);
+    return () => {
+      window.removeEventListener('resize', medir);
+      ro.disconnect();
+    };
+  }, []);
   // El selector se cierra con un clic fuera o con Escape.
   useEffect(() => {
     if (!eligiendoFondo) return;
@@ -237,8 +280,12 @@ export default function ConstelacionProyectos({
     if (!tarjeta.current?.contains(e.relatedTarget as Node | null)) soltarFoco();
   };
 
+  const claro = esFondoClaro(fondo);
+  const fondosClarosLista = FONDOS.filter((f) => (FONDOS_CLAROS as readonly string[]).includes(f));
+  const fondosOscurosLista = FONDOS.filter((f) => !(FONDOS_CLAROS as readonly string[]).includes(f));
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre */}
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -332,10 +379,13 @@ export default function ConstelacionProyectos({
             {eligiendoFondo && (
               <div
                 role="menu"
-                aria-label="Fondo del mapa"
+                aria-label="Estilo visual del mapa"
                 className="absolute right-0 top-full z-30 mt-2 max-h-[min(26rem,60vh)] w-60 overflow-y-auto rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1.5 shadow-2xl"
               >
-                {FONDOS.map((f) => (
+                <p className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--tf-texto-suave)]">
+                  Estilos claros
+                </p>
+                {fondosClarosLista.map((f) => (
                   <button
                     key={f}
                     type="button"
@@ -350,7 +400,31 @@ export default function ConstelacionProyectos({
                   >
                     <span
                       aria-hidden
-                      className="h-6 w-10 shrink-0 rounded-md border border-white/15"
+                      className="h-6 w-10 shrink-0 rounded-md border border-[var(--tf-borde-fuerte)]"
+                      style={{ background: DATOS_FONDO[f].muestra }}
+                    />
+                    {DATOS_FONDO[f].nombre}
+                  </button>
+                ))}
+                <p className="mt-1.5 border-t border-[var(--tf-borde)] px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--tf-texto-suave)]">
+                  Estilos oscuros
+                </p>
+                {fondosOscurosLista.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={fondo === f}
+                    onClick={() => elegirFondo(f)}
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-xs transition-colors ${
+                      fondo === f
+                        ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
+                        : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="h-6 w-10 shrink-0 rounded-md border border-[var(--tf-borde-fuerte)]"
                       style={{ background: DATOS_FONDO[f].muestra }}
                     />
                     {DATOS_FONDO[f].nombre}
@@ -362,15 +436,25 @@ export default function ConstelacionProyectos({
         </div>
       </div>
 
-      {/* Lienzo de la constelacion: intacto en su composicion y fisica */}
+      {/* Lienzo del mapa: maximizado al alto disponible y adaptable a claro/oscuro */}
       <div
         ref={raiz}
-        className={`${fuenteEscena.className} relative h-[max(28rem,calc(100vh-12.5rem))] select-none overflow-hidden rounded-2xl border border-[rgba(110,150,255,0.2)] bg-[#050914] text-[#e6ebff] shadow-xl`}
+        style={{ height: altoLienzo ?? 'max(30rem, calc(100vh - 9.5rem))' }}
+        className={`relative select-none overflow-hidden rounded-2xl border transition-colors ${fuenteEscena.className} ${
+          claro
+            ? 'border-[var(--tf-borde-fuerte)] bg-[#f2f7fd] text-[#0f172a] shadow-lg'
+            : 'border-[rgba(110,150,255,0.2)] bg-[#050914] text-[#e6ebff] shadow-xl'
+        }`}
       >
         <canvas ref={lienzo} aria-hidden className="absolute inset-0 block h-full w-full touch-manipulation" />
 
       {/* ------------- cajon del proyecto enfocado: solo sus dos accesos */}
-      <div ref={tarjeta} data-visible="false" className="tf-constelacion-tarjeta absolute left-0 top-0 z-[3]">
+      <div
+        ref={tarjeta}
+        data-visible="false"
+        data-claro={claro ? 'true' : 'false'}
+        className="tf-constelacion-tarjeta absolute left-0 top-0 z-[3]"
+      >
         {proyecto && (
           <>
             <button

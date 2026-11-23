@@ -340,7 +340,7 @@ export default function VistaResumenProyectos({
                   </div>
                   <div className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-hover)] p-3">
                     <p className="text-[11px] text-[var(--tf-texto-tenue)]">Completados</p>
-                    <p className="tf-display mt-1 text-xl font-bold text-emerald-400">
+                    <p className="tf-display mt-1 text-xl font-bold text-[var(--tf-acento-verde)]">
                       {metricas.completados}
                     </p>
                   </div>

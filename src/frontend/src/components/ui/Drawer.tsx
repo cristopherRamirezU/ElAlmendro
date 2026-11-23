@@ -45,17 +45,17 @@ export default function Drawer({
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className="relative z-10 flex h-full w-full max-w-[480px] flex-col border-l border-white/10 bg-slate-900 shadow-xl"
+        className="relative z-10 flex h-full w-full max-w-[480px] flex-col border-l border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-xl"
       >
-        <header className="flex items-start gap-3 border-b border-white/10 px-5 py-4">
+        <header className="flex items-start gap-3 border-b border-[var(--tf-borde)] px-5 py-4">
           <div className="min-w-0">
-            <h2 className="truncate font-bold text-white first-letter:uppercase">{titulo}</h2>
-            {subtitulo && <p className="text-xs text-slate-400">{subtitulo}</p>}
+            <h2 className="truncate font-bold text-[var(--tf-texto)] first-letter:uppercase">{titulo}</h2>
+            {subtitulo && <p className="text-xs text-[var(--tf-texto-tenue)]">{subtitulo}</p>}
           </div>
           <button
             onClick={onCerrar}
             aria-label="Cerrar el detalle"
-            className="ml-auto rounded-lg border border-white/10 px-2 py-0.5 text-slate-400 transition hover:bg-white/5"
+            className="ml-auto rounded-lg border border-[var(--tf-borde)] px-2 py-0.5 text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
           >
             ×
           </button>

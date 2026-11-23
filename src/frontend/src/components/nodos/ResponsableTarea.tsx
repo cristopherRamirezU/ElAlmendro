@@ -69,14 +69,14 @@ export default function ResponsableTarea({
         </span>
         <div className="min-w-0 flex-1">
           <p className="sr-only">Responsable</p>
-          <p className="truncate text-sm text-white" title="Responsable">
+          <p className="truncate text-sm text-[var(--tf-texto)]" title="Responsable">
             {actividad.responsable.nombreCompleto}
           </p>
         </div>
         {puedeGestionar && (
           <button
             onClick={() => setAbierto((v) => !v)}
-            className="shrink-0 rounded-full border border-white/15 px-3 py-1 text-[11px] font-medium text-slate-200 transition hover:bg-white/10 hover:text-white"
+            className="shrink-0 rounded-full border border-[var(--tf-borde)] px-3 py-1 text-[11px] font-medium text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
           >
             {abierto ? 'Cancelar' : 'Derivar'}
           </button>
@@ -89,7 +89,7 @@ export default function ResponsableTarea({
             value={elegido}
             onChange={(e) => setElegido(e.target.value)}
             disabled={ocupado}
-            className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none focus:border-sky-400/50"
+            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400/50"
           >
             <option value="">Derivar a…</option>
             {candidatos.map((p) => (
@@ -104,10 +104,10 @@ export default function ResponsableTarea({
             disabled={ocupado}
             maxLength={300}
             placeholder="Motivo (obligatorio)"
-            className="rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
+            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400/50"
           />
           {aviso && (
-            <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
               {aviso}
             </p>
           )}

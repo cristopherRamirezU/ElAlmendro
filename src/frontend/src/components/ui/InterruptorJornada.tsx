@@ -23,12 +23,6 @@ export default function InterruptorJornada({
   onAlternar: () => void;
 }) {
   const visible = pendiente ?? encendido;
-  const texto = visible
-    ? desde && pendiente === null
-      ? `En jornada · desde ${hora(desde)}`
-      : 'En jornada'
-    : 'Fuera de jornada';
-
   return (
     <button
       type="button"
@@ -38,14 +32,45 @@ export default function InterruptorJornada({
       title={visible ? 'Apaga para marcar la salida' : 'Enciende para marcar la entrada'}
       onClick={onAlternar}
       disabled={pendiente !== null}
-      className="tf-interruptor flex items-center gap-2.5 rounded-full py-1 pl-3 pr-1 text-xs font-medium disabled:cursor-wait"
+      className="tf-interruptor flex items-center gap-3 rounded-full py-1.5 pl-3.5 pr-1.5 text-left disabled:cursor-wait"
       data-encendido={visible}
     >
-      <span className={visible ? 'text-emerald-300' : 'text-[var(--tf-texto-tenue)]'}>{texto}</span>
+      <span className="flex items-center gap-2">
+        <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+          {visible && (
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          )}
+          <span
+            className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+              visible ? 'bg-emerald-500' : 'bg-slate-400'
+            }`}
+          />
+        </span>
+        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+          <span
+            className={`text-[13px] font-bold tracking-tight ${
+              visible ? 'text-[var(--tf-acento-verde)]' : 'text-[var(--tf-texto)]'
+            }`}
+          >
+            {visible ? 'En jornada' : 'Fuera de jornada'}
+          </span>
+          {visible && desde && pendiente === null && (
+            <span className="hidden font-mono text-[11px] font-semibold text-[var(--tf-texto-tenue)] sm:inline">
+              · {hora(desde)}
+            </span>
+          )}
+        </span>
+      </span>
       <span aria-hidden className="tf-interruptor-pista">
         <span className="tf-interruptor-rotulo tf-interruptor-on">ON</span>
         <span className="tf-interruptor-rotulo tf-interruptor-off">OFF</span>
-        <span className="tf-interruptor-perilla" />
+        <span className="tf-interruptor-perilla">
+          <span
+            className={`h-2 w-2 rounded-full transition-colors ${
+              visible ? 'bg-emerald-500' : 'bg-slate-400'
+            }`}
+          />
+        </span>
       </span>
     </button>
   );
