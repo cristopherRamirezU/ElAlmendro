@@ -83,18 +83,20 @@ claves son publicas: el seed se niega a correr en un ambiente de produccion.
 
 | Correo | Clave | Rol | Nombre |
 |---|---|---|---|
+| `superadmin@timeflow.cl` | `SuperAdmin2026!` | SuperAdmin SaaS | Super Administrador SaaS |
 | `admin@admin.cl` | `12345` | Administrador | Administrador TimeFlow |
-| `supervisor@timeflow.cl` | `Timeflow2026!` | Supervisor | Supervisor |
+| `supervisor@timeflow.cl` | `Timeflow2026!` | Supervisor | Valeria Miranda |
 | `trabajador@timeflow.cl` | `Timeflow2026!` | Trabajador | Camila Soto |
 | `trabajador2@timeflow.cl` | `Timeflow2026!` | Trabajador | Diego Fuentes |
 
-Los datos iniciales incluyen tres semanas de historial de trabajo, porque el
-calendario y los reportes carecen de sentido sobre una base vacia: mostrarian
-cero en todas partes y seria imposible saber si funcionan.
+Los datos iniciales incluyen tres meses de historial de trabajo, porque el
+calendario, los reportes y la Carta Gantt carecen de sentido sobre una base
+vacía: mostrarían cero en todas partes y sería imposible probarlos.
 
 ### Crear un usuario nuevo
 
-Mientras no exista el modulo `usuarios` con su pantalla de administracion:
+Puedes crear usuarios desde la pantalla `/usuarios` como Administrador, o por
+consola usando el script de desarrollo:
 
 ```bash
 npm run usuario:crear -- correo@timeflow.cl "Nombre Completo" LaClave123 TRABAJADOR
@@ -104,16 +106,23 @@ El rol es opcional, por defecto `TRABAJADOR`. El script calcula el hash Argon2id
 de la contrasena: un usuario insertado a mano con la contrasena en texto plano
 nunca podria iniciar sesion.
 
-### Servicios locales
+### Pantallas y servicios locales
 
 | Pantalla | Ruta |
 |---|---|
-| Inicio de sesión | `/login` |
-| Mis actividades y cronómetro | `/panel` |
-| Calendario de horas | `/calendario` |
-| Mapa de nodos | `/nodos` |
-| Reportes de horas | `/reportes` |
-| Chat del equipo (en vivo, con presencia y chats privados) | `/chat` |
+| Sitio público, términos y privacidad | `/`, `/terminos`, `/privacidad` |
+| Inicio de sesión y registro | `/login`, `/registro` |
+| Constelación y panel de proyectos | `/panel` |
+| Mapa interactivo de nodos | `/nodos` |
+| Ventana flotante de cronómetro | `/bolsa/[id]` |
+| Calendario personalizable (Mes, Matriz, Semana) | `/calendario` |
+| Reportes de horas y Carta Gantt por día | `/reportes` |
+| Chat en vivo del equipo | `/chat` |
+| Usuarios, roles y permisos extra | `/usuarios` |
+| Historial de auditoría (US-08) | `/historial` |
+| Configuración de empresa y cuotas | `/configuracion` |
+| Consola SaaS Multi-Empresa | `/saas-admin` |
+| Mi cuenta y manual interactivo | `/cuenta`, `/manual` |
 
 | Servicio | URL |
 |---|---|
@@ -179,19 +188,24 @@ dominio. Esto permite trabajar en paralelo sin pisarse.
 
 ### Módulos y su estado
 
-| Módulo | Historia | Estado |
+| Módulo | Historia / Alcance | Estado |
 |---|---|---|
-| `auth` | US-01 | Implementado — login, cookie httpOnly, guard |
-| `jornada` | US-02 | Implementado — entrada, salida, jornada vigente |
-| `actividades` | US-03, US-04 | Implementado — consulta con tiempo acumulado |
-| `sesiones` | — | Implementado — iniciar, pausar, reanudar, cerrar |
-| `reportes` | US-07 | Implementado — calendario, día, horas por trabajador |
-| `nodos` | US-05, US-06 | Implementado — árbol y derivaciones (solo lectura) |
-| `dashboard` | US-09 | Implementado — indicadores del panel |
-| `usuarios` | — | Pendiente — CRUD y administración de roles |
-| `evidencias` | — | Pendiente — URL firmadas, validación, SHA-256 |
-| `historial` | US-08 | Pendiente como módulo; la bitácora ya se escribe |
-| `notificaciones` | — | Pendiente — avisos internos |
+| `auth` | US-01 | Implementado — login, cookies `httpOnly`, `versionSesion`, foto de perfil y zona horaria |
+| `jornada` | US-02 | Implementado — entrada, salida con resguardo de sesión activa, jornada vigente |
+| `actividades` | US-03, US-04 | Implementado — CRUD nodos, subtareas, instrucciones, reasignación y comentarios de voz |
+| `sesiones` | — | Implementado — iniciar, pausar, reanudar, cerrar y `@Cron` de autocierre (10 h) |
+| `reportes` | US-07 | Implementado — registro, por actividad, Carta Gantt diaria y exportación CSV/XLSX/PDF |
+| `calendario` | US-07 | Implementado — resumen mensual, matriz, semana, alertas y vista personalizable por capas |
+| `nodos` | US-05, US-06 | Implementado — árbol React Flow, derivaciones, modo edición y líneas de relación |
+| `dashboard` | US-09 | Implementado — resumen del equipo y progreso personal del trabajador |
+| `usuarios` | RBAC | Implementado — CRUD, 4 roles y permisos extra granulares |
+| `proyectos` | US-05 | Implementado — proyectos, miembros, cuotas por plan y borrado lógico |
+| `evidencias` | — | Implementado — subida a MinIO/S3, SHA-256, visor inline seguro, descarga y borrado lógico |
+| `chat` | — | Implementado — canal general, mensajes privados y presencia en vivo vía Socket.IO |
+| `organizaciones` | Multi-SaaS | Implementado — consola SuperAdmin, planes, cuotas y marca por empresa |
+| `registro` | Multi-SaaS | Implementado — registro público de empresas en plan Básico |
+| `historial` | US-08 | Implementado — consulta paginada y filtrada de `registros_auditoria` por organización |
+| `notificaciones` | — | Implementado — notificaciones persistidas y en tiempo real vía Socket.IO |
 
 ## Reglas que no se negocian
 
