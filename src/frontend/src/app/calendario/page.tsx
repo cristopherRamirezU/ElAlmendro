@@ -174,7 +174,7 @@ function Calendario() {
     <Marco
       activo="/calendario"
       titulo="Calendario"
-      subtitulo="Actividad registrada por dia"
+      subtitulo="Actividad registrada por día"
       acciones={
         <div className="flex flex-wrap items-center gap-2">
           <SelectorTrabajador
@@ -240,7 +240,7 @@ function Calendario() {
             Total del mes: <strong className="font-mono text-white">{duracion(totalMes)}</strong>
           </span>
           <span>
-            Dias con trabajo: <strong className="text-white">{diasConTrabajo}</strong>
+            Días con trabajo: <strong className="text-white">{diasConTrabajo}</strong>
           </span>
           {alertasMes > 0 && (
             <span className="text-amber-400">
@@ -288,7 +288,7 @@ function Calendario() {
         titulo={diaAbierto ? fechaLarga(diaAbierto) : ''}
         subtitulo={
           detalle
-            ? `${detalle.resumen.sesiones} sesion(es) · ${detalle.resumen.conRegistro} trabajador(es) con registro`
+            ? `${detalle.resumen.sesiones} sesión(es) · ${detalle.resumen.conRegistro} trabajador(es) con registro`
             : undefined
         }
         onCerrar={() => {
@@ -323,6 +323,8 @@ function SelectorTrabajador({
 
   return (
     <select
+      id="filtro-trabajador-calendario"
+      name="trabajadorId"
       value={valor ?? ''}
       onChange={(e) => onCambio(e.target.value || null)}
       aria-label="Filtrar por trabajador"

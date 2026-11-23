@@ -63,8 +63,14 @@ interface CambioPosiciones {
 function AjustarVista({ clave }: { clave: string }) {
   const { fitView } = useReactFlow();
   useEffect(() => {
-    const id = requestAnimationFrame(() => fitView({ ...ENCUADRE, duration: 250 }));
-    return () => cancelAnimationFrame(id);
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => fitView({ ...ENCUADRE, duration: 250 }));
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      if (raf2) cancelAnimationFrame(raf2);
+    };
   }, [clave, fitView]);
   return null;
 }
@@ -82,7 +88,7 @@ const PASO_ENTRADA = 0.18;
  * acercaba hasta el doble, y el menu del nodo principal quedaba cortado por
  * el borde del mapa; mas alla de 1,25x no se acerca solo.
  */
-const ENCUADRE = { padding: 0.3, maxZoom: 1.25 };
+const ENCUADRE = { padding: 0.25, maxZoom: 1.15, minZoom: 0.35 };
 const TIPOS_ARISTA = { mapa: AristaMapa };
 const CLAVE_ORIENTACION = 'tf_nodos_orientacion';
 
@@ -904,16 +910,16 @@ function Nodos() {
       acciones={
         <div className="flex items-center gap-2">
           {esTrabajador ? (
-            <span className="rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
-              Vista Colaborativa · Equipo del Proyecto
+            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
+              Vista Colaborativa
             </span>
           ) : esSupervisor ? (
-            <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-300">
-              Vista Supervisor · Flujo completo del equipo
+            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-semibold text-purple-300">
+              Vista Supervisor
             </span>
           ) : (
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
-              Vista Administrador · Control total
+            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+              Vista Administrador
             </span>
           )}
         </div>
@@ -1128,7 +1134,7 @@ function Nodos() {
             colorMode="dark"
           >
             <AjustarVista
-              clave={`${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}
+              clave={`${proyectoId}-${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}
             />
             <PuntosFondo fondo={fondo} />
             <Controls showInteractive={false} />

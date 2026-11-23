@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Marco from '@/components/Marco';
 import {
@@ -12,9 +12,26 @@ import {
   CrearOrganizacionPayload,
   ActualizarOrganizacionPayload,
 } from '@/lib/api';
+import { PERMISOS } from '@/lib/rbac';
+import { useTienePermiso } from '@/lib/sesion';
 import { AYUDA_CONTRASENA, CONTRASENA_MAXIMO } from '@/lib/contrasena';
 
 export default function SaasAdminPage() {
+  return (
+    <Marco
+      activo="/saas-admin"
+      titulo="Consola Super Admin"
+      subtitulo="Plataforma SaaS · Gestión de Empresas y Suscripciones"
+    >
+      <ContenidoSaasAdmin />
+    </Marco>
+  );
+}
+
+function ContenidoSaasAdmin() {
+  const puedeVer = useTienePermiso(PERMISOS.ORGANIZACIONES_VER);
+  const puedeGestionar = useTienePermiso(PERMISOS.ORGANIZACIONES_GESTIONAR);
+
   const [metricas, setMetricas] = useState<MetricasSaaS | null>(null);
   const [organizaciones, setOrganizaciones] = useState<OrganizacionItem[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -29,9 +46,7 @@ export default function SaasAdminPage() {
   const [modalCrear, setModalCrear] = useState(false);
   const [modalEditar, setModalEditar] = useState<OrganizacionItem | null>(null);
 
-  const [, startTransition] = useTransition();
-
-  async function cargarDatos() {
+  const cargarDatos = useCallback(async () => {
     setCargando(true);
     setError(null);
     try {
@@ -52,11 +67,35 @@ export default function SaasAdminPage() {
     } finally {
       setCargando(false);
     }
-  }
+  }, [busqueda, filtroActivo]);
 
   useEffect(() => {
+    if (!puedeVer) {
+      setCargando(false);
+      return;
+    }
     cargarDatos();
-  }, [filtroActivo]);
+  }, [puedeVer, filtroActivo, cargarDatos]);
+
+  if (!puedeVer) {
+    return (
+      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900 p-8 text-center shadow-sm backdrop-blur">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-lg font-bold text-rose-400">
+          ✕
+        </div>
+        <h2 className="text-lg font-bold text-white">Acceso Restringido</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Esta consola es exclusiva para la administración global de la plataforma SaaS.
+        </p>
+        <Link
+          href="/panel"
+          className="mt-5 inline-block rounded-xl bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-600"
+        >
+          Volver a Proyectos
+        </Link>
+      </div>
+    );
+  }
 
   function manejarBuscar(e: React.FormEvent) {
     e.preventDefault();
@@ -86,26 +125,24 @@ export default function SaasAdminPage() {
   }
 
   return (
-    <Marco
-      activo="/saas-admin"
-      titulo="Consola Super Admin"
-      subtitulo="Plataforma SaaS · Gestión de Empresas y Suscripciones"
-      acciones={
-        <button
-          onClick={() => {
-            setError(null);
-            setMensajeExito(null);
-            setModalCrear(true);
-          }}
-          className="flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-400"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nueva Organización
-        </button>
-      }
-    >
+    <>
+      {puedeGestionar && (
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => {
+              setError(null);
+              setMensajeExito(null);
+              setModalCrear(true);
+            }}
+            className="flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-400"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nueva Organización
+          </button>
+        </div>
+      )}
       <div className="space-y-6">
         {mensajeExito && (
           <div className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
@@ -186,8 +223,11 @@ export default function SaasAdminPage() {
         <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 sm:flex-row sm:items-center sm:justify-between">
           <form onSubmit={manejarBuscar} className="relative flex-1">
             <input
+              id="buscar-organizacion"
+              name="buscarOrganizacion"
               type="text"
               placeholder="Buscar por nombre, slug o RUT..."
+              aria-label="Buscar por nombre, slug o RUT"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-2 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
@@ -385,7 +425,7 @@ export default function SaasAdminPage() {
           }}
         />
       )}
-    </Marco>
+    </>
   );
 }
 

@@ -96,7 +96,7 @@ const SECCIONES: SeccionLegal[] = [
           proceso se eliminan los datos ocultos del archivo original, como la ubicación donde se tomó.
         </li>
         <li>
-          {D.servicio} <strong>no usa tu ubicación</strong> ni la cámara.
+          {D.servicio}{' '}<strong>no usa tu ubicación</strong> ni la cámara.
         </li>
       </ul>
     ),

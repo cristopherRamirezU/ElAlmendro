@@ -115,6 +115,12 @@ export interface Usuario {
 export interface OrganizacionMia {
   id: string;
   nombre: string;
+  rut?: string | null;
+  plan?: PlanSaaS;
+  maxUsuarios?: number;
+  maxProyectos?: number;
+  totalUsuarios?: number;
+  totalProyectos?: number;
   colorPrimario: string | null;
   temaFondo: string | null;
 }

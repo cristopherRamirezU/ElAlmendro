@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AlmacenamientoService } from '../../infra/almacenamiento/almacenamiento.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { ErroresSubidaFilter } from '../evidencias/errores-subida.filter';
 
 export const FOTO_MAXIMA_MB = 2;
@@ -56,19 +57,26 @@ export class FotoPerfilService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly almacenamiento: AlmacenamientoService,
+    private readonly limites: LimiteIntentosService,
   ) {}
 
   async subir(u: UsuarioActual, archivo: Express.Multer.File | undefined) {
     if (!archivo?.buffer?.length) throw new BadRequestException('Adjunta una imagen.');
     const tipo = FIRMAS.find((f) => f.coincide(archivo.buffer))?.tipo;
     if (!tipo) throw new BadRequestException('La foto debe ser una imagen JPG, PNG o WebP.');
+    this.limites.consumir(`subida:${u.id}`, REGLAS.subidaArchivos);
 
     const version = randomUUID();
     await this.almacenamiento.subir(clave(u.id, version), archivo.buffer, tipo);
 
-    const anterior = await this.prisma.usuario.findUnique({ where: { id: u.id }, select: { fotoPerfil: true } });
-    await this.prisma.usuario.update({ where: { id: u.id }, data: { fotoPerfil: version } });
-    if (anterior?.fotoPerfil) await this.borrarArchivo(u.id, anterior.fotoPerfil);
+    try {
+      const anterior = await this.prisma.usuario.findUnique({ where: { id: u.id }, select: { fotoPerfil: true } });
+      await this.prisma.usuario.update({ where: { id: u.id }, data: { fotoPerfil: version } });
+      if (anterior?.fotoPerfil) await this.borrarArchivo(u.id, anterior.fotoPerfil);
+    } catch (error) {
+      await this.borrarArchivo(u.id, version);
+      throw error;
+    }
 
     return { fotoPerfil: version };
   }

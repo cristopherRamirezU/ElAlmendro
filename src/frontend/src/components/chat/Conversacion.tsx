@@ -133,11 +133,11 @@ export default function Conversacion({
           </p>
           <p className="text-[11px] text-slate-400">
             {esGeneral ? (
-              `${totalEnLinea} companero${totalEnLinea === 1 ? '' : 's'} en linea`
+              `${totalEnLinea} compañero${totalEnLinea === 1 ? '' : 's'} en línea`
             ) : contacto.enLinea ? (
-              <span className="text-emerald-300">En linea</span>
+              <span className="text-emerald-300">En línea</span>
             ) : (
-              'Desconectado · recibira el mensaje al volver'
+              'Desconectado · recibirá el mensaje al volver'
             )}
             {!esGeneral && ` · ${ROL_TEXTO[contacto.rol] ?? contacto.rol}`}
           </p>
@@ -161,8 +161,8 @@ export default function Conversacion({
           <div className="grid h-full place-items-center text-center">
             <p className="max-w-xs text-xs text-slate-500">
               {esGeneral
-                ? 'Aun no hay mensajes en el canal general. Escribe el primero.'
-                : `Esta es tu conversacion privada con ${contacto.nombreCompleto}. Solo ustedes dos la ven.`}
+                ? 'Aún no hay mensajes en el canal general. Escribe el primero.'
+                : `Esta es tu conversación privada con ${contacto.nombreCompleto}. Solo ustedes dos la ven.`}
             </p>
           </div>
         )}
@@ -216,7 +216,7 @@ export default function Conversacion({
                     {propio && !esGeneral && (
                       <span
                         style={m.leidoEn ? { color: colorPrimario } : undefined}
-                        title={m.leidoEn ? 'Leido' : 'Enviado'}
+                        title={m.leidoEn ? 'Leído' : 'Enviado'}
                       >
                         {m.leidoEn ? '✓✓' : '✓'}
                       </span>
@@ -230,7 +230,7 @@ export default function Conversacion({
 
         {nombreEscribiendo && (
           <p className="mt-2 px-1 text-[11px] italic text-slate-400">
-            {esGeneral ? `${nombreEscribiendo} esta escribiendo…` : 'Esta escribiendo…'}
+            {esGeneral ? `${nombreEscribiendo} está escribiendo…` : 'Está escribiendo…'}
           </p>
         )}
       </div>
@@ -243,6 +243,9 @@ export default function Conversacion({
         className="flex items-end gap-2 border-t border-white/10 p-3"
       >
         <textarea
+          id="mensaje-chat"
+          name="mensajeChat"
+          aria-label="Escribir mensaje"
           value={borrador}
           onChange={(e) => alEscribir(e.target.value)}
           onKeyDown={(e) => {

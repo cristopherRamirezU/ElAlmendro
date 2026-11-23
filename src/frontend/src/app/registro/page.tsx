@@ -164,7 +164,7 @@ export default function Registro() {
                   </Campo>
                 </fieldset>
 
-                <fieldset className="m-0 grid gap-4 border-0 p-0 [grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
+                <fieldset className="m-0 grid gap-4 border-0 p-0 sm:grid-cols-2">
                   <legend className={leyenda}>Tu cuenta de administrador</legend>
                   <Campo id="nombre" texto="Tu nombre completo" error={intentado && !nombreOk ? 'Escribe tu nombre.' : null}>
                     <input

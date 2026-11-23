@@ -39,7 +39,7 @@ type Vista = 'registro' | 'gantt';
 
 const VISTAS: { clave: Vista; texto: string }[] = [
   { clave: 'registro', texto: 'Registro' },
-  { clave: 'gantt', texto: 'Gantt' },
+  { clave: 'gantt', texto: 'Por actividad' },
 ];
 
 export default function Reportes() {
@@ -156,6 +156,9 @@ function ReportesContenido() {
         <div className="flex flex-wrap items-center gap-2">
           {esSuperAdmin && (
             <select
+              id="reportes-organizacion"
+              name="organizacionId"
+              aria-label="Filtrar por organización"
               value={orgSeleccionada}
               onChange={(e) => cambiarOrganizacion(e.target.value)}
               className="rounded-xl border border-sky-500/30 bg-slate-900 px-3 py-2 text-sm text-sky-200 outline-none focus:border-sky-400"
@@ -170,6 +173,9 @@ function ReportesContenido() {
           )}
 
           <select
+            id="reportes-rango"
+            name="dias"
+            aria-label="Rango de días"
             value={dias}
             onChange={(e) => setDias(Number(e.target.value))}
             className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-400"
@@ -308,24 +314,36 @@ function ReportesContenido() {
                 </tr>
               </thead>
               <tbody>
-                {trabajadores.map((t) => (
-                  <tr key={t.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                    <td className="py-2.5 font-medium text-white">{t.trabajador}</td>
-                    {esSuperAdmin && !orgSeleccionada && (
-                      <td className="py-2.5 text-xs font-semibold text-sky-300">
-                        {t.organizacionNombre || 'Sin asignar'}
+                {trabajadores.map((t) => {
+                  const promedioSeg = Math.round(t.segundos / Math.max(1, t.dias));
+                  const promedioAnomalo = promedioSeg > 12 * 3600;
+                  return (
+                    <tr key={t.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
+                      <td className="py-2.5 font-medium text-white">{t.trabajador}</td>
+                      {esSuperAdmin && !orgSeleccionada && (
+                        <td className="py-2.5 text-xs font-semibold text-sky-300">
+                          {t.organizacionNombre || 'Sin asignar'}
+                        </td>
+                      )}
+                      <td className="py-2.5 text-right font-mono text-slate-200">{duracion(t.segundos)}</td>
+                      <td className="py-2.5 text-right text-slate-400">{t.dias}</td>
+                      <td className="py-2.5 text-right text-slate-400">{t.marcajes}</td>
+                      <td className="py-2.5 text-right text-slate-400">{t.nodos}</td>
+                      <td className="py-2.5 text-right text-slate-400">{t.actividades}</td>
+                      <td className="py-2.5 text-right font-mono text-slate-400">
+                        <span>{duracion(promedioSeg)}</span>
+                        {promedioAnomalo && (
+                          <span
+                            title="Promedio diario inusualmente alto (posible sesión sin cerrar)"
+                            className="ml-2 inline-block rounded bg-amber-400/20 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-amber-300"
+                          >
+                            ▲ Revisar
+                          </span>
+                        )}
                       </td>
-                    )}
-                    <td className="py-2.5 text-right font-mono text-slate-200">{duracion(t.segundos)}</td>
-                    <td className="py-2.5 text-right text-slate-400">{t.dias}</td>
-                    <td className="py-2.5 text-right text-slate-400">{t.marcajes}</td>
-                    <td className="py-2.5 text-right text-slate-400">{t.nodos}</td>
-                    <td className="py-2.5 text-right text-slate-400">{t.actividades}</td>
-                    <td className="py-2.5 text-right font-mono text-slate-400">
-                      {duracion(Math.round(t.segundos / Math.max(1, t.dias)))}
-                    </td>
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

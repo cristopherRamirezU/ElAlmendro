@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Query,
@@ -23,6 +24,7 @@ import {
   prepararDescarga,
 } from '../../common/exportacion/descarga';
 import { ExportarDiaDto, ExportarPeriodoDto } from './dto/exportar.dto';
+import { ConsultarDiaDto, ConsultarPeriodoDto } from './dto/consultar.dto';
 
 type Fila = Record<string, unknown>;
 
@@ -89,57 +91,53 @@ export class ReportesController {
     return exigirOrganizacion(u);
   }
 
+  private validarPeriodo(desdeStr: string, hastaStr: string): { desde: Date; hasta: Date } {
+    const desde = new Date(desdeStr);
+    const hasta = new Date(hastaStr);
+    if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime())) {
+      throw new BadRequestException('El rango de fechas no es valido.');
+    }
+    if (hasta < desde) {
+      throw new BadRequestException('La fecha "hasta" no puede ser anterior a "desde".');
+    }
+    return { desde, hasta };
+  }
+
   @Get('calendario')
-  calendario(
-    @Usuario() u: UsuarioActual,
-    @Query('desde') desde: string,
-    @Query('hasta') hasta: string,
-    @Query('organizacionId') orgId?: string,
-  ) {
+  calendario(@Usuario() u: UsuarioActual, @Query() q: ConsultarPeriodoDto) {
+    const { desde, hasta } = this.validarPeriodo(q.desde, q.hasta);
     return this.reportes.calendario(
-      new Date(desde),
-      new Date(hasta),
+      desde,
+      hasta,
       this.alcance(u),
-      this.resolverOrgId(u, orgId),
+      this.resolverOrgId(u, q.organizacionId),
     );
   }
 
   @Get('dia')
-  dia(
-    @Usuario() u: UsuarioActual,
-    @Query('fecha') fecha: string,
-    @Query('organizacionId') orgId?: string,
-  ) {
-    return this.reportes.dia(fecha, this.alcance(u), this.resolverOrgId(u, orgId));
+  dia(@Usuario() u: UsuarioActual, @Query() q: ConsultarDiaDto) {
+    return this.reportes.dia(q.fecha, this.alcance(u), this.resolverOrgId(u, q.organizacionId));
   }
 
   @Get('horas')
   @ExigirPermisos(PERMISOS.REPORTES_VER_EQUIPO)
-  horas(
-    @Usuario() u: UsuarioActual,
-    @Query('desde') desde: string,
-    @Query('hasta') hasta: string,
-    @Query('organizacionId') orgId?: string,
-  ) {
+  horas(@Usuario() u: UsuarioActual, @Query() q: ConsultarPeriodoDto) {
+    const { desde, hasta } = this.validarPeriodo(q.desde, q.hasta);
     return this.reportes.porTrabajador(
-      new Date(desde),
-      new Date(hasta),
-      this.resolverOrgId(u, orgId),
+      desde,
+      hasta,
+      this.resolverOrgId(u, q.organizacionId),
     );
   }
 
   @Get('actividades')
   @ExigirPermisos(PERMISOS.REPORTES_VER_EQUIPO)
-  actividades(
-    @Usuario() u: UsuarioActual,
-    @Query('desde') desde: string,
-    @Query('hasta') hasta: string,
-    @Query('organizacionId') orgId?: string,
-  ) {
+  actividades(@Usuario() u: UsuarioActual, @Query() q: ConsultarPeriodoDto) {
+    const { desde, hasta } = this.validarPeriodo(q.desde, q.hasta);
     return this.reportes.porActividad(
-      new Date(desde),
-      new Date(hasta),
-      this.resolverOrgId(u, orgId),
+      desde,
+      hasta,
+      this.resolverOrgId(u, q.organizacionId),
     );
   }
 

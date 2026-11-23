@@ -186,7 +186,11 @@ export default function PanelTarea({
   /** Terminar: abre el cierre, donde se elige si queda completada o inconclusa. */
   const terminar: AccionContador = {
     texto: 'Terminar',
-    titulo: enEstaTarea ? 'Cerrar la sesión de esta tarea' : 'Comienza la tarea para poder terminarla',
+    titulo: terminada
+      ? 'La tarea ya está terminada'
+      : enEstaTarea
+        ? 'Cerrar la sesión de esta tarea'
+        : 'Comienza la tarea para poder terminarla',
     deshabilitado: !enEstaTarea,
     onClick: () => setCerrando((v) => !v),
   };

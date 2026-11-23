@@ -264,6 +264,11 @@ function reunirAlertas(trabajadores: TrabajadorDia[]): string[] {
         `${w.nombre}: ${duracion(sinImputar)} de jornada sin imputar a ninguna actividad.`,
       );
     }
+    if (w.segundosImputados > 12 * 3600) {
+      avisos.push(
+        `${w.nombre}: ${duracion(w.segundosImputados)} imputadas en un día (supera el umbral de 12 h).`,
+      );
+    }
   }
 
   return avisos;

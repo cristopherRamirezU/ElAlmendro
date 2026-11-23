@@ -234,80 +234,128 @@ export default function ConstelacionProyectos({
     if (!tarjeta.current?.contains(e.relatedTarget as Node | null)) soltarFoco();
   };
 
-  // Alto: la pantalla menos la cabecera (68 px) y el margen del marco
-  // (24 px arriba y abajo), para que el Panel no se desplace.
+  // Alto: la pantalla menos la cabecera y el margen del marco, para que el Panel no se desplace.
   return (
     <div
       ref={raiz}
-      className={`${fuenteEscena.className} relative h-[max(30rem,calc(100vh-7.25rem))] select-none overflow-hidden rounded-[14px] border border-[rgba(110,150,255,0.18)] bg-[#050914] text-[#e6ebff]`}
+      className={`${fuenteEscena.className} relative h-[max(28rem,calc(100vh-8.5rem))] select-none overflow-hidden rounded-[14px] border border-[rgba(110,150,255,0.18)] bg-[#050914] text-[#e6ebff]`}
     >
       <canvas ref={lienzo} aria-hidden className="absolute inset-0 block h-full w-full touch-manipulation" />
 
-      {/* ------------------------------------------------------- filtros */}
-      <div
-        ref={filtros}
-        role="group"
-        aria-label="Filtrar proyectos"
-        className="absolute inset-x-0 top-[18px] z-[2] flex justify-center gap-7 transition-opacity duration-300"
-      >
-        {FILTROS.map((f) => {
-          const activo = filtro === f.valor;
-          return (
-            <button
-              key={f.valor}
-              type="button"
-              aria-pressed={activo}
-              onClick={() => setFiltro(f.valor)}
-              className={`${fuenteTitulo.className} py-1 text-[13px] transition-colors duration-300 ${
-                activo
-                  ? 'bg-[linear-gradient(90deg,#7f9dff,#b49aff)] bg-clip-text font-medium text-transparent'
-                  : 'font-light text-[#56618a] hover:text-[#8f9acb]'
-              }`}
-            >
-              {f.texto}
-            </button>
-          );
-        })}
-      </div>
+      {/*Barra superior responsiva: en movil no se superponen buscador, filtros y selector */}
+      <div className="pointer-events-none absolute inset-x-0 top-3 z-[4] flex flex-col gap-2 px-3 md:flex-row md:items-start md:justify-between md:px-4">
+        <div className="flex items-start justify-between gap-2 md:contents">
+          {/* ------------------------- buscador */}
+          <div role="search" className="pointer-events-auto min-w-0 flex-1 md:order-1 md:w-44 md:flex-none lg:w-56">
+            <label htmlFor="buscar-proyecto" className="relative block">
+              <span className="sr-only">Buscar proyecto por nombre</span>
+              <Search
+                size={14}
+                aria-hidden
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#56618a]"
+              />
+              <input
+                id="buscar-proyecto"
+                name="buscarProyecto"
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setBusqueda('');
+                }}
+                placeholder="Buscar proyecto…"
+                autoComplete="off"
+                className={`${fuenteTitulo.className} w-full rounded-full border border-[rgba(110,150,255,0.25)] bg-[rgba(10,15,34,0.6)] py-1.5 pl-8 pr-8 text-xs font-light text-[#c9d2f5] outline-none transition-colors placeholder:text-[#56618a] focus:border-[rgba(127,157,255,0.6)] [&::-webkit-search-cancel-button]:hidden`}
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda('')}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[#8f9acb] transition-colors hover:text-white"
+                >
+                  <X size={13} aria-hidden />
+                </button>
+              )}
+            </label>
+            {buscado && (
+              <p aria-live="polite" className="mt-1.5 pl-3 text-[11px] font-light text-[#8f9acb]">
+                {coincidentes.length === 0
+                  ? 'Sin resultados en esta pestaña'
+                  : `${coincidentes.length} de ${enPestana.length} ${enPestana.length === 1 ? 'proyecto' : 'proyectos'}`}
+              </p>
+            )}
+          </div>
 
-      {/* ------------------------- buscador: esquina superior izquierda */}
-      <div role="search" className="absolute left-4 top-3.5 z-[4] w-40 lg:w-56">
-        <label className="relative block">
-          <span className="sr-only">Buscar proyecto por nombre</span>
-          <Search
-            size={14}
-            aria-hidden
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#56618a]"
-          />
-          <input
-            type="search"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setBusqueda('');
-            }}
-            placeholder="Buscar proyecto…"
-            autoComplete="off"
-            className={`${fuenteTitulo.className} w-full rounded-full border border-[rgba(110,150,255,0.25)] bg-[rgba(10,15,34,0.6)] py-1.5 pl-8 pr-8 text-xs font-light text-[#c9d2f5] outline-none transition-colors placeholder:text-[#56618a] focus:border-[rgba(127,157,255,0.6)] [&::-webkit-search-cancel-button]:hidden`}
-          />
-          {busqueda && (
+          {/* ---------------- fondo del mapa */}
+          <div ref={selector} className="pointer-events-auto relative shrink-0 md:order-3">
             <button
               type="button"
-              onClick={() => setBusqueda('')}
-              aria-label="Limpiar búsqueda"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[#8f9acb] transition-colors hover:text-white"
+              aria-haspopup="menu"
+              aria-expanded={eligiendoFondo}
+              onClick={() => setEligiendoFondo((v) => !v)}
+              className={`${fuenteTitulo.className} flex max-w-[10.5rem] items-center gap-1.5 rounded-full border border-[rgba(110,150,255,0.25)] bg-[rgba(10,15,34,0.6)] py-1.5 pl-3 pr-2.5 text-xs font-light text-[#8f9acb] transition-colors hover:text-[#c9d2f5] sm:max-w-none sm:gap-2`}
             >
-              <X size={13} aria-hidden />
+              <Palette size={14} aria-hidden className="shrink-0" />
+              <span className="truncate">{DATOS_FONDO[fondo].nombre}</span>
+              <ChevronDown size={14} aria-hidden className={`shrink-0 transition-transform duration-200 ${eligiendoFondo ? 'rotate-180' : ''}`} />
             </button>
-          )}
-        </label>
-        {buscado && (
-          <p aria-live="polite" className="mt-1.5 pl-3 text-[11px] font-light text-[#8f9acb]">
-            {coincidentes.length === 0
-              ? 'Sin resultados en esta pestaña'
-              : `${coincidentes.length} de ${enPestana.length} ${enPestana.length === 1 ? 'proyecto' : 'proyectos'}`}
-          </p>
-        )}
+            {eligiendoFondo && (
+              <div
+                role="menu"
+                aria-label="Fondo del mapa"
+                className="absolute right-0 top-full mt-2 max-h-[min(26rem,60vh)] w-56 overflow-y-auto rounded-xl border border-[rgba(110,150,255,0.35)] bg-[rgba(10,15,34,0.97)] p-1.5"
+              >
+                {FONDOS.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={fondo === f}
+                    onClick={() => elegirFondo(f)}
+                    className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
+                      fondo === f ? 'bg-[rgba(110,150,255,0.14)] text-white' : 'text-[#aab4d6] hover:bg-white/5'
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="h-6 w-10 shrink-0 rounded-md border border-white/10"
+                      style={{ background: DATOS_FONDO[f].muestra }}
+                    />
+                    {DATOS_FONDO[f].nombre}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------- filtros */}
+        <div
+          ref={filtros}
+          role="group"
+          aria-label="Filtrar proyectos"
+          className="pointer-events-auto flex justify-center gap-6 pt-0.5 transition-opacity duration-300 md:order-2 md:flex-1 md:gap-7"
+        >
+          {FILTROS.map((f) => {
+            const activo = filtro === f.valor;
+            return (
+              <button
+                key={f.valor}
+                type="button"
+                aria-pressed={activo}
+                onClick={() => setFiltro(f.valor)}
+                className={`${fuenteTitulo.className} py-1 text-[13px] transition-colors duration-300 ${
+                  activo
+                    ? 'bg-[linear-gradient(90deg,#7f9dff,#b49aff)] bg-clip-text font-medium text-transparent'
+                    : 'font-light text-[#56618a] hover:text-[#8f9acb]'
+                }`}
+              >
+                {f.texto}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ------------- cajon del proyecto enfocado: solo sus dos accesos */}
@@ -335,48 +383,6 @@ export default function ConstelacionProyectos({
               Ver proyecto
             </button>
           </>
-        )}
-      </div>
-
-      {/* ---------------- fondo del mapa: lista que se despliega hacia abajo */}
-      <div ref={selector} className="absolute right-4 top-3.5 z-[4]">
-        <button
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={eligiendoFondo}
-          onClick={() => setEligiendoFondo((v) => !v)}
-          className={`${fuenteTitulo.className} flex items-center gap-2 rounded-full border border-[rgba(110,150,255,0.25)] bg-[rgba(10,15,34,0.6)] py-1.5 pl-3 pr-2.5 text-xs font-light text-[#8f9acb] transition-colors hover:text-[#c9d2f5]`}
-        >
-          <Palette size={14} aria-hidden />
-          {DATOS_FONDO[fondo].nombre}
-          <ChevronDown size={14} aria-hidden className={`transition-transform duration-200 ${eligiendoFondo ? 'rotate-180' : ''}`} />
-        </button>
-        {eligiendoFondo && (
-          <div
-            role="menu"
-            aria-label="Fondo del mapa"
-            className="absolute right-0 top-full mt-2 max-h-[min(26rem,60vh)] w-56 overflow-y-auto rounded-xl border border-[rgba(110,150,255,0.35)] bg-[rgba(10,15,34,0.97)] p-1.5"
-          >
-            {FONDOS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                role="menuitemradio"
-                aria-checked={fondo === f}
-                onClick={() => elegirFondo(f)}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors ${
-                  fondo === f ? 'bg-[rgba(110,150,255,0.14)] text-white' : 'text-[#aab4d6] hover:bg-white/5'
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className="h-6 w-10 shrink-0 rounded-md border border-white/10"
-                  style={{ background: DATOS_FONDO[f].muestra }}
-                />
-                {DATOS_FONDO[f].nombre}
-              </button>
-            ))}
-          </div>
         )}
       </div>
 

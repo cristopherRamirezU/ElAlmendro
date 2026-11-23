@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Camera, Check, Eye, EyeOff, Globe, KeyRound, LogOut, MonitorSmartphone, Trash2, X } from 'lucide-react';
 import Marco from '@/components/Marco';
@@ -44,7 +45,17 @@ function ContenidoCuenta() {
           {usuario?.organizacionNombre && <Dato etiqueta="Empresa" valor={usuario.organizacionNombre} />}
         </dl>
         <p className="mt-4 text-xs text-[var(--tf-texto-tenue)]">
-          Para cambiar tu nombre o tu correo, pídeselo al administrador de tu empresa.
+          {usuario?.rol === 'ADMINISTRADOR' ? (
+            <>
+              Puedes editar tu nombre o tu correo desde{' '}
+              <Link href="/usuarios" className="font-semibold text-sky-400 hover:underline">
+                Usuarios y Roles
+              </Link>
+              .
+            </>
+          ) : (
+            'Para cambiar tu nombre o tu correo, pídeselo al administrador de tu empresa.'
+          )}
         </p>
       </section>
 

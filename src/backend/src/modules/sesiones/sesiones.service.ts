@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { CerrarSesionDto, IniciarSesionDto } from './dto/sesion.dto';
 import { ActividadesService } from '../actividades/actividades.service';
@@ -16,6 +17,8 @@ import { ActividadesService } from '../actividades/actividades.service';
  */
 @Injectable()
 export class SesionesService {
+  private readonly registro = new Logger(SesionesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly actividades: ActividadesService,
@@ -112,6 +115,7 @@ export class SesionesService {
     if (sesion.estado === 'PAUSADA') {
       throw new BadRequestException('La sesion ya esta en pausa.');
     }
+    const organizacionId = sesion.actividad?.proyecto?.organizacionId ?? undefined;
 
     await this.prisma.$transaction(async (tx) => {
       await this.cerrarTramoVigente(tx, sesionId);
@@ -122,6 +126,7 @@ export class SesionesService {
       await tx.registroAuditoria.create({
         data: {
           actorId: usuarioId,
+          organizacionId,
           accion: 'SESION_PAUSADA',
           tipoEntidad: 'SesionTrabajo',
           entidadId: sesionId,
@@ -137,6 +142,7 @@ export class SesionesService {
     if (sesion.estado === 'ACTIVA') {
       throw new BadRequestException('La sesion ya esta corriendo.');
     }
+    const organizacionId = sesion.actividad?.proyecto?.organizacionId ?? undefined;
 
     await this.prisma.$transaction(async (tx) => {
       await tx.tramoSesion.create({ data: { sesionId, usuarioId } });
@@ -147,6 +153,7 @@ export class SesionesService {
       await tx.registroAuditoria.create({
         data: {
           actorId: usuarioId,
+          organizacionId,
           accion: 'SESION_REANUDADA',
           tipoEntidad: 'SesionTrabajo',
           entidadId: sesionId,
@@ -159,6 +166,7 @@ export class SesionesService {
 
   async cerrar(usuarioId: string, sesionId: string, dto: CerrarSesionDto) {
     const sesion = await this.exigirViva(usuarioId, sesionId);
+    const organizacionId = sesion.actividad?.proyecto?.organizacionId ?? undefined;
 
     // La nota es obligatoria si el trabajo queda inconcluso: el administrador
     // debe saber por que quedo pendiente. La base tambien lo exige.
@@ -198,6 +206,7 @@ export class SesionesService {
       await tx.registroAuditoria.create({
         data: {
           actorId: usuarioId,
+          organizacionId,
           accion: 'SESION_CERRADA',
           tipoEntidad: 'SesionTrabajo',
           entidadId: sesionId,
@@ -209,11 +218,97 @@ export class SesionesService {
     return { ok: true };
   }
 
+  /**
+   * Cierra automaticamente sesiones que superan SESION_UMBRAL_AUTOCIERRE_HORAS
+   * para impedir que un cronometro olvidado acumule decenas o cientos de horas.
+   */
+  @Cron('*/15 * * * *')
+  async autocerrarSesionesVencidas(ahora = new Date()): Promise<number> {
+    const horasCrudas = Number(process.env.SESION_UMBRAL_AUTOCIERRE_HORAS ?? 10);
+    const horas = Number.isFinite(horasCrudas) && horasCrudas > 0 ? horasCrudas : 10;
+    const limite = new Date(ahora.getTime() - horas * 3_600_000);
+
+    const vencidas = await this.prisma.sesionTrabajo.findMany({
+      where: {
+        estado: { in: ['ACTIVA', 'PAUSADA'] },
+        inicioEn: { lte: limite },
+      },
+      include: {
+        actividad: {
+          select: {
+            id: true,
+            estado: true,
+            proyecto: { select: { organizacionId: true } },
+          },
+        },
+        tramos: { where: { terminoEn: null }, orderBy: { inicioEn: 'asc' } },
+      },
+    });
+
+    let cerradas = 0;
+    for (const sesion of vencidas) {
+      const inicioMs = new Date(sesion.inicioEn).getTime();
+      const cierreEn = new Date(Math.min(ahora.getTime(), inicioMs + horas * 3_600_000));
+      const terminoSesion = cierreEn.getTime() > inicioMs ? cierreEn : ahora;
+
+      await this.prisma.$transaction(async (tx) => {
+        for (const t of sesion.tramos ?? []) {
+          const finTramo = cierreEn.getTime() > new Date(t.inicioEn).getTime() ? cierreEn : ahora;
+          await tx.tramoSesion.update({
+            where: { id: t.id },
+            data: { terminoEn: finTramo },
+          });
+        }
+
+        await tx.sesionTrabajo.update({
+          where: { id: sesion.id },
+          data: {
+            estado: 'AUTOCERRADA',
+            desenlace: 'INCONCLUSA',
+            cerradaAutomaticamente: true,
+            terminoEn: terminoSesion,
+            notaCierre: `Sesión cerrada automáticamente al superar el límite de ${horas} horas.`,
+          },
+        });
+
+        if (sesion.actividad?.estado === 'EN_PROGRESO') {
+          await tx.actividad.update({
+            where: { id: sesion.actividadId },
+            data: { estado: 'INCONCLUSA' },
+          });
+        }
+
+        await tx.registroAuditoria.create({
+          data: {
+            actorId: sesion.usuarioId,
+            organizacionId: sesion.actividad?.proyecto?.organizacionId ?? undefined,
+            accion: 'SESION_AUTOCERRADA',
+            tipoEntidad: 'SesionTrabajo',
+            entidadId: sesion.id,
+            valorNuevo: { umbralHoras: horas, cierreEn: terminoSesion.toISOString() },
+          },
+        });
+      });
+
+      cerradas += 1;
+    }
+
+    if (cerradas > 0) {
+      this.registro.log(`Autocerradas ${cerradas} sesion(es) tras superar ${horas}h.`);
+    }
+    return cerradas;
+  }
+
   // ---------------------------------------------------------------- privados
 
   private async exigirViva(usuarioId: string, sesionId: string) {
     const sesion = await this.prisma.sesionTrabajo.findUnique({
       where: { id: sesionId },
+      include: {
+        actividad: {
+          select: { proyecto: { select: { organizacionId: true } } },
+        },
+      },
     });
     if (!sesion) throw new NotFoundException('La sesion no existe.');
     if (sesion.usuarioId !== usuarioId) {

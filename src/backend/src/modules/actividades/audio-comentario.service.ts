@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AlmacenamientoService } from '../../infra/almacenamiento/almacenamiento.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { filtroActividadOrganizacion } from '../../common/organizacion';
 import { ErroresSubidaFilter } from '../evidencias/errores-subida.filter';
 
@@ -83,6 +84,7 @@ export class AudioComentarioService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly almacenamiento: AlmacenamientoService,
+    private readonly limites: LimiteIntentosService,
   ) {}
 
   /** Lista de la tarea, de la mas antigua a la mas nueva, con lo que cada quien puede hacer. */
@@ -103,6 +105,7 @@ export class AudioComentarioService {
     if (!archivo?.buffer?.length) throw new BadRequestException('Adjunta la grabacion.');
     const tipo = FIRMAS.find((f) => f.coincide(archivo.buffer))?.tipo;
     if (!tipo) throw new BadRequestException('El audio debe ser una grabacion WebM, MP4 u Ogg.');
+    this.limites.consumir(`subida:${u.id}`, REGLAS.subidaArchivos);
 
     const segundos = Math.round(Number(segundosCrudos));
     const duracion =
@@ -111,25 +114,30 @@ export class AudioComentarioService {
     const claveObjeto = `audios-comentario/${id}/${randomUUID()}`;
     await this.almacenamiento.subir(claveObjeto, archivo.buffer, tipo);
 
-    const audio = await this.prisma.$transaction(async (tx) => {
-      const nuevo = await tx.audioComentario.create({
-        data: { actividadId: id, autorId: u.id, claveObjeto, tipoMime: tipo, segundos: duracion },
-        select: SELECCION,
+    try {
+      const audio = await this.prisma.$transaction(async (tx) => {
+        const nuevo = await tx.audioComentario.create({
+          data: { actividadId: id, autorId: u.id, claveObjeto, tipoMime: tipo, segundos: duracion },
+          select: SELECCION,
+        });
+        await tx.registroAuditoria.create({
+          data: {
+            actorId: u.id,
+            organizacionId: tarea.proyecto.organizacionId,
+            accion: 'ACTIVIDAD_AUDIO_AGREGADO',
+            tipoEntidad: 'Actividad',
+            entidadId: id,
+            valorNuevo: { audioId: nuevo.id, segundos: duracion },
+          },
+        });
+        return nuevo;
       });
-      await tx.registroAuditoria.create({
-        data: {
-          actorId: u.id,
-          organizacionId: tarea.proyecto.organizacionId,
-          accion: 'ACTIVIDAD_AUDIO_AGREGADO',
-          tipoEntidad: 'Actividad',
-          entidadId: id,
-          valorNuevo: { audioId: nuevo.id, segundos: duracion },
-        },
-      });
-      return nuevo;
-    });
 
-    return { ...audio, puedeEliminar: true };
+      return { ...audio, puedeEliminar: true };
+    } catch (error) {
+      await this.borrarArchivo(claveObjeto);
+      throw error;
+    }
   }
 
   async quitar(id: string, audioId: string, u: UsuarioActual) {

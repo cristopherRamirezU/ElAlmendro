@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ReportesController } from '../../../src/modules/reportes/reportes.controller';
 import { ReportesService } from '../../../src/modules/reportes/reportes.service';
@@ -132,7 +133,7 @@ describe('ReportesController', () => {
     it('SIMETRIA: la exportacion aplica el mismo alcance que el endpoint JSON', async () => {
       const { res } = respuestaFalsa();
 
-      await controller.calendario(TRABAJADOR, PERIODO.desde, PERIODO.hasta);
+      await controller.calendario(TRABAJADOR, PERIODO);
       const alcanceJson = reportes.calendario.mock.calls[0][2];
 
       await controller.exportarCalendario(
@@ -144,6 +145,15 @@ describe('ReportesController', () => {
 
       // Si alguien toca uno de los dos y olvida el otro, este test cae.
       expect(alcanceExportacion).toBe(alcanceJson);
+    });
+
+    it('rechaza un periodo invertido en los endpoints JSON', () => {
+      expect(() =>
+        controller.horas(ADMIN, {
+          desde: PERIODO.hasta,
+          hasta: PERIODO.desde,
+        }),
+      ).toThrow(BadRequestException);
     });
   });
 

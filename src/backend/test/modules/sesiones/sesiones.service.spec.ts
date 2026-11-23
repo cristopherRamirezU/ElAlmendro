@@ -13,6 +13,7 @@ const sesionViva = (extra: Record<string, unknown> = {}) => ({
   usuarioId: USUARIO,
   actividadId: 'actividad-1',
   estado: 'ACTIVA',
+  actividad: { proyecto: { organizacionId: 'org-1' } },
   ...extra,
 });
 
@@ -188,6 +189,12 @@ describe('SesionesService', () => {
         where: { id: SESION },
         data: { estado: 'PAUSADA' },
       });
+      expect(prisma.registroAuditoria.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accion: 'SESION_PAUSADA',
+          organizacionId: 'org-1',
+        }),
+      });
     });
   });
 
@@ -204,6 +211,12 @@ describe('SesionesService', () => {
         data: { sesionId: SESION, usuarioId: USUARIO },
       });
       expect(prisma.tramoSesion.update).not.toHaveBeenCalled();
+      expect(prisma.registroAuditoria.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          accion: 'SESION_REANUDADA',
+          organizacionId: 'org-1',
+        }),
+      });
     });
 
     it('rechaza reanudar una sesion que ya corre', async () => {
@@ -312,6 +325,67 @@ describe('SesionesService', () => {
       prisma.sesionTrabajo.findFirst.mockResolvedValue(null as never);
 
       expect(await servicio.activa(USUARIO)).toBeNull();
+    });
+  });
+
+  describe('autocerrarSesionesVencidas', () => {
+    it('cierra sesiones abiertas sobre el umbral, topa el tramo y registra auditoria', async () => {
+      const inicio = new Date('2026-10-14T10:00:00.000Z');
+      const ahora = new Date('2026-10-20T10:00:00.000Z');
+      prisma.sesionTrabajo.findMany.mockResolvedValue([
+        {
+          id: SESION,
+          usuarioId: USUARIO,
+          actividadId: 'actividad-1',
+          inicioEn: inicio,
+          estado: 'ACTIVA',
+          actividad: {
+            id: 'actividad-1',
+            estado: 'EN_PROGRESO',
+            proyecto: { organizacionId: 'org-1' },
+          },
+          tramos: [{ id: 'tramo-abierto', inicioEn: inicio, terminoEn: null }],
+        },
+      ] as never);
+
+      const cerradas = await servicio.autocerrarSesionesVencidas(ahora);
+
+      expect(cerradas).toBe(1);
+      const limiteEsperado = new Date(inicio.getTime() + 10 * 3_600_000);
+      expect(prisma.tramoSesion.update).toHaveBeenCalledWith({
+        where: { id: 'tramo-abierto' },
+        data: { terminoEn: limiteEsperado },
+      });
+      expect(prisma.sesionTrabajo.update).toHaveBeenCalledWith({
+        where: { id: SESION },
+        data: expect.objectContaining({
+          estado: 'AUTOCERRADA',
+          desenlace: 'INCONCLUSA',
+          cerradaAutomaticamente: true,
+          terminoEn: limiteEsperado,
+        }),
+      });
+      expect(prisma.actividad.update).toHaveBeenCalledWith({
+        where: { id: 'actividad-1' },
+        data: { estado: 'INCONCLUSA' },
+      });
+      expect(prisma.registroAuditoria.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          actorId: USUARIO,
+          organizacionId: 'org-1',
+          accion: 'SESION_AUTOCERRADA',
+          entidadId: SESION,
+        }),
+      });
+    });
+
+    it('retorna 0 cuando no hay sesiones vencidas', async () => {
+      prisma.sesionTrabajo.findMany.mockResolvedValue([] as never);
+
+      const cerradas = await servicio.autocerrarSesionesVencidas(new Date());
+
+      expect(cerradas).toBe(0);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 });

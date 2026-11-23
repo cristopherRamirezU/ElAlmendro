@@ -30,6 +30,7 @@ export interface AlertasDia {
   autocerradas: number;
   inconclusas: number;
   presenciaExcesiva: number;
+  horasExcesivas?: number;
   total: number;
 }
 
@@ -143,7 +144,7 @@ export const ESCALA: (TramoEscala & { hasta: number })[] = [
   { hasta: 4, clase: 'bg-emerald-300 text-emerald-950', etiqueta: '2 a 4 h', muestra: 'bg-emerald-300' },
   { hasta: 6, clase: 'bg-emerald-500 text-white', etiqueta: '4 a 6 h', muestra: 'bg-emerald-500' },
   { hasta: 8, clase: 'bg-emerald-600 text-white', etiqueta: '6 a 8 h', muestra: 'bg-emerald-600' },
-  { hasta: Infinity, clase: 'bg-emerald-800 text-white', etiqueta: 'mas de 8 h', muestra: 'bg-emerald-800' },
+  { hasta: Infinity, clase: 'bg-emerald-800 text-white', etiqueta: 'más de 8 h', muestra: 'bg-emerald-800' },
 ];
 
 export const SIN_REGISTRO: TramoEscala = {

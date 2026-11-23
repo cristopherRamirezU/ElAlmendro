@@ -660,6 +660,10 @@ export class EscenaConstelacion {
   private io: IntersectionObserver | null = null;
   private enVista = true;
   private reducido = false;
+  private mediaMovimiento: MediaQueryList | null = null;
+  private alCambiarMovimiento = (e: MediaQueryListEvent) => {
+    this.reducido = e.matches;
+  };
   private puedeDesenfocar = false;
 
   /** Segundos de animacion (las estrellas titilan y el boton brilla con esto). */
@@ -721,7 +725,9 @@ export class EscenaConstelacion {
     this.fuente = opciones.fuente;
     this.alEnfocar = opciones.alEnfocar;
     this.alCrear = opciones.alCrear;
-    this.reducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    this.mediaMovimiento = window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null;
+    this.reducido = this.mediaMovimiento?.matches ?? false;
+    this.mediaMovimiento?.addEventListener?.('change', this.alCambiarMovimiento);
     // Safari antiguo no tiene filtros en el canvas: ahi el resto solo se oscurece.
     this.puedeDesenfocar = typeof this.ctx.filter === 'string';
 
@@ -772,6 +778,7 @@ export class EscenaConstelacion {
     this.lienzo.removeEventListener('pointerup', this.alSoltar);
     this.tarjeta.removeEventListener('pointerenter', this.alEntrarTarjeta);
     this.tarjeta.removeEventListener('pointerleave', this.alSalirTarjeta);
+    this.mediaMovimiento?.removeEventListener?.('change', this.alCambiarMovimiento);
     document.fonts?.removeEventListener('loadingdone', this.alCargarFuentes);
   }
 

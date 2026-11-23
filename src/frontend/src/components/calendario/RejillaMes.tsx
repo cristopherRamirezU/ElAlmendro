@@ -11,7 +11,7 @@ import {
 } from '@/lib/calendario';
 import { fechaLarga, horasBreves } from '@/lib/formato';
 
-const DIAS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+const DIAS = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
 /**
  * Rejilla mensual: cuanto se trabajo cada dia.
@@ -154,7 +154,7 @@ function etiqueta(fecha: string, dato?: DiaResumen): string {
   const partes = [
     `${fechaLarga(fecha)}: ${horasBreves(dato.segundosImputados)} imputadas`,
     `${dato.conRegistro} trabajador(es)`,
-    `${dato.sesiones} sesion(es)`,
+    `${dato.sesiones} sesión(es)`,
   ];
   if (dato.alertas.total > 0) partes.push(`${dato.alertas.total} punto(s) por revisar`);
   return partes.join(', ');

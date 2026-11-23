@@ -10,6 +10,7 @@ import { CrearOrganizacionDto } from './dto/crear-organizacion.dto';
 import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto';
 import { PlanSaaS, Rol } from '@prisma/client';
 import { esViolacionUnica, normalizarCorreo, normalizarRut } from '../../common/organizacion';
+import { problemaContrasena } from '../../common/seguridad/politica-contrasena';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
 
 @Injectable()
@@ -140,6 +141,10 @@ export class OrganizacionesService {
           `El correo "${adminEmail}" ya está registrado en la plataforma. Usa un correo distinto para el administrador.`,
         );
       }
+      if (dto.adminPassword) {
+        const problema = problemaContrasena(dto.adminPassword, adminEmail);
+        if (problema) throw new BadRequestException(problema);
+      }
     }
 
     return await this.prisma.$transaction(async (tx) => {
@@ -244,10 +249,30 @@ export class OrganizacionesService {
     }
     const org = await this.prisma.organizacion.findUnique({
       where: { id: u.organizacionId },
-      select: { id: true, nombre: true, colorPrimario: true, temaFondo: true },
+      select: {
+        id: true,
+        nombre: true,
+        rut: true,
+        plan: true,
+        maxUsuarios: true,
+        maxProyectos: true,
+        colorPrimario: true,
+        temaFondo: true,
+        _count: {
+          select: {
+            usuarios: { where: { activo: true } },
+            proyectos: { where: { eliminadoEn: null } },
+          },
+        },
+      },
     });
     if (!org) throw new NotFoundException('Organización no encontrada.');
-    return org;
+    const { _count, ...datos } = org;
+    return {
+      ...datos,
+      totalUsuarios: _count.usuarios,
+      totalProyectos: _count.proyectos,
+    };
   }
 
   async actualizarColorPropio(

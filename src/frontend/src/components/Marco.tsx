@@ -11,11 +11,13 @@ import {
   LayoutGrid,
   LogOut,
   LucideIcon,
+  Menu,
   MessageCircle,
   Settings,
   ShieldCheck,
   UserCog,
   Users,
+  X,
 } from 'lucide-react';
 import { PERMISOS, PermisoCodigo } from '@/lib/rbac';
 import { api, ErrorApi, Jornada, Sesion, Usuario } from '@/lib/api';
@@ -218,6 +220,7 @@ export default function Marco({
 
   // Barra lateral: se puede esconder con la flecha para dar todo el ancho al modulo.
   const [barraOculta, setBarraOculta] = useState(false);
+  const [menuMovil, setMenuMovil] = useState(false);
   useEffect(() => {
     try {
       if (window.localStorage.getItem(CLAVE_BARRA) === 'si') setBarraOculta(true);
@@ -225,6 +228,17 @@ export default function Marco({
       /* almacenamiento bloqueado: queda visible */
     }
   }, []);
+  useEffect(() => {
+    setMenuMovil(false);
+  }, [activo]);
+  useEffect(() => {
+    if (!menuMovil) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuMovil(false);
+    };
+    window.addEventListener('keydown', alTeclear);
+    return () => window.removeEventListener('keydown', alTeclear);
+  }, [menuMovil]);
   function alternarBarra() {
     setBarraOculta((v) => {
       try {
@@ -382,13 +396,107 @@ export default function Marco({
               className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
               <LogOut size={18} className="shrink-0" />
-              Cerrar sesion
+              Cerrar sesión
             </button>
           </div>
         </aside>
 
+        {menuMovil && (
+          <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label="Menú de navegación">
+            <button
+              type="button"
+              aria-label="Cerrar menú"
+              onClick={() => setMenuMovil(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-[1px]"
+            />
+            <aside className="relative z-10 flex h-full w-72 max-w-[82vw] flex-col gap-1 border-r border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-4 shadow-2xl">
+              <div className="mb-4 flex items-center gap-3 px-2 py-2">
+                <LogoTimeFlow tamano={36} className="h-9 w-9 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold leading-tight text-[var(--tf-texto)]">TimeFlow</p>
+                  <p className="text-[11px] text-[var(--tf-texto-tenue)]">Jornada · Actividades</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuMovil(false)}
+                  aria-label="Cerrar menú"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+                >
+                  <X size={18} aria-hidden />
+                </button>
+              </div>
+
+              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
+                {seccionesVisibles.map((s) => {
+                  const Icono = s.icono;
+                  return (
+                    <Link
+                      key={s.href}
+                      href={s.href}
+                      onClick={() => setMenuMovil(false)}
+                      style={
+                        activo === s.href
+                          ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
+                          : undefined
+                      }
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition ${
+                        activo === s.href
+                          ? 'font-semibold'
+                          : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+                      }`}
+                    >
+                      <Icono size={18} className="shrink-0" style={activo === s.href ? { color: colorPrimario } : undefined} />
+                      <span className="flex-1">{s.texto}</span>
+                      {s.href === '/chat' && <InsigniaChat />}
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              <div className="mt-auto border-t border-[var(--tf-borde)] pt-3">
+                <Link
+                  href="/cuenta"
+                  onClick={() => setMenuMovil(false)}
+                  style={
+                    activo === '/cuenta'
+                      ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
+                      : undefined
+                  }
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                    activo === '/cuenta'
+                      ? 'font-semibold'
+                      : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+                  }`}
+                >
+                  <UserCog size={18} className="shrink-0" />
+                  Mi cuenta
+                </Link>
+                <button
+                  onClick={() => {
+                    setMenuMovil(false);
+                    salir();
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+                >
+                  <LogOut size={18} className="shrink-0" />
+                  Cerrar sesión
+                </button>
+              </div>
+            </aside>
+          </div>
+        )}
+
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex flex-wrap items-center gap-3 bg-[var(--tf-superficie)] px-6 py-4">
+          <header className="flex flex-wrap items-center gap-3 bg-[var(--tf-superficie)] px-4 py-3.5 md:px-6 md:py-4">
+            <button
+              type="button"
+              onClick={() => setMenuMovil(true)}
+              aria-label="Abrir menú de navegación"
+              aria-expanded={menuMovil}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] md:hidden"
+            >
+              <Menu size={18} aria-hidden />
+            </button>
             {barraOculta && (
               <button
                 type="button"
@@ -452,8 +560,8 @@ export default function Marco({
               {/* En celular la barra lateral no se ve: aqui queda la salida. */}
               <button
                 onClick={salir}
-                aria-label="Cerrar sesion"
-                title="Cerrar sesion"
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
                 className="grid h-9 w-9 place-items-center rounded-full text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] md:hidden"
               >
                 <LogOut size={18} />
