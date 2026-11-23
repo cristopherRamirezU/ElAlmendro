@@ -84,6 +84,90 @@ describe('NodosService', () => {
         inicioTrabajoEn: inicio,
         monedas: 2,
         monedasListas: 1,
+        bloqueadaPorOrden: false,
+      }),
+    );
+  });
+
+  it('marca bloqueadaPorOrden, ordenEnRama y prerequisitoTitulo cuando el padre tiene candado', async () => {
+    prisma.proyecto.findFirst.mockResolvedValue({
+      id: 'proy-1',
+      propietarioId: 'admin-1',
+      miembros: [],
+    } as never);
+    const base = new Date('2026-11-10T12:00:00Z');
+    prisma.actividad.findMany.mockResolvedValue([
+      {
+        id: 'padre',
+        titulo: 'Fase 1',
+        estado: 'PENDIENTE',
+        prioridad: 'MEDIA',
+        actividadPadreId: null,
+        posicionNodo: null,
+        ladosLinea: null,
+        orden: 0,
+        bloquearOrdenHijas: true,
+        responsableId: 'u-1',
+        responsable: { id: 'u-1', nombreCompleto: 'Camila' },
+        creadoEn: base,
+        fechaLimite: null,
+        completadaEn: null,
+        subtareas: [],
+      },
+      {
+        id: 'hija-1',
+        titulo: 'Subtarea A',
+        estado: 'EN_PROGRESO',
+        prioridad: 'MEDIA',
+        actividadPadreId: 'padre',
+        posicionNodo: null,
+        ladosLinea: null,
+        orden: 0,
+        bloquearOrdenHijas: false,
+        responsableId: 'u-1',
+        responsable: { id: 'u-1', nombreCompleto: 'Camila' },
+        creadoEn: base,
+        fechaLimite: null,
+        completadaEn: null,
+        subtareas: [],
+      },
+      {
+        id: 'hija-2',
+        titulo: 'Subtarea B',
+        estado: 'PENDIENTE',
+        prioridad: 'MEDIA',
+        actividadPadreId: 'padre',
+        posicionNodo: null,
+        ladosLinea: null,
+        orden: 1,
+        bloquearOrdenHijas: false,
+        responsableId: 'u-1',
+        responsable: { id: 'u-1', nombreCompleto: 'Camila' },
+        creadoEn: base,
+        fechaLimite: null,
+        completadaEn: null,
+        subtareas: [],
+      },
+    ] as never);
+    prisma.derivacion.findMany.mockResolvedValue([] as never);
+    (prisma.sesionTrabajo.groupBy as jest.Mock).mockResolvedValue([]);
+
+    const res = await servicio.arbol(ADMIN, 'proy-1');
+    const h1 = res.actividades.find((a) => a.id === 'hija-1');
+    const h2 = res.actividades.find((a) => a.id === 'hija-2');
+
+    expect(h1).toEqual(
+      expect.objectContaining({
+        ordenEnRama: 1,
+        bloqueadaPorOrden: false,
+        prerequisitoTitulo: null,
+      }),
+    );
+    expect(h2).toEqual(
+      expect.objectContaining({
+        ordenEnRama: 2,
+        bloqueadaPorOrden: true,
+        prerequisitoTitulo: 'Subtarea A',
       }),
     );
   });

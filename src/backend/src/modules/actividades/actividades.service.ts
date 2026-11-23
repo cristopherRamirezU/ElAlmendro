@@ -14,6 +14,7 @@ import { ActualizarInstruccionesDto } from './dto/actualizar-instrucciones.dto';
 import { GuardarPosicionesDto, OrientacionMapa } from './dto/guardar-posiciones.dto';
 import { GuardarLadosDto, LADOS_LINEA, LadoLinea } from './dto/guardar-lados.dto';
 import {
+  ActualizarBloqueoHijasDto,
   ActualizarSubtareaDto,
   CambiarEstadoActividadDto,
   CrearSubtareaDto,
@@ -91,20 +92,97 @@ export class ActividadesService {
             autor: { select: { id: true, nombreCompleto: true } },
           },
         },
+        _count: {
+          select: {
+            hijas: { where: { eliminadoEn: null } },
+          },
+        },
       },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
 
-    const tiempos = await this.segundosPorActividad([actividad.id]);
-    const { audiosComentario, ...resto } = actividad;
+    const [tiempos, bloqueo] = await Promise.all([
+      this.segundosPorActividad([actividad.id]),
+      this.estadoBloqueoPorSecuencia(actividad.id, actividad.actividadPadreId),
+    ]);
+    const { audiosComentario, _count, ...resto } = actividad as typeof actividad & {
+      _count?: { hijas?: number };
+    };
     return {
       ...resto,
+      bloquearOrdenHijas: Boolean(actividad.bloquearOrdenHijas),
+      totalHijas: _count?.hijas ?? 0,
+      bloqueadaPorOrden: bloqueo.bloqueada,
+      prerequisitoTitulo: bloqueo.prerequisitoTitulo,
+      puedeGestionarBloqueo: u.permisos.includes(PERMISOS.NODOS_EDITAR),
       segundosTrabajados: tiempos.get(actividad.id) ?? 0,
       puedeEditarInstrucciones: puedeEditarInstrucciones(u, actividad.creadoPorId),
       // Comentarios de voz: cada quien graba los suyos y borra los propios.
       audios: (audiosComentario ?? []).map((a) => ({ ...a, puedeEliminar: puedeEliminarAudio(u, a.autor.id) })),
       puedeGrabarAudio: puedeGrabarAudio(u, actividad),
     };
+  }
+
+  /**
+   * Comprueba si una actividad hija esta bloqueada porque su nodo padre tiene
+   * activado el candado secuencial (`bloquearOrdenHijas`) y existe una hermana
+   * anterior que aun no esta COMPLETADA.
+   */
+  async estadoBloqueoPorSecuencia(
+    actividadId: string,
+    actividadPadreId?: string | null,
+  ): Promise<{
+    bloqueada: boolean;
+    prerequisitoId: string | null;
+    prerequisitoTitulo: string | null;
+  }> {
+    if (!actividadPadreId) {
+      return { bloqueada: false, prerequisitoId: null, prerequisitoTitulo: null };
+    }
+
+    const padre = await this.prisma.actividad.findFirst({
+      where: { id: actividadPadreId, eliminadoEn: null },
+      select: { id: true, bloquearOrdenHijas: true },
+    });
+    if (!padre || !padre.bloquearOrdenHijas) {
+      return { bloqueada: false, prerequisitoId: null, prerequisitoTitulo: null };
+    }
+
+    const hermanas = await this.prisma.actividad.findMany({
+      where: { actividadPadreId, eliminadoEn: null },
+      orderBy: [{ orden: 'asc' }, { creadoEn: 'asc' }],
+      select: { id: true, titulo: true, estado: true },
+    });
+
+    const idx = hermanas.findIndex((h) => h.id === actividadId);
+    if (idx <= 0) {
+      return { bloqueada: false, prerequisitoId: null, prerequisitoTitulo: null };
+    }
+
+    for (let i = 0; i < idx; i++) {
+      if (hermanas[i].estado !== 'COMPLETADA') {
+        return {
+          bloqueada: true,
+          prerequisitoId: hermanas[i].id,
+          prerequisitoTitulo: hermanas[i].titulo,
+        };
+      }
+    }
+
+    return { bloqueada: false, prerequisitoId: null, prerequisitoTitulo: null };
+  }
+
+  /** Lanza BadRequestException si la actividad sigue bloqueada por su hermana anterior. */
+  async exigirDesbloqueadaPorSecuencia(
+    actividadId: string,
+    actividadPadreId?: string | null,
+  ) {
+    const res = await this.estadoBloqueoPorSecuencia(actividadId, actividadPadreId);
+    if (res.bloqueada) {
+      throw new BadRequestException(
+        `Esta tarea está bloqueada por orden secuencial. Termina primero «${res.prerequisitoTitulo}».`,
+      );
+    }
   }
 
   /**
@@ -540,7 +618,12 @@ export class ActividadesService {
   private async asegurarPuedeEditar(actividadId: string, u: UsuarioActual) {
     const actividad = await this.prisma.actividad.findFirst({
       where: { id: actividadId, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
-      select: { id: true, responsableId: true, proyecto: { select: { organizacionId: true } } },
+      select: {
+        id: true,
+        responsableId: true,
+        actividadPadreId: true,
+        proyecto: { select: { organizacionId: true } },
+      },
     });
     if (!actividad) throw new NotFoundException('La actividad no existe.');
 
@@ -629,6 +712,13 @@ export class ActividadesService {
   async cambiarEstado(id: string, u: UsuarioActual, dto: CambiarEstadoActividadDto) {
     const actividad = await this.asegurarPuedeEditar(id, u);
 
+    if (dto.estado === 'COMPLETADA' || dto.estado === 'EN_PROGRESO') {
+      await this.exigirDesbloqueadaPorSecuencia(
+        id,
+        (actividad as { actividadPadreId?: string | null }).actividadPadreId,
+      );
+    }
+
     if (dto.estado === 'COMPLETADA') {
       const sesionViva = await this.prisma.sesionTrabajo.findFirst({
         where: { actividadId: id, estado: { in: ['ACTIVA', 'PAUSADA'] } },
@@ -659,6 +749,46 @@ export class ActividadesService {
           tipoEntidad: 'Actividad',
           entidadId: id,
           valorNuevo: { estado: dto.estado, responsableId: actividad.responsableId },
+        },
+      });
+    });
+
+    return this.detalle(id, u);
+  }
+
+  /**
+   * Activa o desactiva el candado secuencial sobre las tareas hijas directas
+   * de este nodo (permiso `nodos:editar`).
+   */
+  async actualizarBloqueoHijas(
+    id: string,
+    u: UsuarioActual,
+    dto: ActualizarBloqueoHijasDto,
+  ) {
+    const actividad = await this.prisma.actividad.findFirst({
+      where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
+      select: {
+        id: true,
+        bloquearOrdenHijas: true,
+        proyecto: { select: { organizacionId: true } },
+      },
+    });
+    if (!actividad) throw new NotFoundException('La actividad no existe.');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.actividad.update({
+        where: { id },
+        data: { bloquearOrdenHijas: dto.bloquearOrdenHijas },
+      });
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: u.id,
+          organizacionId: actividad.proyecto.organizacionId,
+          accion: 'ACTIVIDAD_BLOQUEO_SECUENCIAL',
+          tipoEntidad: 'Actividad',
+          entidadId: id,
+          valorAnterior: { bloquearOrdenHijas: actividad.bloquearOrdenHijas },
+          valorNuevo: { bloquearOrdenHijas: dto.bloquearOrdenHijas },
         },
       });
     });

@@ -84,6 +84,7 @@ export class NodosService {
         posicionNodo: true,
         ladosLinea: true,
         orden: true,
+        bloquearOrdenHijas: true,
         responsableId: true,
         responsable: { select: { id: true, nombreCompleto: true } },
         // Fechas de la carta Gantt: nace, vence y se guarda en el cofre.
@@ -141,13 +142,50 @@ export class NodosService {
       : [];
     const inicioTrabajo = new Map(primerasSesiones.map((s) => [s.actividadId, s._min.inicioEn]));
 
+    // Padres con candado secuencial activado: sus hijas directas se desbloquean en orden.
+    const padresBloqueados = new Set(
+      actividades.filter((a) => a.bloquearOrdenHijas).map((a) => a.id),
+    );
+    const ordenHijasPorPadre = new Map<string, typeof actividades>();
+    for (const a of actividades) {
+      if (!a.actividadPadreId || !padresBloqueados.has(a.actividadPadreId)) continue;
+      const lista = ordenHijasPorPadre.get(a.actividadPadreId) ?? [];
+      lista.push(a);
+      ordenHijasPorPadre.set(a.actividadPadreId, lista);
+    }
+
+    const estadoSecuencia = new Map<
+      string,
+      { ordenEnRama: number; bloqueadaPorOrden: boolean; prerequisitoTitulo: string | null }
+    >();
+    for (const hermanas of ordenHijasPorPadre.values()) {
+      hermanas.sort((x, y) => x.orden - y.orden);
+      let previaPendiente: string | null = null;
+      hermanas.forEach((h, idx) => {
+        estadoSecuencia.set(h.id, {
+          ordenEnRama: idx + 1,
+          bloqueadaPorOrden: previaPendiente !== null,
+          prerequisitoTitulo: previaPendiente,
+        });
+        if (previaPendiente === null && h.estado !== 'COMPLETADA') {
+          previaPendiente = h.titulo;
+        }
+      });
+    }
+
     return {
-      actividades: actividades.map(({ subtareas, ...a }) => ({
-        ...a,
-        inicioTrabajoEn: inicioTrabajo.get(a.id) ?? null,
-        monedas: subtareas.length,
-        monedasListas: subtareas.filter((m) => m.completada).length,
-      })),
+      actividades: actividades.map(({ subtareas, ...a }) => {
+        const seq = estadoSecuencia.get(a.id);
+        return {
+          ...a,
+          inicioTrabajoEn: inicioTrabajo.get(a.id) ?? null,
+          monedas: subtareas.length,
+          monedasListas: subtareas.filter((m) => m.completada).length,
+          bloqueadaPorOrden: seq?.bloqueadaPorOrden ?? false,
+          prerequisitoTitulo: seq?.prerequisitoTitulo ?? null,
+          ordenEnRama: seq?.ordenEnRama ?? null,
+        };
+      }),
       derivaciones,
     };
   }

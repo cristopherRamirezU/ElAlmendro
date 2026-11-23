@@ -18,6 +18,7 @@ import { ActualizarInstruccionesDto } from './dto/actualizar-instrucciones.dto';
 import { GuardarPosicionesDto } from './dto/guardar-posiciones.dto';
 import { GuardarLadosDto } from './dto/guardar-lados.dto';
 import {
+  ActualizarBloqueoHijasDto,
   ActualizarSubtareaDto,
   CambiarEstadoActividadDto,
   CrearSubtareaDto,
@@ -117,6 +118,17 @@ export class ActividadesController {
     @Body() dto: ActualizarInstruccionesDto,
   ) {
     return this.actividades.actualizarInstrucciones(id, u, dto);
+  }
+
+  /** Candado opcional de orden secuencial para las tareas hijas de este nodo. */
+  @Patch(':id/bloqueo-hijas')
+  @ExigirPermisos(PERMISOS.NODOS_EDITAR)
+  actualizarBloqueoHijas(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Usuario() u: UsuarioActual,
+    @Body() dto: ActualizarBloqueoHijasDto,
+  ) {
+    return this.actividades.actualizarBloqueoHijas(id, u, dto);
   }
 
   @Get(':id')

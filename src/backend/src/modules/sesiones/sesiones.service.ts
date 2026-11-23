@@ -72,6 +72,12 @@ export class SesionesService {
     if (actividad.responsableId !== usuarioId) {
       throw new BadRequestException('Esa actividad no esta asignada a ti.');
     }
+    if (actividad.actividadPadreId) {
+      await this.actividades.exigirDesbloqueadaPorSecuencia(
+        actividad.id,
+        actividad.actividadPadreId,
+      );
+    }
 
     // Una sola transaccion: sesion, tramo, estado de la actividad y auditoria.
     const sesion = await this.prisma.$transaction(async (tx) => {

@@ -30,3 +30,8 @@ export class CambiarEstadoActividadDto {
   })
   estado: 'PENDIENTE' | 'EN_PROGRESO' | 'BLOQUEADA' | 'COMPLETADA';
 }
+
+export class ActualizarBloqueoHijasDto {
+  @IsBoolean({ message: 'bloquearOrdenHijas debe ser verdadero o falso.' })
+  bloquearOrdenHijas: boolean;
+}

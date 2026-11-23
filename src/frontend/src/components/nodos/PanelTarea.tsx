@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Lock, Trash2, Unlock } from 'lucide-react';
 import { Actividad, api, Evidencia, ErrorApi, Sesion } from '@/lib/api';
 import { duracion } from '@/lib/formato';
 import { PERMISOS } from '@/lib/rbac';
@@ -141,6 +141,7 @@ export default function PanelTarea({
   const corriendo = enEstaTarea && sesion?.estado === 'ACTIVA';
   const pausada = enEstaTarea && !corriendo;
   const terminada = actividad.estado === 'COMPLETADA';
+  const bloqueadaPorOrden = Boolean(actividad.bloqueadaPorOrden);
   // Solo el responsable (o quien gestiona) puede echar a andar el cronometro.
   const puedeCronometrar = actividad.responsable?.id === usuarioActual?.id || puedeGestionar;
   // El servidor exige respaldo para cerrar como completada; aqui se avisa
@@ -171,15 +172,17 @@ export default function PanelTarea({
           onClick: () => accion(() => api.post(`/sesiones/${sesion!.id}/reanudar`)),
         }
       : {
-          texto: terminada ? 'Tarea terminada' : 'Comenzar',
+          texto: terminada ? 'Tarea terminada' : bloqueadaPorOrden ? 'Bloqueada' : 'Comenzar',
           titulo: terminada
             ? 'La tarea ya está terminada'
-            : sesion
-              ? `Tienes otra sesión abierta en «${sesion.actividad.titulo}»`
-              : !puedeCronometrar
-                ? 'El cronómetro está reservado para el responsable de la tarea'
-                : 'Comenzar a cronometrar esta tarea',
-          deshabilitado: terminada || Boolean(sesion) || !puedeCronometrar,
+            : bloqueadaPorOrden
+              ? `Bloqueada por orden secuencial: termina primero «${actividad.prerequisitoTitulo ?? 'la tarea anterior'}»`
+              : sesion
+                ? `Tienes otra sesión abierta en «${sesion.actividad.titulo}»`
+                : !puedeCronometrar
+                  ? 'El cronómetro está reservado para el responsable de la tarea'
+                  : 'Comenzar a cronometrar esta tarea',
+          deshabilitado: terminada || bloqueadaPorOrden || Boolean(sesion) || !puedeCronometrar,
           onClick: () => accion(() => api.post('/sesiones/iniciar', { actividadId })),
         };
 
@@ -205,6 +208,38 @@ export default function PanelTarea({
       onCerrar={onCerrar}
       acciones={
         <>
+          {actividad.puedeGestionarBloqueo && (
+            <button
+              type="button"
+              onClick={() =>
+                accion(() =>
+                  api.patch(`/actividades/${actividadId}/bloqueo-hijas`, {
+                    bloquearOrdenHijas: !actividad.bloquearOrdenHijas,
+                  }),
+                )
+              }
+              aria-pressed={Boolean(actividad.bloquearOrdenHijas)}
+              title={
+                actividad.bloquearOrdenHijas
+                  ? 'Candado activado: las tareas hijas deben completarse en orden. Clic para desactivar.'
+                  : 'Activar candado: exigir orden secuencial para las tareas hijas de esta rama'
+              }
+              className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition ${
+                actividad.bloquearOrdenHijas
+                  ? 'border-amber-500/50 bg-amber-500/20 text-[var(--tf-acento-ambar)] hover:bg-amber-500/30'
+                  : 'border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+              }`}
+            >
+              {actividad.bloquearOrdenHijas ? (
+                <Lock size={13} aria-hidden />
+              ) : (
+                <Unlock size={13} aria-hidden />
+              )}
+              <span className="hidden sm:inline">
+                {actividad.bloquearOrdenHijas ? 'Candado activo' : 'Orden libre'}
+              </span>
+            </button>
+          )}
           {botonAbrirAparte}
           {puedeEliminarNodo && (
             <button
@@ -226,6 +261,29 @@ export default function PanelTarea({
         principal={principal}
         terminar={terminar}
       />
+
+      {bloqueadaPorOrden && (
+        <div
+          role="status"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/12 px-3 py-2 text-xs text-[var(--tf-acento-ambar)]"
+        >
+          <Lock size={14} className="shrink-0 text-[var(--tf-acento-ambar)]" aria-hidden />
+          <span>
+            Bloqueada por orden secuencial: termina primero{' '}
+            <strong>«{actividad.prerequisitoTitulo || 'la tarea anterior'}»</strong> para
+            desbloquear esta tarea.
+          </span>
+        </div>
+      )}
+
+      {actividad.bloquearOrdenHijas && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-[var(--tf-acento-ambar)]">
+          <Lock size={12} className="shrink-0 text-[var(--tf-acento-ambar)]" aria-hidden />
+          <span>
+            Candado secuencial activo sobre {actividad.totalHijas ?? 0} tarea(s) hija(s) de esta rama: se desbloquean en orden.
+          </span>
+        </div>
+      )}
 
       {cerrando && enEstaTarea && (
         <div className="mt-3 rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">

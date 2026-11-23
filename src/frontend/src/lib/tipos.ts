@@ -68,6 +68,14 @@ export interface NodoActividad {
   completadaEn?: string | null;
   /** Primera vez que se encendio su cronometro. */
   inicioTrabajoEn?: string | null;
+  /** Candado opcional: exige completar en orden las hijas directas de este nodo. */
+  bloquearOrdenHijas?: boolean;
+  /** True si una hermana anterior en la rama bloqueada aun no esta COMPLETADA. */
+  bloqueadaPorOrden?: boolean;
+  /** Nombre de la tarea previa que desbloquea este nodo. */
+  prerequisitoTitulo?: string | null;
+  /** Posicion 1..N dentro de una rama con candado secuencial. */
+  ordenEnRama?: number | null;
 }
 
 export interface Derivacion {

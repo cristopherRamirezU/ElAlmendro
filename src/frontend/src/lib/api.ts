@@ -233,6 +233,12 @@ export interface Actividad {
   audios?: AudioComentario[];
   /** Solo en el detalle: quien trabaja la tarea puede grabarle audios. */
   puedeGrabarAudio?: boolean;
+  /** Candado secuencial sobre las hijas directas de esta tarea. */
+  bloquearOrdenHijas?: boolean;
+  totalHijas?: number;
+  bloqueadaPorOrden?: boolean;
+  prerequisitoTitulo?: string | null;
+  puedeGestionarBloqueo?: boolean;
 }
 
 /** Un comentario de voz de una tarea. */
