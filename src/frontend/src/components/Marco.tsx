@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   BarChart3,
+  BookOpen,
   Calendar,
   ChevronsLeft,
   ChevronsRight,
@@ -98,6 +99,11 @@ const SECCIONES: SeccionNav[] = [
     texto: 'Configuración',
     icono: Settings,
     permisoRequerido: PERMISOS.CONFIGURACION_GESTIONAR,
+  },
+  {
+    href: '/manual',
+    texto: 'Manual de uso',
+    icono: BookOpen,
   },
 ];
 
