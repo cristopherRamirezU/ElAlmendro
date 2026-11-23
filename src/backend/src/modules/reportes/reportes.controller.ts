@@ -141,6 +141,13 @@ export class ReportesController {
     );
   }
 
+  @Get('gantt')
+  @ExigirPermisos(PERMISOS.REPORTES_VER_EQUIPO)
+  gantt(@Usuario() u: UsuarioActual, @Query() q: ConsultarPeriodoDto) {
+    const { desde, hasta } = this.validarPeriodo(q.desde, q.hasta);
+    return this.reportes.ganttPorDia(desde, hasta, this.resolverOrgId(u, q.organizacionId));
+  }
+
   // -------------------------------------------------------- exportaciones
 
   /**

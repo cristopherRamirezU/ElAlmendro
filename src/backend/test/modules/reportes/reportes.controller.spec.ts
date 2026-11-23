@@ -52,6 +52,7 @@ describe('ReportesController', () => {
     dia: jest.Mock;
     porTrabajador: jest.Mock;
     porActividad: jest.Mock;
+    ganttPorDia: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -60,6 +61,7 @@ describe('ReportesController', () => {
       dia: jest.fn().mockResolvedValue([]),
       porTrabajador: jest.fn().mockResolvedValue([]),
       porActividad: jest.fn().mockResolvedValue([]),
+      ganttPorDia: jest.fn().mockResolvedValue([]),
     };
 
     const modulo = await Test.createTestingModule({
@@ -277,6 +279,43 @@ describe('ReportesController', () => {
 
       expect(archivo.getStream().read().toString('utf8')).toContain(
         'Trabajador,Horas,Dias,Marcaje,Nodos,Tareas,Promedio diario',
+      );
+    });
+  });
+
+  describe('carta Gantt por dia', () => {
+    it('rechaza periodos invertidos', () => {
+      expect(() =>
+        controller.gantt(ADMIN, {
+          desde: PERIODO.hasta,
+          hasta: PERIODO.desde,
+        }),
+      ).toThrow(BadRequestException);
+    });
+
+    it('acota al ADMINISTRADOR a su propia organizacion aunque pida otra', async () => {
+      await controller.gantt(ADMIN, { ...PERIODO, organizacionId: 'empresa-ajena' });
+
+      expect(reportes.ganttPorDia).toHaveBeenCalledWith(
+        new Date(PERIODO.desde),
+        new Date(PERIODO.hasta),
+        'org-1',
+      );
+    });
+
+    it('permite a SUPER_ADMIN consultar una organizacion o el consolidado global', async () => {
+      await controller.gantt(usuario('SUPER_ADMIN'), { ...PERIODO, organizacionId: 'empresa-b' });
+      expect(reportes.ganttPorDia).toHaveBeenLastCalledWith(
+        new Date(PERIODO.desde),
+        new Date(PERIODO.hasta),
+        'empresa-b',
+      );
+
+      await controller.gantt(usuario('SUPER_ADMIN'), PERIODO);
+      expect(reportes.ganttPorDia).toHaveBeenLastCalledWith(
+        new Date(PERIODO.desde),
+        new Date(PERIODO.hasta),
+        null,
       );
     });
   });

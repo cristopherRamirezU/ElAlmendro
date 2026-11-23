@@ -38,6 +38,7 @@ function politicaContenido(): string {
     // blob: los comentarios de voz se escuchan desde memoria (grabacion recien
     // hecha o audio descargado con la sesion).
     'media-src': ["'self'", 'blob:'],
+    'frame-src': ["'self'", 'blob:'],
     'worker-src': ["'self'", 'blob:'],
     'manifest-src': ["'self'"],
     'object-src': ["'none'"],

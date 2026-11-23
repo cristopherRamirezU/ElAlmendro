@@ -49,3 +49,32 @@ export function limpiarTipoMime(tipo: string | undefined): string {
     ? t
     : 'application/octet-stream';
 }
+
+const MIMES_VISTA_INLINE_SEGUROS = new Set([
+  // Imagenes seguras (se excluye image/svg+xml a proposito por riesgo XSS).
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+  // Documentos PDF y texto plano (se excluye text/html por XSS).
+  'application/pdf',
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+  'application/json',
+  // Audio y video.
+  'audio/mpeg',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm',
+  'audio/mp4',
+  'video/mp4',
+  'video/webm',
+  'video/ogg',
+]);
+
+/** Solo permite inline tipos inocuos que no pueden ejecutar scripts en el origen. */
+export function esMimePrevisualizableSeguro(tipoMime: string | undefined): boolean {
+  return MIMES_VISTA_INLINE_SEGUROS.has(limpiarTipoMime(tipoMime));
+}

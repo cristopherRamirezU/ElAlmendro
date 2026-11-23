@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EvidenciasService } from '../../../src/modules/evidencias/evidencias.service';
+import { esMimePrevisualizableSeguro } from '../../../src/modules/evidencias/limites-subida';
 import { AlmacenamientoService } from '../../../src/infra/almacenamiento/almacenamiento.service';
 import { montarServicio } from '../../utilidades/modulo';
 import { PrismaMock } from '../../utilidades/prisma-mock';
@@ -36,7 +37,7 @@ function adjunto({
 describe('EvidenciasService', () => {
   let servicio: EvidenciasService;
   let prisma: PrismaMock;
-  const almacenamiento = { subir: jest.fn(), descargar: jest.fn() };
+  const almacenamiento = { subir: jest.fn(), descargar: jest.fn(), eliminar: jest.fn() };
 
   beforeEach(async () => {
     ({ servicio, prisma } = await montarServicio(EvidenciasService, [
@@ -159,6 +160,37 @@ describe('EvidenciasService', () => {
       const lista = await servicio.listar(ADMIN, 'A');
 
       expect(lista[0].puedeEliminar).toBe(false);
+    });
+  });
+
+  describe('subir y previsualizacion segura', () => {
+    it('elimina el objeto en S3 si falla al registrar la evidencia en Prisma', async () => {
+      prisma.actividad.findFirst.mockResolvedValue({ id: 'A', estado: 'EN_PROGRESO' } as never);
+      almacenamiento.subir.mockResolvedValue(undefined);
+      almacenamiento.eliminar.mockResolvedValue(undefined);
+      prisma.evidencia.create.mockRejectedValue(new Error('Error BD'));
+
+      const archivo = {
+        originalname: 'captura.png',
+        mimetype: 'image/png',
+        size: 120,
+        buffer: Buffer.from('png'),
+      } as Express.Multer.File;
+
+      await expect(servicio.subir(TRABAJADORA, 'A', archivo)).rejects.toThrow('Error BD');
+      expect(almacenamiento.eliminar).toHaveBeenCalledWith(
+        expect.stringMatching(/^organizaciones\/org-1\/evidencias\/A\/.+-captura\.png$/),
+      );
+    });
+
+    it('acepta formatos inocuos para vista inline y rechaza SVG o HTML por riesgo XSS', () => {
+      expect(esMimePrevisualizableSeguro('image/png')).toBe(true);
+      expect(esMimePrevisualizableSeguro('application/pdf')).toBe(true);
+      expect(esMimePrevisualizableSeguro('text/plain')).toBe(true);
+      expect(esMimePrevisualizableSeguro('video/mp4')).toBe(true);
+      expect(esMimePrevisualizableSeguro('image/svg+xml')).toBe(false);
+      expect(esMimePrevisualizableSeguro('text/html')).toBe(false);
+      expect(esMimePrevisualizableSeguro('application/octet-stream')).toBe(false);
     });
   });
 });

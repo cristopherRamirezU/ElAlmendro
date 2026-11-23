@@ -11,11 +11,12 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import Marco from '@/components/Marco';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
+import CartaGantt from '@/components/reportes/CartaGantt';
 import { api, ErrorApi, URL_API, OrganizacionItem, Usuario } from '@/lib/api';
 import { useTienePermiso } from '@/lib/sesion';
 import { PERMISOS } from '@/lib/rbac';
 import { useDatosCache } from '@/lib/cacheDatos';
-import { HorasActividad, HorasTrabajador } from '@/lib/tipos';
+import { HorasActividad, HorasTrabajador, TareaGantt } from '@/lib/tipos';
 import { duracion } from '@/lib/formato';
 import {
   leerCacheSesion,
@@ -35,11 +36,12 @@ const RANGOS = [
   { dias: 90, texto: 'Últimos 3 meses' },
 ];
 
-type Vista = 'registro' | 'gantt';
+type Vista = 'registro' | 'actividades' | 'gantt';
 
 const VISTAS: { clave: Vista; texto: string }[] = [
   { clave: 'registro', texto: 'Registro' },
-  { clave: 'gantt', texto: 'Por actividad' },
+  { clave: 'actividades', texto: 'Por actividad' },
+  { clave: 'gantt', texto: 'Carta Gantt' },
 ];
 
 export default function Reportes() {
@@ -90,17 +92,19 @@ function ReportesContenido() {
 
   // Un solo rango para la consulta y para los enlaces de descarga, de modo
   // que el archivo exportado cubra exactamente lo que se ve en pantalla.
-  const rango = useMemo(() => {
+  const { rango, desdeIso, hastaIso } = useMemo(() => {
     const hasta = new Date();
     const desde = new Date();
     desde.setDate(desde.getDate() - dias);
-    let q = `desde=${desde.toISOString()}&hasta=${hasta.toISOString()}`;
+    const dIso = desde.toISOString();
+    const hIso = hasta.toISOString();
+    let q = `desde=${dIso}&hasta=${hIso}`;
     // El filtro de organizacion viaja tambien en la descarga: el archivo
     // exportado debe cubrir exactamente lo que se ve en pantalla.
     if (esSuperAdmin && orgSeleccionada) {
       q += `&organizacionId=${encodeURIComponent(orgSeleccionada)}`;
     }
-    return q;
+    return { rango: q, desdeIso: dIso, hastaIso: hIso };
   }, [dias, esSuperAdmin, orgSeleccionada]);
 
   const puedeExportar = useTienePermiso(PERMISOS.REPORTES_VER_EQUIPO);
@@ -108,11 +112,12 @@ function ReportesContenido() {
   const cargar = useCallback(async () => {
     const q = rango;
 
-    const [trabajadores, actividades] = await Promise.all([
+    const [trabajadores, actividades, gantt] = await Promise.all([
       api.get<HorasTrabajador[]>(`/reportes/horas?${q}`),
       api.get<HorasActividad[]>(`/reportes/actividades?${q}`),
+      api.get<TareaGantt[]>(`/reportes/gantt?${q}`),
     ]);
-    return { trabajadores, actividades };
+    return { trabajadores, actividades, gantt };
   }, [rango]);
 
   // Clave de cache reactiva al periodo y al inquilino seleccionado
@@ -120,6 +125,7 @@ function ReportesContenido() {
   const { datos, cargando, error } = useDatosCache(claveCache, cargar);
   const trabajadores = datos?.trabajadores ?? [];
   const actividades = datos?.actividades ?? [];
+  const gantt = datos?.gantt ?? [];
 
   useEffect(() => {
     if (error instanceof ErrorApi && error.estado === 401) router.replace('/login');
@@ -351,7 +357,7 @@ function ReportesContenido() {
       </section>
       )}
 
-      {vista === 'gantt' && (
+      {vista === 'actividades' && (
       <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
         <h2 className="mb-4 font-bold text-white">
           {orgActual ? `Horas por actividad — ${orgActual.nombre}` : 'Horas por actividad'}
@@ -364,6 +370,24 @@ function ReportesContenido() {
           </p>
         ) : (
           <GraficoBarras datos={grafico} unidad="h" />
+        )}
+      </section>
+      )}
+
+      {vista === 'gantt' && (
+      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="font-bold text-white">
+            {orgActual ? `Carta Gantt por día — ${orgActual.nombre}` : 'Carta Gantt por día'}
+          </h2>
+          <span className="text-xs text-slate-400">
+            Haz clic en una tarea para ver fechas, responsable y enlace directo al mapa.
+          </span>
+        </div>
+        {cargando ? (
+          <Esqueleto filas={5} />
+        ) : (
+          <CartaGantt tareas={gantt} desdeIso={desdeIso} hastaIso={hastaIso} />
         )}
       </section>
       )}
