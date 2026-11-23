@@ -110,8 +110,9 @@ model Organizacion {
   usuarios      Usuario[]
   proyectos     Proyecto[]
   jornadas      Jornada[]
-  mensajesChat  MensajeChat[]
-  auditorias    RegistroAuditoria[]
+  mensajesChat   MensajeChat[]
+  auditorias     RegistroAuditoria[]
+  notificaciones Notificacion[]
 
   @@map("organizaciones")
 }
@@ -161,6 +162,7 @@ model Usuario {
   tokensRefresco        TokenRefresco[]
   mensajesEnviados      MensajeChat[]       @relation("MensajeEmisor")
   mensajesRecibidos     MensajeChat[]       @relation("MensajeReceptor")
+  notificaciones        Notificacion[]
 
   @@index([rol, activo])
   @@index([organizacionId, activo])
@@ -491,4 +493,23 @@ model MensajeChat {
   @@index([creadoEn])
   @@index([organizacionId, creadoEn])
   @@map("mensajes_chat")
+}
+
+model Notificacion {
+  id             String        @id @default(uuid()) @db.Uuid
+  usuarioId      String        @db.Uuid
+  usuario        Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  organizacionId String?       @db.Uuid
+  organizacion   Organizacion? @relation(fields: [organizacionId], references: [id], onDelete: Cascade)
+  tipo           String
+  titulo         String
+  mensaje        String
+  enlace         String?
+  entidadId      String?
+  leidaEn        DateTime?     @db.Timestamptz(3)
+  creadoEn       DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([usuarioId, leidaEn, creadoEn])
+  @@index([organizacionId, creadoEn])
+  @@map("notificaciones")
 }

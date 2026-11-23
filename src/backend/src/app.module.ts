@@ -18,6 +18,8 @@ import { EvidenciasModule } from './modules/evidencias/evidencias.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { OrganizacionesModule } from './modules/organizaciones/organizaciones.module';
 import { RegistroModule } from './modules/registro/registro.module';
+import { HistorialModule } from './modules/historial/historial.module';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 
 /**
  * Raiz de la capa de negocio.
@@ -46,7 +48,8 @@ import { RegistroModule } from './modules/registro/registro.module';
     ChatModule,
     OrganizacionesModule,
     RegistroModule,
-    // HistorialModule, NotificacionesModule,
+    HistorialModule,
+    NotificacionesModule,
   ],
   controllers: [SaludController, ApiRaizController],
 })

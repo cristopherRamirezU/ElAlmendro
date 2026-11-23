@@ -9,6 +9,7 @@ import {
   Calendar,
   ChevronsLeft,
   ChevronsRight,
+  History,
   LayoutGrid,
   LogOut,
   LucideIcon,
@@ -29,8 +30,10 @@ import ConfirmarSalida from './ConfirmarSalida';
 import InterruptorJornada from './ui/InterruptorJornada';
 import { ProveedorChat } from '@/lib/chat';
 import { cerrarSocketChat } from '@/lib/socket';
+import { cerrarSocketNotificaciones } from '@/lib/notificaciones';
 import ChatFlotante from '@/components/chat/ChatFlotante';
 import InsigniaChat from '@/components/chat/InsigniaChat';
+import CampanaNotificaciones from '@/components/CampanaNotificaciones';
 import LogoTimeFlow from '@/components/login/LogoTimeFlow';
 import '@/components/login/login.css';
 import {
@@ -93,6 +96,12 @@ const SECCIONES: SeccionNav[] = [
     texto: 'Chat del equipo',
     icono: MessageCircle,
     permisoRequerido: PERMISOS.CHAT_USAR,
+  },
+  {
+    href: '/historial',
+    texto: 'Historial',
+    icono: History,
+    permisoRequerido: PERMISOS.HISTORIAL_VER,
   },
   {
     href: '/configuracion',
@@ -260,6 +269,7 @@ export default function Marco({
   async function cerrarSesion() {
     setConfirmandoSalida(false);
     cerrarSocketChat();
+    cerrarSocketNotificaciones();
     limpiarCacheSesion();
     limpiarBolsaAbierta();
     await api.post('/auth/logout');
@@ -549,6 +559,7 @@ export default function Marco({
                 />
               )}
               {acciones}
+              {usuario && <CampanaNotificaciones />}
               <Link
                 href="/cuenta"
                 className="rounded-full transition hover:brightness-125"

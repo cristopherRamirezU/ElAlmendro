@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { CerrarSesionDto, IniciarSesionDto } from './dto/sesion.dto';
 import { ActividadesService } from '../actividades/actividades.service';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 /**
  * Cronometraje autoritativo del servidor.
@@ -22,6 +23,7 @@ export class SesionesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly actividades: ActividadesService,
+    @Optional() private readonly notificaciones?: NotificacionesService,
   ) {}
 
   /** Sesion viva del trabajador, con su actividad y sus tramos. */
@@ -237,6 +239,7 @@ export class SesionesService {
         actividad: {
           select: {
             id: true,
+            titulo: true,
             estado: true,
             proyecto: { select: { organizacionId: true } },
           },
@@ -288,6 +291,16 @@ export class SesionesService {
             valorNuevo: { umbralHoras: horas, cierreEn: terminoSesion.toISOString() },
           },
         });
+      });
+
+      await this.notificaciones?.crear({
+        usuarioId: sesion.usuarioId,
+        organizacionId: sesion.actividad?.proyecto?.organizacionId ?? null,
+        tipo: 'SESION_AUTOCERRADA',
+        titulo: 'Sesión autocerrada por límite',
+        mensaje: `Tu cronómetro en «${sesion.actividad?.titulo ?? 'Actividad'}» superó ${horas} h y se cerró automáticamente como Inconclusa.`,
+        enlace: '/calendario',
+        entidadId: sesion.id,
       });
 
       cerradas += 1;

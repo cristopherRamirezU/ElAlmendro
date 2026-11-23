@@ -25,8 +25,9 @@ export const PERMISOS = {
   CALENDARIO_VER_PROPIO: 'calendario:ver_propio',
   CALENDARIO_VER_EQUIPO: 'calendario:ver_equipo',
 
-  // Módulo Reportes y Dashboard
+  // Módulo Reportes, Historial y Dashboard
   REPORTES_VER_EQUIPO: 'reportes:ver_equipo',
+  HISTORIAL_VER: 'historial:ver',
   DASHBOARD_VER_RESUMEN: 'dashboard:ver_resumen',
 
   // Módulo Nodos
@@ -53,6 +54,7 @@ export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
     PERMISOS.ORGANIZACIONES_GESTIONAR,
     PERMISOS.ORGANIZACIONES_VER,
     PERMISOS.REPORTES_VER_EQUIPO,
+    PERMISOS.HISTORIAL_VER,
     PERMISOS.DASHBOARD_VER_RESUMEN,
     PERMISOS.USUARIOS_VER,
   ],
@@ -66,6 +68,7 @@ export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
     PERMISOS.CALENDARIO_VER_PROPIO,
     PERMISOS.CALENDARIO_VER_EQUIPO,
     PERMISOS.REPORTES_VER_EQUIPO,
+    PERMISOS.HISTORIAL_VER,
     PERMISOS.DASHBOARD_VER_RESUMEN,
     PERMISOS.NODOS_VER_MAPA,
     PERMISOS.NODOS_EDITAR,
@@ -83,6 +86,7 @@ export const ROLES_PERMISOS: Record<Rol, readonly PermisoCodigo[]> = {
     PERMISOS.CALENDARIO_VER_PROPIO,
     PERMISOS.CALENDARIO_VER_EQUIPO,
     PERMISOS.REPORTES_VER_EQUIPO,
+    PERMISOS.HISTORIAL_VER,
     PERMISOS.DASHBOARD_VER_RESUMEN,
     PERMISOS.NODOS_VER_MAPA,
     PERMISOS.NODOS_EDITAR,
