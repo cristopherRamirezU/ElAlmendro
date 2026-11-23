@@ -50,9 +50,27 @@ function ContenidoUsuarios() {
   const [filtroRol, setFiltroRol] = useState<string>('TODOS');
   const [filtroEstado, setFiltroEstado] = useState<string>('TODOS');
 
-  // Modales
+  // Modales y menu contextual
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState<UsuarioItem | null>(null);
+  const [menuAbiertoId, setMenuAbiertoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!menuAbiertoId) return;
+    const cerrar = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest('[data-menu-usuario]')) setMenuAbiertoId(null);
+    };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuAbiertoId(null);
+    };
+    document.addEventListener('mousedown', cerrar);
+    window.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('mousedown', cerrar);
+      window.removeEventListener('keydown', esc);
+    };
+  }, [menuAbiertoId]);
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -207,157 +225,182 @@ function ContenidoUsuarios() {
         </div>
       )}
 
-      {/* -------------------- Tarjetas de métricas -------------------- */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <TarjetaMetrica
-          etiqueta="Total Equipo"
-          valor={metricas.total}
-          subtexto={`${metricas.activos} activos`}
-        />
-        <TarjetaMetrica
-          etiqueta="Administradores"
-          valor={metricas.admins}
-          subtexto="Acceso global"
-          color="indigo"
-        />
-        <TarjetaMetrica
-          etiqueta="Supervisores"
-          valor={metricas.supervisores}
-          subtexto="Monitoreo"
-          color="sky"
-        />
-        <TarjetaMetrica
-          etiqueta="Trabajadores"
-          valor={metricas.trabajadores}
-          subtexto="Cronometraje"
-          color="emerald"
-        />
-        <TarjetaMetrica
-          etiqueta="Inactivos"
-          valor={metricas.total - metricas.activos}
-          subtexto="Acceso restringido"
-          color="slate"
-        />
-      </div>
-
-      {/* -------------------- Barra de herramientas y filtros -------------------- */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-900 p-4 backdrop-blur">
-        <div className="flex min-w-[18rem] flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus-within:border-sky-400 focus-within:bg-white/10">
-          <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-          </svg>
-          <input
-            id="buscar-usuario"
-            name="buscarUsuario"
-            type="text"
-            placeholder="Buscar por nombre o correo…"
-            aria-label="Buscar usuario por nombre o correo"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full bg-transparent outline-none placeholder:text-slate-500"
-          />
-          {busqueda && (
-            <button onClick={() => setBusqueda('')} className="text-xs text-slate-400 hover:text-slate-200">
-              ✕
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <select
-            id="filtro-rol-usuarios"
-            name="filtroRol"
-            value={filtroRol}
-            onChange={(e) => setFiltroRol(e.target.value)}
-            aria-label="Filtrar por rol"
-            className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-400"
-          >
-            <option value="TODOS">Todos los roles</option>
-            <option value="ADMINISTRADOR">Administrador</option>
-            <option value="SUPERVISOR">Supervisor</option>
-            <option value="TRABAJADOR">Trabajador</option>
-          </select>
-
-          <select
-            id="filtro-estado-usuarios"
-            name="filtroEstado"
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            aria-label="Filtrar por estado"
-            className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-400"
-          >
-            <option value="TODOS">Todos los estados</option>
-            <option value="ACTIVOS">Solo Activos</option>
-            <option value="INACTIVOS">Solo Inactivos</option>
-          </select>
-
-          {puedeGestionar && (
+      {/* -------------------- Píldoras-filtro rápidas (reemplazan 5 tarjetas KPI) -------------------- */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {(
+            [
+              {
+                id: 'TODOS',
+                texto: 'Todos',
+                conteo: metricas.total,
+                activo: filtroRol === 'TODOS' && filtroEstado === 'TODOS',
+                onClick: () => {
+                  setFiltroRol('TODOS');
+                  setFiltroEstado('TODOS');
+                },
+              },
+              {
+                id: 'ADMINISTRADOR',
+                texto: 'Administradores',
+                conteo: metricas.admins,
+                activo: filtroRol === 'ADMINISTRADOR',
+                onClick: () => {
+                  setFiltroRol('ADMINISTRADOR');
+                  setFiltroEstado('TODOS');
+                },
+              },
+              {
+                id: 'SUPERVISOR',
+                texto: 'Supervisores',
+                conteo: metricas.supervisores,
+                activo: filtroRol === 'SUPERVISOR',
+                onClick: () => {
+                  setFiltroRol('SUPERVISOR');
+                  setFiltroEstado('TODOS');
+                },
+              },
+              {
+                id: 'TRABAJADOR',
+                texto: 'Trabajadores',
+                conteo: metricas.trabajadores,
+                activo: filtroRol === 'TRABAJADOR',
+                onClick: () => {
+                  setFiltroRol('TRABAJADOR');
+                  setFiltroEstado('TODOS');
+                },
+              },
+              {
+                id: 'INACTIVOS',
+                texto: 'Inactivos',
+                conteo: metricas.total - metricas.activos,
+                activo: filtroEstado === 'INACTIVOS',
+                onClick: () => {
+                  setFiltroRol('TODOS');
+                  setFiltroEstado('INACTIVOS');
+                },
+              },
+            ] as const
+          ).map((p) => (
             <button
-              onClick={() => setModalCrearAbierto(true)}
-              style={{ backgroundColor: colorPrimario }}
-              className="flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+              key={p.id}
+              type="button"
+              onClick={p.onClick}
+              style={
+                p.activo
+                  ? { borderColor: colorPrimario, backgroundColor: `${colorPrimario}1f` }
+                  : undefined
+              }
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-medium transition ${
+                p.activo
+                  ? 'text-[var(--tf-texto)]'
+                  : 'border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
+              }`}
             >
-              <span className="text-base leading-none">+</span>
-              <span>Nuevo Usuario</span>
+              <span>{p.texto}</span>
+              <span className="rounded-full bg-[var(--tf-hover)] px-1.5 py-0.5 font-mono text-[10px]">
+                {p.conteo}
+              </span>
             </button>
-          )}
+          ))}
         </div>
+
+        {puedeGestionar && (
+          <button
+            onClick={() => setModalCrearAbierto(true)}
+            style={{ backgroundColor: colorPrimario }}
+            className="tf-shimmer-cta flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+          >
+            <span className="text-base leading-none">+</span>
+            <span>Nuevo Usuario</span>
+          </button>
+        )}
       </div>
 
-      {/* -------------------- Tabla de usuarios -------------------- */}
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur">
+      {/* -------------------- Barra de búsqueda y tabla -------------------- */}
+      <section className="tf-card-pro tf-enter overflow-visible rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tf-borde)] p-3.5">
+          <div className="flex min-w-[16rem] flex-1 items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] focus-within:border-sky-400 sm:max-w-sm">
+            <svg className="h-4 w-4 text-[var(--tf-texto-suave)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input
+              id="buscar-usuario"
+              name="buscarUsuario"
+              type="text"
+              placeholder="Buscar por nombre o correo…"
+              aria-label="Buscar usuario por nombre o correo"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full bg-transparent outline-none placeholder:text-[var(--tf-texto-suave)]"
+            />
+            {busqueda && (
+              <button onClick={() => setBusqueda('')} className="text-xs text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">
+                ✕
+              </button>
+            )}
+          </div>
+          <span className="text-xs text-[var(--tf-texto-suave)]">
+            {usuariosFiltrados.length} usuario(s) visible(s)
+          </span>
+        </div>
+
         {cargando ? (
-          <div className="py-16 text-center text-sm text-slate-500">
+          <div className="py-16 text-center text-sm text-[var(--tf-texto-suave)]">
             Cargando nómina de usuarios…
           </div>
         ) : usuariosFiltrados.length === 0 ? (
-          <div className="py-16 text-center text-sm text-slate-500">
+          <div className="py-16 text-center text-sm text-[var(--tf-texto-suave)]">
             No se encontraron usuarios con los criterios de búsqueda especificados.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-white/10 bg-white/5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <table className="w-full text-left text-sm text-[var(--tf-texto-tenue)]">
+              <thead className="border-b border-[var(--tf-borde)] bg-[var(--tf-hover)] text-[11px] font-semibold uppercase tracking-wider text-[var(--tf-texto-suave)]">
                 <tr>
-                  <th className="px-6 py-3.5">Usuario</th>
-                  <th className="px-6 py-3.5">Rol y Permisos</th>
-                  <th className="px-6 py-3.5">Estado</th>
-                  <th className="px-6 py-3.5">Zona Horaria</th>
-                  <th className="px-6 py-3.5 text-right">Acciones</th>
+                  <th className="px-6 py-3">Usuario</th>
+                  <th className="px-6 py-3">Rol y Permisos</th>
+                  <th className="px-6 py-3">Estado</th>
+                  <th className="px-6 py-3">Zona Horaria</th>
+                  <th className="px-6 py-3 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-[var(--tf-borde)]">
                 {usuariosFiltrados.map((u) => {
                   const esPropiaCuenta = sesionActual?.id === u.id;
+                  const menuAbierto = menuAbiertoId === u.id;
                   return (
-                    <tr key={u.id} className="transition hover:bg-white/5">
+                    <tr key={u.id} className="transition hover:bg-[var(--tf-hover)]">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-500/15 text-xs font-bold text-orange-300">
+                          <div
+                            style={{ backgroundColor: `${colorPrimario}22`, color: colorPrimario }}
+                            className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-bold"
+                          >
                             {iniciales(u.nombreCompleto)}
                           </div>
                           <div>
-                            <p className="font-semibold text-white">
+                            <p className="font-semibold text-[var(--tf-texto)]">
                               {u.nombreCompleto}
                               {esPropiaCuenta && (
-                                <span className="ml-2 rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">
+                                <span className="ml-2 rounded-md bg-[var(--tf-hover)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--tf-texto-tenue)]">
                                   Tú
                                 </span>
                               )}
                             </p>
-                            <p className="text-xs text-slate-500">{u.email}</p>
+                            <p className="text-xs text-[var(--tf-texto-suave)]">{u.email}</p>
                           </div>
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
                         <BadgeRol rol={u.rol} />
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          {u.permisos?.length ?? 0} permiso(s) asignado(s)
+                        <p className="mt-1 font-mono text-[11px] text-[var(--tf-texto-suave)]">
+                          {u.permisos?.length ?? 0} permiso(s)
                         </p>
                         {ROLES_CON_PERMISOS_EXTRA.includes(u.rol) && (u.permisosExtra?.length ?? 0) > 0 && (
                           <p
-                            className="mt-1 inline-flex rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300"
+                            className="mt-1 inline-flex rounded-md border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-sky-400"
                             title={PERMISOS_EXTRA.filter((p) => u.permisosExtra?.includes(p.codigo))
                               .map((p) => p.nombre)
                               .join(', ')}
@@ -369,61 +412,76 @@ function ContenidoUsuarios() {
 
                       <td className="px-6 py-4">
                         {u.activo ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                             Activo
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-400">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--tf-texto-suave)]">
                             <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
                             Inactivo
                           </span>
                         )}
                       </td>
 
-                      <td className="px-6 py-4 text-xs font-mono text-slate-400">
+                      <td className="px-6 py-4 font-mono text-xs text-[var(--tf-texto-tenue)]">
                         {u.zonaHoraria || 'America/Santiago'}
                       </td>
 
                       <td className="px-6 py-4 text-right">
                         {puedeGestionar && (
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1.5">
                             {esAdmin || u.rol === 'TRABAJADOR' ? (
                               <>
                                 <button
                                   onClick={() => setUsuarioEditando(u)}
-                                  className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+                                  className="rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-hover)] px-3 py-1.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)]"
                                 >
                                   Editar
                                 </button>
 
                                 {!esPropiaCuenta && (
-                                  <>
+                                  <div data-menu-usuario className="relative">
                                     <button
-                                      onClick={() => handleToggleActivo(u)}
-                                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                                        u.activo
-                                          ? 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10'
-                                          : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                                      }`}
+                                      type="button"
+                                      aria-label={`Más acciones para ${u.nombreCompleto}`}
+                                      aria-expanded={menuAbierto}
+                                      onClick={() => setMenuAbiertoId(menuAbierto ? null : u.id)}
+                                      className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--tf-borde)] text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
                                     >
-                                      {u.activo ? 'Desactivar' : 'Activar'}
+                                      ⋯
                                     </button>
-
-                                    {esAdmin && (
-                                      <button
-                                        onClick={() => handleEliminar(u)}
-                                        title="Eliminar usuario (Exclusivo Administrador)"
-                                        className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-400 transition hover:bg-rose-500/20"
-                                      >
-                                        Eliminar
-                                      </button>
+                                    {menuAbierto && (
+                                      <div className="absolute right-0 top-9 z-30 w-40 rounded-xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1 text-left text-xs shadow-2xl">
+                                        <button
+                                          onClick={() => {
+                                            setMenuAbiertoId(null);
+                                            handleToggleActivo(u);
+                                          }}
+                                          className={`w-full rounded-lg px-3 py-2 font-medium transition hover:bg-[var(--tf-hover)] ${
+                                            u.activo ? 'text-amber-400' : 'text-emerald-400'
+                                          }`}
+                                        >
+                                          {u.activo ? 'Desactivar' : 'Activar'}
+                                        </button>
+                                        {esAdmin && (
+                                          <button
+                                            onClick={() => {
+                                              setMenuAbiertoId(null);
+                                              handleEliminar(u);
+                                            }}
+                                            className="w-full rounded-lg px-3 py-2 font-medium text-rose-400 transition hover:bg-rose-500/10"
+                                          >
+                                            Eliminar
+                                          </button>
+                                        )}
+                                      </div>
                                     )}
-                                  </>
+                                  </div>
                                 )}
                               </>
                             ) : (
-                              <span className="rounded-lg bg-white/5 px-2.5 py-1 text-xs font-medium text-slate-500">
+                              <span className="rounded-lg bg-[var(--tf-hover)] px-2.5 py-1 text-xs font-medium text-[var(--tf-texto-suave)]">
                                 Protegido
                               </span>
                             )}
@@ -472,34 +530,6 @@ function ContenidoUsuarios() {
 }
 
 // ------------------------------------------------------------- Componentes Auxiliares
-
-function TarjetaMetrica({
-  etiqueta,
-  valor,
-  subtexto,
-  color = 'orange',
-}: {
-  etiqueta: string;
-  valor: number;
-  subtexto: string;
-  color?: 'orange' | 'indigo' | 'sky' | 'emerald' | 'slate';
-}) {
-  const colores = {
-    orange: 'border-orange-500/20 bg-orange-500/5 text-orange-300',
-    indigo: 'border-indigo-500/20 bg-indigo-500/5 text-indigo-300',
-    sky: 'border-sky-500/20 bg-sky-500/5 text-sky-300',
-    emerald: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-300',
-    slate: 'border-white/10 bg-white/5 text-slate-300',
-  };
-
-  return (
-    <div className={`rounded-2xl border p-4 ${colores[color]}`}>
-      <p className="text-xs font-medium text-[var(--tf-texto-tenue)]">{etiqueta}</p>
-      <p className="my-1 text-2xl font-bold tracking-tight text-[var(--tf-texto)]">{valor}</p>
-      <p className="text-[11px] text-[var(--tf-texto-tenue)]">{subtexto}</p>
-    </div>
-  );
-}
 
 function BadgeRol({ rol }: { rol: Rol }) {
   switch (rol) {

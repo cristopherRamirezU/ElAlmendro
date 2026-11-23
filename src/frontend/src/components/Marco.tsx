@@ -45,8 +45,9 @@ import {
 } from '@/lib/cacheSesion';
 import { precalentarRutas } from '@/lib/precalentar';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
-import { colorConAlfa, COLOR_PRIMARIO_DEFECTO } from '@/lib/color';
+import { colorConAlfa, COLOR_PRIMARIO_DEFECTO, colorRgb } from '@/lib/color';
 import { TEMA_FONDO_DEFECTO, useAplicarTemaFondo } from '@/lib/tema';
+import FondoAmbiental from './FondoAmbiental';
 
 /** La barra lateral escondida se recuerda en este navegador. */
 const CLAVE_BARRA = 'tf_barra_oculta';
@@ -339,16 +340,23 @@ export default function Marco({
         />
       )}
       <div
-        className="flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
-        style={{ '--color-primario': colorPrimario } as React.CSSProperties}
+        className="relative flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
+        style={
+          {
+            '--color-primario': colorPrimario,
+            '--tf-primario-rgb': colorRgb(colorPrimario),
+          } as React.CSSProperties
+        }
       >
+        <FondoAmbiental colorPrimario={colorPrimario} />
+
         <aside
-          className={`w-60 shrink-0 flex-col gap-1 bg-[var(--tf-superficie)] p-4 ${barraOculta ? 'hidden' : 'hidden md:flex'}`}
+          className={`relative z-10 w-60 shrink-0 flex-col gap-1 border-r border-[var(--tf-borde)] bg-[var(--tf-sidebar)] p-4 backdrop-blur-xl ${barraOculta ? 'hidden' : 'hidden md:flex'}`}
         >
-          <div className="mb-4 flex items-center gap-3 px-2 py-2">
+          <div className="mb-4 flex items-center gap-3 border-b border-[var(--tf-borde)] px-2 pb-4 pt-1">
             <LogoTimeFlow tamano={40} className="h-10 w-10 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="font-bold leading-tight text-[var(--tf-texto)]">TimeFlow</p>
+              <p className="tf-display text-[15px] font-bold leading-tight text-[var(--tf-texto)]">TimeFlow</p>
               <p className="text-[11px] text-[var(--tf-texto-tenue)]">Jornada · Actividades</p>
             </div>
             <button
@@ -364,25 +372,37 @@ export default function Marco({
 
           {seccionesVisibles.map((s) => {
             const Icono = s.icono;
+            const esActivo = activo === s.href;
             return (
               <Link
                 key={s.href}
                 href={s.href}
                 style={
-                  activo === s.href
-                    ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
+                  esActivo
+                    ? {
+                        background: `linear-gradient(90deg, ${colorConAlfa(colorPrimario, 0.16)}, ${colorConAlfa(colorPrimario, 0.03)})`,
+                        borderColor: colorConAlfa(colorPrimario, 0.28),
+                        color: 'var(--tf-texto)',
+                      }
                     : undefined
                 }
-                className={`group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 ${
-                  activo === s.href
+                className={`group relative flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-all duration-200 ${
+                  esActivo
                     ? 'font-semibold'
-                    : 'text-[var(--tf-texto-tenue)] hover:translate-x-0.5 hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+                    : 'border-transparent text-[var(--tf-texto-tenue)] hover:translate-x-0.5 hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
                 }`}
               >
+                {esActivo && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-2 left-0 top-2 w-[3px] rounded-full"
+                    style={{ backgroundColor: colorPrimario, boxShadow: `0 0 10px ${colorPrimario}` }}
+                  />
+                )}
                 <Icono
                   size={18}
                   className="shrink-0 transition-transform duration-200 group-hover:scale-110"
-                  style={activo === s.href ? { color: colorPrimario } : undefined}
+                  style={esActivo ? { color: colorPrimario } : undefined}
                 />
                 <span className="flex-1">{s.texto}</span>
                 {s.href === '/chat' && <InsigniaChat />}
@@ -425,7 +445,7 @@ export default function Marco({
               onClick={() => setMenuMovil(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-[1px]"
             />
-            <aside className="relative z-10 flex h-full w-72 max-w-[82vw] flex-col gap-1 border-r border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-4 shadow-2xl">
+            <aside className="relative z-10 flex h-full w-72 max-w-[82vw] flex-col gap-1 border-r border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] p-4 shadow-2xl">
               <div className="mb-4 flex items-center gap-3 px-2 py-2">
                 <LogoTimeFlow tamano={36} className="h-9 w-9 shrink-0" />
                 <div className="min-w-0 flex-1">
@@ -502,8 +522,8 @@ export default function Marco({
           </div>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex flex-wrap items-center gap-3 bg-[var(--tf-superficie)] px-4 py-3.5 md:px-6 md:py-4">
+        <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+          <header className="flex flex-wrap items-center gap-3 border-b border-[var(--tf-borde)] bg-[var(--tf-sidebar)] px-4 py-3.5 backdrop-blur-xl md:px-6 md:py-4">
             <button
               type="button"
               onClick={() => setMenuMovil(true)}
@@ -529,7 +549,7 @@ export default function Marco({
               <h1 className="sr-only">{titulo}</h1>
             ) : (
               <div className="min-w-0">
-                <h1 className="truncate font-bold text-[var(--tf-texto)]">{titulo}</h1>
+                <h1 className="tf-display truncate text-lg font-bold text-[var(--tf-texto)]">{titulo}</h1>
                 {subtitulo && <p className="text-xs text-[var(--tf-texto-tenue)]">{subtitulo}</p>}
               </div>
             )}

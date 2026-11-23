@@ -5,10 +5,12 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { ChevronDown, Download } from 'lucide-react';
 import Marco from '@/components/Marco';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
 import CartaGantt from '@/components/reportes/CartaGantt';
@@ -69,7 +71,25 @@ function ReportesContenido() {
 
   const [dias, setDias] = useState(30);
   const [vista, setVista] = useState<Vista>('registro');
+  const [menuExportar, setMenuExportar] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const [organizaciones, setOrganizaciones] = useState<OrganizacionItem[]>([]);
+
+  useEffect(() => {
+    if (!menuExportar) return;
+    const alClic = (e: MouseEvent) => {
+      if (!exportRef.current?.contains(e.target as Node)) setMenuExportar(false);
+    };
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuExportar(false);
+    };
+    document.addEventListener('mousedown', alClic);
+    window.addEventListener('keydown', alTeclear);
+    return () => {
+      document.removeEventListener('mousedown', alClic);
+      window.removeEventListener('keydown', alTeclear);
+    };
+  }, [menuExportar]);
   const [orgSeleccionada, setOrgSeleccionada] = useState<string>(
     searchParams.get('organizacionId') || ''
   );
@@ -184,7 +204,7 @@ function ReportesContenido() {
             aria-label="Rango de días"
             value={dias}
             onChange={(e) => setDias(Number(e.target.value))}
-            className="rounded-xl border border-white/15 bg-slate-900 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-400"
+            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 py-2 text-xs font-medium text-[var(--tf-texto)] outline-none focus:border-sky-400"
           >
             {RANGOS.map((r) => (
               <option key={r.dias} value={r.dias}>
@@ -193,28 +213,47 @@ function ReportesContenido() {
             ))}
           </select>
 
-          {/*
-            Se ocultan sin el permiso porque la descarga es un <a> normal: un
-            403 se veria como JSON crudo en una pestana nueva, sin aviso. El
-            control real lo hace el guard del backend, esto solo evita
-            ofrecer un boton que va a fallar.
-          */}
           {puedeExportar && (
-            <div className="flex items-center gap-1 rounded-xl border border-white/15 bg-slate-900 px-2 py-1">
-              <span className="px-1 text-xs text-slate-400">Exportar</span>
-              {FORMATOS.map((f) => (
-                <a
-                  key={f.clave}
-                  // Navegacion GET de primer nivel: la cookie de sesion viaja
-                  // sola (SameSite=Lax), igual que la descarga de evidencias.
-                  href={`${URL_API}/reportes/periodo/exportar?${rango}&formato=${f.clave}`}
-                  download
-                  title={f.titulo}
-                  className="rounded-lg px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-sky-300"
+            <div ref={exportRef} className="relative">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={menuExportar}
+                onClick={() => setMenuExportar((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 py-2 text-xs font-medium text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
+              >
+                <Download size={13} aria-hidden />
+                <span>Exportar</span>
+                <ChevronDown
+                  size={13}
+                  aria-hidden
+                  className={`transition-transform duration-200 ${menuExportar ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {menuExportar && (
+                <div
+                  role="menu"
+                  aria-label="Formatos de exportación"
+                  className="absolute right-0 z-30 mt-2 w-44 rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1.5 shadow-2xl"
                 >
-                  {f.texto}
-                </a>
-              ))}
+                  {FORMATOS.map((f) => (
+                    <a
+                      key={f.clave}
+                      role="menuitem"
+                      href={`${URL_API}/reportes/periodo/exportar?${rango}&formato=${f.clave}`}
+                      download
+                      title={f.titulo}
+                      onClick={() => setMenuExportar(false)}
+                      className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
+                    >
+                      <span>Descargar {f.texto}</span>
+                      <span className="font-mono text-[10px] uppercase text-[var(--tf-texto-suave)]">
+                        .{f.clave}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -249,20 +288,37 @@ function ReportesContenido() {
         </div>
       )}
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Indicador etiqueta="Horas del periodo" valor={cargando ? null : duracion(totalSeg)} />
+      <div className="tf-stagger mb-5 grid gap-3 sm:grid-cols-3">
+        <Indicador
+          etiqueta="Horas del período"
+          valor={cargando ? null : duracion(totalSeg)}
+          subtexto={
+            cargando
+              ? undefined
+              : trabajadores.length > 0
+                ? `${duracion(Math.round(totalSeg / trabajadores.length))} prom. por persona`
+                : 'Sin registros aún'
+          }
+          conSparkline
+        />
         <Indicador
           etiqueta="Trabajadores con registro"
           valor={cargando ? null : String(trabajadores.length)}
+          subtexto={`Últimos ${dias} días`}
         />
         <Indicador
           etiqueta="Actividades trabajadas"
           valor={cargando ? null : String(actividades.length)}
+          subtexto="Nodos con sesiones cerradas"
         />
       </div>
 
-      {/* Dos ventanas: el registro por trabajador y el grafico por actividad. */}
-      <div role="tablist" aria-label="Vista del reporte" className="mb-4 flex gap-1 border-b border-white/10">
+      {/* Pestañas segmentadas limpias */}
+      <div
+        role="tablist"
+        aria-label="Vista del reporte"
+        className="mb-4 inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-1"
+      >
         {VISTAS.map((v) => (
           <button
             key={v.clave}
@@ -270,10 +326,10 @@ function ReportesContenido() {
             role="tab"
             aria-selected={vista === v.clave}
             onClick={() => setVista(v.clave)}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition ${
               vista === v.clave
-                ? 'border-sky-400 text-white'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'bg-[var(--color-primario)] text-white shadow-sm'
+                : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
             }`}
           >
             {v.texto}
@@ -282,13 +338,13 @@ function ReportesContenido() {
       </div>
 
       {vista === 'registro' && (
-      <section className="mb-4 rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
+      <section className="tf-card-pro tf-enter mb-4 rounded-2xl p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-bold text-white">
+          <h2 className="tf-display font-bold text-[var(--tf-texto)]">
             {orgActual ? `Horas por trabajador — ${orgActual.nombre}` : 'Horas por trabajador'}
           </h2>
           {esSuperAdmin && orgActual && (
-            <span className="rounded-md bg-sky-500/15 px-2.5 py-0.5 text-xs font-medium text-sky-300 border border-sky-500/30">
+            <span className="rounded-md border border-sky-500/30 bg-sky-500/15 px-2.5 py-0.5 text-xs font-medium text-sky-400">
               Inquilino: {orgActual.nombre}
             </span>
           )}
@@ -297,51 +353,68 @@ function ReportesContenido() {
         {cargando ? (
           <Esqueleto filas={3} />
         ) : trabajadores.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">
+          <p className="py-8 text-center text-sm text-[var(--tf-texto-suave)]">
             Sin registros en el periodo seleccionado {orgActual ? `para ${orgActual.nombre}` : ''}.
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[34rem] text-sm">
+            <table className="w-full min-w-[38rem] text-sm">
               <thead>
-                <tr className="border-b border-white/10 text-left text-xs uppercase tracking-wide text-slate-400">
-                  <th className="pb-2 font-medium">Trabajador</th>
+                <tr className="border-b border-[var(--tf-borde)] text-left text-xs uppercase tracking-wide text-[var(--tf-texto-suave)]">
+                  <th className="pb-2.5 font-medium">Trabajador</th>
                   {esSuperAdmin && !orgSeleccionada && (
-                    <th className="pb-2 font-medium">Organización</th>
+                    <th className="pb-2.5 font-medium">Organización</th>
                   )}
-                  <th className="pb-2 text-right font-medium">Horas</th>
-                  <th className="pb-2 text-right font-medium" title="Días con horas cronometradas">Días</th>
-                  <th className="pb-2 text-right font-medium" title="Veces que marcó el inicio del día en la app">
+                  <th className="pb-2.5 text-right font-medium">Horas</th>
+                  <th className="pb-2.5 pl-4 font-medium">Participación</th>
+                  <th className="pb-2.5 text-right font-medium" title="Días con horas cronometradas">Días</th>
+                  <th className="pb-2.5 text-right font-medium" title="Veces que marcó el inicio del día en la app">
                     Marcaje
                   </th>
-                  <th className="pb-2 text-right font-medium" title="Proyectos distintos en que trabajó">Nodos</th>
-                  <th className="pb-2 text-right font-medium" title="Tareas distintas en que trabajó">Tareas</th>
-                  <th className="pb-2 text-right font-medium">Promedio diario</th>
+                  <th className="pb-2.5 text-right font-medium" title="Proyectos distintos en que trabajó">Nodos</th>
+                  <th className="pb-2.5 text-right font-medium" title="Tareas distintas en que trabajó">Tareas</th>
+                  <th className="pb-2.5 text-right font-medium">Promedio diario</th>
                 </tr>
               </thead>
               <tbody>
                 {trabajadores.map((t) => {
                   const promedioSeg = Math.round(t.segundos / Math.max(1, t.dias));
                   const promedioAnomalo = promedioSeg > 12 * 3600;
+                  const pct = totalSeg > 0 ? Math.round((t.segundos / totalSeg) * 100) : 0;
                   return (
-                    <tr key={t.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02]">
-                      <td className="py-2.5 font-medium text-white">{t.trabajador}</td>
+                    <tr key={t.id} className="border-b border-[var(--tf-borde)] last:border-0 transition hover:bg-[var(--tf-hover)]">
+                      <td className="py-3 font-medium text-[var(--tf-texto)]">{t.trabajador}</td>
                       {esSuperAdmin && !orgSeleccionada && (
-                        <td className="py-2.5 text-xs font-semibold text-sky-300">
+                        <td className="py-3 text-xs font-semibold text-sky-400">
                           {t.organizacionNombre || 'Sin asignar'}
                         </td>
                       )}
-                      <td className="py-2.5 text-right font-mono text-slate-200">{duracion(t.segundos)}</td>
-                      <td className="py-2.5 text-right text-slate-400">{t.dias}</td>
-                      <td className="py-2.5 text-right text-slate-400">{t.marcajes}</td>
-                      <td className="py-2.5 text-right text-slate-400">{t.nodos}</td>
-                      <td className="py-2.5 text-right text-slate-400">{t.actividades}</td>
-                      <td className="py-2.5 text-right font-mono text-slate-400">
+                      <td className="py-3 text-right font-mono font-semibold text-[var(--tf-texto)]">
+                        {duracion(t.segundos)}
+                      </td>
+                      <td className="w-36 py-3 pl-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--tf-borde)]">
+                            <div
+                              className="tf-bar-grow h-full rounded-full"
+                              style={{ width: `${pct}%`, backgroundColor: 'var(--color-primario, #38bdf8)' }}
+                            />
+                          </div>
+                          <span className="w-8 text-right font-mono text-[11px] text-[var(--tf-texto-tenue)]">
+                            {pct}%
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-3 text-right font-mono text-[var(--tf-texto-tenue)]">{t.dias}</td>
+                      <td className="py-3 text-right font-mono text-[var(--tf-texto-tenue)]">{t.marcajes}</td>
+                      <td className="py-3 text-right font-mono text-[var(--tf-texto-tenue)]">{t.nodos}</td>
+                      <td className="py-3 text-right font-mono text-[var(--tf-texto-tenue)]">{t.actividades}</td>
+                      <td className="py-3 text-right font-mono text-[var(--tf-texto-tenue)]">
                         <span>{duracion(promedioSeg)}</span>
                         {promedioAnomalo && (
                           <span
                             title="Promedio diario inusualmente alto (posible sesión sin cerrar)"
-                            className="ml-2 inline-block rounded bg-amber-400/20 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-amber-300"
+                            className="ml-2 inline-block rounded bg-amber-400/20 px-1.5 py-0.5 font-sans text-[10px] font-semibold text-amber-400"
                           >
                             ▲ Revisar
                           </span>
@@ -358,14 +431,14 @@ function ReportesContenido() {
       )}
 
       {vista === 'actividades' && (
-      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
-        <h2 className="mb-4 font-bold text-white">
+      <section className="tf-card-pro tf-enter rounded-2xl p-5">
+        <h2 className="tf-display mb-4 font-bold text-[var(--tf-texto)]">
           {orgActual ? `Horas por actividad — ${orgActual.nombre}` : 'Horas por actividad'}
         </h2>
         {cargando ? (
           <Esqueleto filas={5} />
         ) : grafico.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">
+          <p className="py-8 text-center text-sm text-[var(--tf-texto-suave)]">
             Sin registros en el periodo seleccionado {orgActual ? `para ${orgActual.nombre}` : ''}.
           </p>
         ) : (
@@ -375,12 +448,12 @@ function ReportesContenido() {
       )}
 
       {vista === 'gantt' && (
-      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
+      <section className="tf-card-pro tf-enter rounded-2xl p-5">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-bold text-white">
+          <h2 className="tf-display font-bold text-[var(--tf-texto)]">
             {orgActual ? `Carta Gantt por día — ${orgActual.nombre}` : 'Carta Gantt por día'}
           </h2>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-[var(--tf-texto-tenue)]">
             Haz clic en una tarea para ver fechas, responsable y enlace directo al mapa.
           </span>
         </div>
@@ -395,14 +468,39 @@ function ReportesContenido() {
   );
 }
 
-function Indicador({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
+function Indicador({
+  etiqueta,
+  valor,
+  subtexto,
+  conSparkline = false,
+}: {
+  etiqueta: string;
+  valor: string | null;
+  subtexto?: string;
+  conSparkline?: boolean;
+}) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-900 p-4 backdrop-blur">
-      <p className="text-xs text-slate-400">{etiqueta}</p>
-      {valor === null ? (
-        <div className="mt-2 h-6 w-20 animate-pulse rounded-md bg-white/10" />
-      ) : (
-        <p className="mt-1 text-xl font-bold text-white">{valor}</p>
+    <div className="tf-card-pro flex items-start justify-between gap-3 rounded-2xl p-5">
+      <div>
+        <p className="text-xs font-medium text-[var(--tf-texto-tenue)]">{etiqueta}</p>
+        {valor === null ? (
+          <div className="mt-2 h-7 w-24 animate-pulse rounded-md bg-[var(--tf-hover)]" />
+        ) : (
+          <p className="tf-display mt-1.5 text-2xl font-bold text-[var(--tf-texto)] sm:text-3xl">
+            {valor}
+          </p>
+        )}
+        {subtexto && <p className="mt-1.5 text-[11px] text-[var(--tf-texto-suave)]">{subtexto}</p>}
+      </div>
+      {conSparkline && (
+        <svg width="64" height="32" viewBox="0 0 64 32" fill="none" aria-hidden className="mt-1 shrink-0">
+          <path
+            d="M2 25 C15 23, 20 11, 30 15 C40 19, 46 7, 62 4"
+            stroke="var(--color-primario, #38bdf8)"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          />
+        </svg>
       )}
     </div>
   );

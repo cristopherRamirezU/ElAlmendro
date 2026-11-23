@@ -6,11 +6,15 @@ import Marco from '@/components/Marco';
 import EquipoProyecto from '@/components/panel/EquipoProyecto';
 import Modal from '@/components/ui/Modal';
 import ConstelacionProyectos from '@/components/panel/ConstelacionProyectos';
+import VistaResumenProyectos from '@/components/panel/VistaResumenProyectos';
 import BandaAvance from '@/components/panel/BandaAvance';
 import { api, ErrorApi, ProgresoPersonalItem, ProyectoItem, Sesion } from '@/lib/api';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { useSesion } from '@/lib/sesion';
 import { useColorPrimario } from '@/lib/color';
+
+type VistaPanel = 'constelacion' | 'resumen';
+const CLAVE_VISTA_PANEL = 'tf_panel_vista';
 
 function formatearHoras(segundos: number): string {
   if (!segundos || segundos <= 0) return '0h 0m';
@@ -27,6 +31,26 @@ export default function Panel() {
   const esTrabajador = usuario?.rol === 'TRABAJADOR';
   const esSupervisor = usuario?.rol === 'SUPERVISOR';
   const esAdmin = usuario?.rol === 'ADMINISTRADOR' || usuario?.rol === 'SUPER_ADMIN';
+  const colorPrimario = useColorPrimario();
+
+  const [vistaPanel, setVistaPanel] = useState<VistaPanel>('constelacion');
+  useEffect(() => {
+    try {
+      const guardada = window.localStorage.getItem(CLAVE_VISTA_PANEL);
+      if (guardada === 'constelacion' || guardada === 'resumen') setVistaPanel(guardada);
+    } catch {
+      /* almacenamiento bloqueado */
+    }
+  }, []);
+
+  function cambiarVistaPanel(v: VistaPanel) {
+    setVistaPanel(v);
+    try {
+      window.localStorage.setItem(CLAVE_VISTA_PANEL, v);
+    } catch {
+      /* ignorar si falla storage */
+    }
+  }
 
   const [seleccionado, setSeleccionado] = useState<string | null>(null);
   // El detalle del proyecto se abre en una ventana emergente.
@@ -95,88 +119,128 @@ export default function Panel() {
     ? 'Panel de Supervisión'
     : 'Panel de Proyectos';
 
+  const selectorVista = (
+    <div
+      role="group"
+      aria-label="Modo de visualización de proyectos"
+      className="inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
+    >
+      {(
+        [
+          { id: 'constelacion', texto: 'Constelación' },
+          { id: 'resumen', texto: 'Resumen' },
+        ] as const
+      ).map((v) => {
+        const activo = vistaPanel === v.id;
+        return (
+          <button
+            key={v.id}
+            type="button"
+            aria-pressed={activo}
+            onClick={() => cambiarVistaPanel(v.id)}
+            style={activo ? { backgroundColor: colorPrimario, color: '#ffffff' } : undefined}
+            className={`rounded-lg px-3 py-1.5 font-medium transition ${
+              activo
+                ? 'shadow-sm'
+                : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
+            }`}
+          >
+            {v.texto}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     // En el Panel solo queda el mapa: el titulo no se muestra en la cabecera.
     <Marco activo="/panel" titulo={tituloVista} tituloOculto>
       {aviso && (
         <p
           role="alert"
-          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-300 shadow-sm"
+          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-400 shadow-sm"
         >
           {aviso}
         </p>
       )}
 
-      {/* -------------------- Banner de sesión activa para trabajador -------------------- */}
+      {/* -------------------- Isla Dinámica de sesión activa para trabajador -------------------- */}
       {esTrabajador && sesionActiva && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 shadow-sm backdrop-blur">
-          <div
-            onClick={() => {
-              if (sesionActiva.actividad.proyectoId) {
-                const nombre = sesionActiva.actividad.proyecto?.nombre || 'Proyecto';
-                router.push(
-                  `/nodos?proyectoId=${sesionActiva.actividad.proyectoId}&nombre=${encodeURIComponent(
-                    nombre,
-                  )}&tarea=${sesionActiva.actividad.id}`,
-                );
-              }
-            }}
-            className="flex cursor-pointer items-center gap-3 group"
-          >
-            <span className="relative flex h-3 w-3">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
-            </span>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-                Sesión de trabajo en marcha {sesionActiva.actividad.proyecto?.nombre ? `· ${sesionActiva.actividad.proyecto.nombre}` : ''}
-              </p>
-              <p className="text-sm font-bold text-white group-hover:underline">{sesionActiva.actividad.titulo}</p>
+        <div className="tf-glow-ring mb-6">
+          <div className="tf-glow-inner flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <div
+              onClick={() => {
+                if (sesionActiva.actividad.proyectoId) {
+                  const nombre = sesionActiva.actividad.proyecto?.nombre || 'Proyecto';
+                  router.push(
+                    `/nodos?proyectoId=${sesionActiva.actividad.proyectoId}&nombre=${encodeURIComponent(
+                      nombre,
+                    )}&tarea=${sesionActiva.actividad.id}`,
+                  );
+                }
+              }}
+              className="group flex cursor-pointer items-center gap-3"
+            >
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+              </span>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-400">
+                  Sesión de trabajo en marcha{' '}
+                  {sesionActiva.actividad.proyecto?.nombre
+                    ? `· ${sesionActiva.actividad.proyecto.nombre}`
+                    : ''}
+                </p>
+                <p className="tf-display text-sm font-bold text-[var(--tf-texto)] group-hover:underline">
+                  {sesionActiva.actividad.titulo}
+                </p>
+              </div>
             </div>
+            <button
+              onClick={() => {
+                if (sesionActiva.actividad.proyectoId) {
+                  const nombre = sesionActiva.actividad.proyecto?.nombre || 'Proyecto';
+                  router.push(
+                    `/nodos?proyectoId=${sesionActiva.actividad.proyectoId}&nombre=${encodeURIComponent(
+                      nombre,
+                    )}&tarea=${sesionActiva.actividad.id}`,
+                  );
+                } else {
+                  router.push('/nodos');
+                }
+              }}
+              className="tf-shimmer-cta rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-emerald-500/20 transition hover:bg-emerald-400"
+            >
+              Ir al cronómetro y tarea →
+            </button>
           </div>
-          <button
-            onClick={() => {
-              if (sesionActiva.actividad.proyectoId) {
-                const nombre = sesionActiva.actividad.proyecto?.nombre || 'Proyecto';
-                router.push(
-                  `/nodos?proyectoId=${sesionActiva.actividad.proyectoId}&nombre=${encodeURIComponent(
-                    nombre,
-                  )}&tarea=${sesionActiva.actividad.id}`,
-                );
-              } else {
-                router.push('/nodos');
-              }
-            }}
-            className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-emerald-500/20 transition hover:bg-emerald-400"
-          >
-            Ir al cronómetro y tarea →
-          </button>
         </div>
       )}
 
       {/* -------------------- Tarjetas de rendimiento del Trabajador -------------------- */}
       {esTrabajador && (
         <div className="mb-8 space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--tf-texto-tenue)]">
               Métricas de Desempeño Personal
             </h2>
             {progreso && (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-medium text-emerald-300">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 font-medium text-emerald-400">
                   {progreso.tareasCompletadas} completadas
                 </span>
-                <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 font-medium text-sky-300">
+                <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 font-medium text-sky-400">
                   {progreso.tareasEnProgreso} en progreso
                 </span>
-                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 font-medium text-amber-300">
+                <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 font-medium text-amber-400">
                   {progreso.tareasPendientes} pendientes
                 </span>
               </div>
             )}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="tf-stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TarjetaMetrica
               etiqueta="Horas Semanales"
               valor={cargandoProgreso ? '…' : formatearHoras(progreso?.segundosSemana ?? 0)}
@@ -205,19 +269,29 @@ export default function Panel() {
         </div>
       )}
 
-      {/* -------------------- Proyectos: solo el mapa -------------------- */}
+      {/* -------------------- Proyectos: Constelación o Resumen -------------------- */}
       <section aria-label={esTrabajador ? 'Mis proyectos' : 'Proyectos'}>
         {cargando ? (
           <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
             Cargando proyectos…
           </p>
+        ) : vistaPanel === 'resumen' ? (
+          <VistaResumenProyectos
+            proyectos={proyectos}
+            esTrabajador={esTrabajador}
+            selectorVista={selectorVista}
+            onElegir={(id) => {
+              setSeleccionado(id);
+              setDetalleAbierto(true);
+            }}
+            onIrAlMapa={irATareas}
+            onCrear={() => setModalAbierto(true)}
+          />
         ) : (
-          // Los proyectos como constelacion alrededor de la esfera de tareas.
-          // Cualquier rol puede crear proyectos, asi que la esfera siempre
-          // ofrece "Nuevo proyecto".
           <ConstelacionProyectos
             proyectos={proyectos}
             esTrabajador={esTrabajador}
+            selectorVista={selectorVista}
             onElegir={(id) => {
               setSeleccionado(id);
               setDetalleAbierto(true);
@@ -284,14 +358,14 @@ function TarjetaMetrica({
   icono: string;
 }) {
   return (
-    <div className="flex flex-col justify-between rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-sm backdrop-blur">
+    <div className="tf-card-pro flex flex-col justify-between rounded-2xl p-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-400">{etiqueta}</span>
+        <span className="text-xs text-[var(--tf-texto-tenue)]">{etiqueta}</span>
         <span className="text-base">{icono}</span>
       </div>
       <div className="mt-2">
-        <p className="text-2xl font-bold tracking-tight text-white">{valor}</p>
-        <p className="mt-0.5 text-[11px] text-slate-500">{subtexto}</p>
+        <p className="tf-display text-2xl font-bold text-[var(--tf-texto)]">{valor}</p>
+        <p className="mt-0.5 text-[11px] text-[var(--tf-texto-suave)]">{subtexto}</p>
       </div>
     </div>
   );
@@ -403,23 +477,23 @@ function ModalCrearProyecto({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-          <h2 className="text-lg font-bold text-white">Crear proyecto</h2>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-200">
+      <div className="tf-enter w-full max-w-md rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
+          <h2 className="tf-display text-lg font-bold text-[var(--tf-texto)]">Crear proyecto</h2>
+          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">
             ✕
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
             {error}
           </div>
         )}
 
         <form onSubmit={enviar} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">Nombre</label>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre</label>
             <input
               type="text"
               required
@@ -427,29 +501,29 @@ function ModalCrearProyecto({
               placeholder="Ej: Sitio web corporativo"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-300">
-              Descripción <span className="font-normal text-slate-500">(opcional)</span>
+            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+              Descripción <span className="font-normal text-[var(--tf-texto-suave)]">(opcional)</span>
             </label>
             <textarea
               rows={3}
               placeholder="De qué trata este proyecto"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-sky-400"
+              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
             />
           </div>
 
-          <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
+          <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
             <button
               type="button"
               onClick={onCerrar}
               disabled={enviando}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]"
             >
               Cancelar
             </button>
@@ -457,7 +531,7 @@ function ModalCrearProyecto({
               type="submit"
               disabled={enviando}
               style={{ backgroundColor: colorPrimario }}
-              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+              className="tf-shimmer-cta rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
             >
               {enviando ? 'Creando…' : 'Crear proyecto'}
             </button>

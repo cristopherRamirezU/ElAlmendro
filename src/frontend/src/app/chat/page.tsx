@@ -19,7 +19,7 @@ export default function Pagina() {
         </main>
       }
     >
-      <Marco activo="/chat" titulo="Chat del equipo" subtitulo="Conversa en vivo con tus companeros">
+      <Marco activo="/chat" titulo="Chat del equipo" subtitulo="Conversa en vivo con tus compañeros">
         <Chat />
       </Marco>
     </Suspense>
@@ -74,8 +74,8 @@ function Chat() {
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-sm md:grid-cols-[19rem_1fr]">
-        <div className={`min-h-0 border-white/10 md:border-r ${verListaMovil ? 'flex' : 'hidden md:flex'} flex-col`}>
+      <div className="tf-card-pro tf-enter grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-2xl md:grid-cols-[19rem_1fr]">
+        <div className={`min-h-0 border-[var(--tf-borde)] md:border-r ${verListaMovil ? 'flex' : 'hidden md:flex'} flex-col`}>
           <ListaContactos
             contactos={contactos}
             ultimoGeneral={ultimoGeneral}
