@@ -19,6 +19,7 @@ RAMA="${RAMA_DESPLIEGUE:-main}"
 # Recuerda el ultimo commit que fallo, para no reconstruirlo en bucle cada
 # minuto: se vuelve a intentar solo cuando alguien sube algo nuevo.
 ESTADO="$HOME/.timeflow-autodeploy-fallido"
+ULTIMO_OK="$HOME/.timeflow-autodeploy-ok"
 
 instalar() {
   local usuario; usuario="$(id -un)"
@@ -84,24 +85,29 @@ fi
 git fetch --quiet origin "$RAMA"
 LOCAL="$(git rev-parse HEAD)"
 REMOTO="$(git rev-parse "origin/$RAMA")"
+OK_ACTUAL="$(cat "$ULTIMO_OK" 2>/dev/null || true)"
+VERSION_ACTIVA="$(sed -n 's/.*"version":"\([^"]*\)".*/\1/p' src/frontend/public/version.json 2>/dev/null || true)"
 
-if [[ "$LOCAL" == "$REMOTO" ]]; then
+if [[ "$LOCAL" == "$REMOTO" && ( "$OK_ACTUAL" == "$REMOTO" || ( -z "$OK_ACTUAL" && "$VERSION_ACTIVA" == "${REMOTO:0:7}" ) ) ]]; then
   exit 0
 fi
 
-if [[ -f "$ESTADO" && "$(cat "$ESTADO")" == "$REMOTO" ]]; then
+if [[ "${TIMEFLOW_FORZAR_DEPLOY:-0}" != "1" && -f "$ESTADO" && "$(cat "$ESTADO")" == "$REMOTO" ]]; then
   echo "El commit ${REMOTO:0:7} ya fallo antes; esperando un commit nuevo."
   exit 0
 fi
 
-echo "Commit nuevo en origin/$RAMA: ${LOCAL:0:7} -> ${REMOTO:0:7}"
-git log --oneline "$LOCAL..$REMOTO" | sed 's/^/  /'
+echo "Desplegando origin/$RAMA: ${LOCAL:0:7} -> ${REMOTO:0:7}"
+if [[ "$LOCAL" != "$REMOTO" ]]; then
+  git log --oneline "$LOCAL..$REMOTO" | sed 's/^/  /'
+fi
 
 # reset --hard y no merge: el servidor no produce commits propios, solo
 # reproduce lo que hay en GitHub. El .env no esta versionado, asi que no se toca.
 git reset --hard --quiet "origin/$RAMA"
 
 if TIMEFLOW_DEPLOY_LOCKED=1 bash deploy/update.sh 9>&-; then
+  echo "$REMOTO" > "$ULTIMO_OK"
   rm -f "$ESTADO"
   echo "Despliegue de ${REMOTO:0:7} terminado."
 else
