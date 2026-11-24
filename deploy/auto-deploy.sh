@@ -101,7 +101,7 @@ git log --oneline "$LOCAL..$REMOTO" | sed 's/^/  /'
 # reproduce lo que hay en GitHub. El .env no esta versionado, asi que no se toca.
 git reset --hard --quiet "origin/$RAMA"
 
-if bash deploy/update.sh 9>&-; then
+if TIMEFLOW_DEPLOY_LOCKED=1 bash deploy/update.sh 9>&-; then
   rm -f "$ESTADO"
   echo "Despliegue de ${REMOTO:0:7} terminado."
 else
