@@ -44,8 +44,9 @@ jobs:
       - name: Desplegar
         if: steps.clave.outputs.hay == 'si'
         run: |
+          FORZAR="${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}"
           ssh -i ~/.ssh/despliegue -o BatchMode=yes ubuntu@148.113.249.196 \
-            "cd /var/www/timeflow && bash deploy/auto-deploy.sh"
+            "cd /var/www/timeflow && TIMEFLOW_FORZAR_DEPLOY=${FORZAR} bash deploy/auto-deploy.sh"
 
       - name: Comprobar salud
         if: steps.clave.outputs.hay == 'si'
