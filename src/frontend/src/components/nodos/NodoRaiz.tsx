@@ -5,7 +5,8 @@ import { useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/re
 import Selector from '@/components/ui/Selector';
 import { ALTO_RAIZ, ANCHO_RAIZ, type Orientacion } from '@/lib/mapaMental';
 import { api, PersonaRef } from '@/lib/api';
-import { iniciales } from '@/lib/formato';
+import { colorAvatarDe, etiquetaRol, iniciales } from '@/lib/formato';
+import type { ContextoEquipoUsuario } from '@/lib/tipos';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
@@ -27,6 +28,7 @@ export interface DatosNodoRaiz {
   /** Se esta arrastrando el extremo de una linea: sus bordes lo reciben. */
   recibiendoExtremo?: boolean;
   esMapaClaro?: boolean;
+  contextoEquipo?: Record<string, ContextoEquipoUsuario>;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   /**
@@ -356,11 +358,29 @@ export default function NodoRaiz({ id, data }: NodeProps) {
               valor={responsableId}
               onChange={setResponsableId}
               className="mb-2 w-full"
-              opciones={(personas ?? []).map((p) => ({
-                valor: p.id,
-                etiqueta: p.nombre,
-                inicialesAvatar: iniciales(p.nombre),
-              }))}
+              opciones={(personas ?? []).map((p) => {
+                const ctx = d.contextoEquipo?.[p.id];
+                const rolTexto = ctx?.rol ? etiquetaRol(ctx.rol) : undefined;
+                const cargaTexto = ctx
+                  ? ctx.activas > 0
+                    ? `${ctx.activas} en curso`
+                    : ctx.total > 0
+                      ? `${ctx.total} asignada(s)`
+                      : 'Disponible'
+                  : undefined;
+                return {
+                  valor: p.id,
+                  etiqueta: p.nombre,
+                  inicialesAvatar: iniciales(p.nombre),
+                  colorAvatar: colorAvatarDe(p.id),
+                  subtitulo: [rolTexto, cargaTexto].filter(Boolean).join(' · ') || undefined,
+                  badge: ctx
+                    ? ctx.activas > 0
+                      ? `${ctx.activas} activas`
+                      : 'Libre'
+                    : undefined,
+                };
+              })}
             />
             {aviso && (
               <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-500">

@@ -13,6 +13,11 @@ import {
 import Marco from '@/components/Marco';
 import Selector, { type OpcionSelector } from '@/components/ui/Selector';
 import SelectorZona from '@/components/ui/SelectorZona';
+import Modal from '@/components/ui/Modal';
+import ModalConfirmacion from '@/components/ui/ModalConfirmacion';
+import { EsqueletoTabla } from '@/components/ui/Esqueleto';
+import TooltipAyuda from '@/components/ui/TooltipAyuda';
+import { useToast } from '@/components/ui/Toast';
 import { api, ErrorApi, RolCatalogoItem, UsuarioItem } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
 import { useSesion } from '@/lib/sesion';
@@ -55,6 +60,12 @@ function ContenidoUsuarios() {
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
   const [usuarioEditando, setUsuarioEditando] = useState<UsuarioItem | null>(null);
   const [menuAbiertoId, setMenuAbiertoId] = useState<string | null>(null);
+  const [usuarioPorConfirmar, setUsuarioPorConfirmar] = useState<{
+    usuario: UsuarioItem;
+    accion: 'toggle' | 'eliminar';
+  } | null>(null);
+  const [procesandoConfirmacion, setProcesandoConfirmacion] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!menuAbiertoId) return;
@@ -105,17 +116,17 @@ function ContenidoUsuarios() {
   // Si el usuario no tiene permisos para ver este módulo
   if (!puedeVer) {
     return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900 p-8 text-center shadow-sm backdrop-blur">
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-rose-400 font-bold text-lg">
+      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-[var(--tf-superficie)] p-8 text-center shadow-sm backdrop-blur">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-lg font-bold text-[var(--tf-acento-rojo)]">
           ✕
         </div>
-        <h2 className="text-lg font-bold text-white">Acceso Restringido</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <h2 className="text-lg font-bold text-[var(--tf-texto)]">Acceso Restringido</h2>
+        <p className="mt-1 text-sm text-[var(--tf-texto-tenue)]">
           No posees los permisos necesarios para administrar usuarios ni roles del sistema.
         </p>
         <button
           onClick={() => router.push('/panel')}
-          className="mt-5 rounded-xl bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-600"
+          className="mt-5 rounded-xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] px-5 py-2.5 text-sm font-semibold text-[var(--tf-texto)] transition hover:bg-[var(--tf-borde)]"
         >
           Volver a mis actividades
         </button>
@@ -149,48 +160,51 @@ function ContenidoUsuarios() {
     activos: usuarios.filter((u) => u.activo).length,
   };
 
-  async function handleToggleActivo(u: UsuarioItem) {
-    if (!puedeGestionar) return;
-    const accionTexto = u.activo ? 'desactivar' : 'reactivar';
-    const confirmacion = window.confirm(
-      `¿Estás seguro de que deseas ${accionTexto} a ${u.nombreCompleto}?`,
-    );
-    if (!confirmacion) return;
-
+  async function confirmarAccionUsuario() {
+    if (!usuarioPorConfirmar) return;
+    const { usuario: u, accion } = usuarioPorConfirmar;
+    setProcesandoConfirmacion(true);
     try {
-      await api.patch(`/usuarios/${u.id}`, { activo: !u.activo });
-      setMensaje({
-        tipo: 'exito',
-        texto: `Usuario ${u.nombreCompleto} ${!u.activo ? 'reactivado' : 'desactivado'} exitosamente.`,
-      });
-      await cargarDatos();
+      if (accion === 'toggle') {
+        const nuevoEstado = !u.activo;
+        await api.patch(`/usuarios/${u.id}`, { activo: nuevoEstado });
+        setUsuarioPorConfirmar(null);
+        toast({
+          tipo: 'exito',
+          titulo: nuevoEstado ? 'Usuario reactivado' : 'Usuario desactivado',
+          descripcion: `${u.nombreCompleto} ahora está ${nuevoEstado ? 'activo' : 'inactivo'}.`,
+          duracionMs: 7000,
+          accion: {
+            etiqueta: 'Deshacer',
+            alHacer: async () => {
+              await api.patch(`/usuarios/${u.id}`, { activo: u.activo });
+              await cargarDatos();
+            },
+          },
+        });
+        await cargarDatos();
+      } else {
+        const res = await api.delete<{ ok: boolean; mensaje?: string }>(`/usuarios/${u.id}`);
+        setUsuarioPorConfirmar(null);
+        setMensaje({
+          tipo: 'exito',
+          texto: res?.mensaje || `Usuario ${u.nombreCompleto} procesado exitosamente.`,
+        });
+        await cargarDatos();
+      }
     } catch (err) {
       setMensaje({
         tipo: 'error',
-        texto: err instanceof ErrorApi ? err.message : 'No se pudo actualizar el estado del usuario.',
+        texto:
+          err instanceof ErrorApi
+            ? err.message
+            : accion === 'toggle'
+              ? 'No se pudo actualizar el estado del usuario.'
+              : 'No se pudo eliminar al usuario.',
       });
-    }
-  }
-
-  async function handleEliminar(u: UsuarioItem) {
-    if (!esAdmin) return;
-    const confirmacion = window.confirm(
-      `¿Estás seguro de que deseas eliminar al usuario "${u.nombreCompleto}"?\n\nSi posee historial de registros o sesiones, sus accesos serán revocados de forma segura; si no posee registros previos, será eliminado permanentemente.`,
-    );
-    if (!confirmacion) return;
-
-    try {
-      const res = await api.delete<{ ok: boolean; mensaje?: string }>(`/usuarios/${u.id}`);
-      setMensaje({
-        tipo: 'exito',
-        texto: res?.mensaje || `Usuario ${u.nombreCompleto} procesado exitosamente.`,
-      });
-      await cargarDatos();
-    } catch (err) {
-      setMensaje({
-        tipo: 'error',
-        texto: err instanceof ErrorApi ? err.message : 'No se pudo eliminar al usuario.',
-      });
+      setUsuarioPorConfirmar(null);
+    } finally {
+      setProcesandoConfirmacion(false);
     }
   }
 
@@ -201,8 +215,8 @@ function ContenidoUsuarios() {
           role="alert"
           className={`mb-5 flex items-center justify-between rounded-xl border p-4 text-sm ${
             mensaje.tipo === 'exito'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-              : 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-[var(--tf-acento-verde)]'
+              : 'border-rose-500/30 bg-rose-500/10 text-[var(--tf-acento-rojo)]'
           }`}
         >
           <span>{mensaje.texto}</span>
@@ -216,8 +230,8 @@ function ContenidoUsuarios() {
       )}
 
       {sesionActual?.rol === 'SUPERVISOR' && (
-        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-xs text-sky-200">
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-sky-500/20 text-sky-200 font-bold">
+        <div className="mb-5 flex items-center gap-3 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4 text-xs text-[var(--tf-acento-azul)]">
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-sky-500/20 font-bold text-[var(--tf-acento-azul)]">
             i
           </div>
           <div>
@@ -347,9 +361,7 @@ function ContenidoUsuarios() {
         </div>
 
         {cargando ? (
-          <div className="py-16 text-center text-sm text-[var(--tf-texto-suave)]">
-            Cargando nómina de usuarios…
-          </div>
+          <EsqueletoTabla filas={5} columnas={5} />
         ) : usuariosFiltrados.length === 0 ? (
           <div className="py-16 text-center text-sm text-[var(--tf-texto-suave)]">
             No se encontraron usuarios con los criterios de búsqueda especificados.
@@ -457,10 +469,10 @@ function ContenidoUsuarios() {
                                         <button
                                           onClick={() => {
                                             setMenuAbiertoId(null);
-                                            handleToggleActivo(u);
+                                            setUsuarioPorConfirmar({ usuario: u, accion: 'toggle' });
                                           }}
                                           className={`w-full rounded-lg px-3 py-2 font-medium transition hover:bg-[var(--tf-hover)] ${
-                                            u.activo ? 'text-amber-400' : 'text-emerald-400'
+                                            u.activo ? 'text-[var(--tf-acento-ambar)]' : 'text-[var(--tf-acento-verde)]'
                                           }`}
                                         >
                                           {u.activo ? 'Desactivar' : 'Activar'}
@@ -469,9 +481,9 @@ function ContenidoUsuarios() {
                                           <button
                                             onClick={() => {
                                               setMenuAbiertoId(null);
-                                              handleEliminar(u);
+                                              setUsuarioPorConfirmar({ usuario: u, accion: 'eliminar' });
                                             }}
-                                            className="w-full rounded-lg px-3 py-2 font-medium text-rose-400 transition hover:bg-rose-500/10"
+                                            className="w-full rounded-lg px-3 py-2 font-medium text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/10"
                                           >
                                             Eliminar
                                           </button>
@@ -526,6 +538,43 @@ function ContenidoUsuarios() {
           }}
         />
       )}
+
+      <ModalConfirmacion
+        abierto={usuarioPorConfirmar !== null}
+        variante={usuarioPorConfirmar?.accion === 'eliminar' ? 'peligro' : 'advertencia'}
+        titulo={
+          usuarioPorConfirmar?.accion === 'eliminar'
+            ? 'Eliminar usuario'
+            : usuarioPorConfirmar?.usuario.activo
+              ? 'Desactivar usuario'
+              : 'Reactivar usuario'
+        }
+        descripcion={
+          usuarioPorConfirmar?.accion === 'eliminar'
+            ? `¿Seguro que deseas eliminar al usuario «${usuarioPorConfirmar.usuario.nombreCompleto}»?`
+            : usuarioPorConfirmar
+              ? `¿Deseas ${usuarioPorConfirmar.usuario.activo ? 'desactivar' : 'reactivar'} el acceso de «${usuarioPorConfirmar.usuario.nombreCompleto}»?`
+              : ''
+        }
+        detalles={
+          usuarioPorConfirmar?.accion === 'eliminar'
+            ? [
+                'Si posee historial de registros o sesiones, su acceso será revocado de forma segura.',
+                'Si no posee registros previos, será eliminado permanentemente.',
+              ]
+            : undefined
+        }
+        etiquetaConfirmar={
+          usuarioPorConfirmar?.accion === 'eliminar'
+            ? 'Sí, eliminar'
+            : usuarioPorConfirmar?.usuario.activo
+              ? 'Sí, desactivar'
+              : 'Sí, reactivar'
+        }
+        ocupado={procesandoConfirmacion}
+        onConfirmar={confirmarAccionUsuario}
+        onCancelar={() => setUsuarioPorConfirmar(null)}
+      />
     </>
   );
 }
@@ -602,134 +651,127 @@ function ModalCrearUsuario({
   const rolSeleccionado = roles.find((r) => r.codigo === rol);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="tf-modal-entra w-full max-w-lg rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 text-[var(--tf-texto)] shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
-          <h2 className="text-lg font-bold text-[var(--tf-texto)]">Registrar Nuevo Trabajador</h2>
-          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">✕</button>
+    <Modal titulo="Registrar Nuevo Trabajador" ancho="md" bloqueado={enviando} onCerrar={onCerrar}>
+      {error && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre Completo</label>
+          <input
+            type="text"
+            required
+            placeholder="Ej: Marcelo Morales"
+            value={nombreCompleto}
+            onChange={(e) => setNombreCompleto(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
+          />
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
-            {error}
-          </div>
-        )}
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico</label>
+          <input
+            type="email"
+            required
+            placeholder="nombre@timeflow.cl"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre Completo</label>
-            <input
-              type="text"
-              required
-              placeholder="Ej: Marcelo Morales"
-              value={nombreCompleto}
-              onChange={(e) => setNombreCompleto(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
-            />
-          </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Contraseña Inicial</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            maxLength={CONTRASENA_MAXIMO}
+            autoComplete="new-password"
+            placeholder={AYUDA_CONTRASENA}
+            value={contrasena}
+            onChange={(e) => setContrasena(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico</label>
-            <input
-              type="email"
-              required
-              placeholder="nombre@timeflow.cl"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
-            />
-          </div>
+        <div>
+          <label htmlFor="crear-rol" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol en el Sistema (RBAC)</label>
+          <Selector
+            id="crear-rol"
+            ariaLabel="Rol en el Sistema (RBAC)"
+            disabled={rolOperador === 'SUPERVISOR'}
+            valor={rol}
+            onChange={(v) => setRol(v as Rol)}
+            opciones={[
+              {
+                valor: 'TRABAJADOR',
+                etiqueta: 'Trabajador',
+                subtitulo: 'Registro de tiempo y actividades',
+              },
+              ...(rolOperador !== 'SUPERVISOR'
+                ? [
+                    {
+                      valor: 'SUPERVISOR' as Rol,
+                      etiqueta: 'Supervisor',
+                      subtitulo: 'Monitoreo de equipo y reportes',
+                    },
+                    {
+                      valor: 'ADMINISTRADOR' as Rol,
+                      etiqueta: 'Administrador',
+                      subtitulo: 'Control total del sistema',
+                    },
+                  ]
+                : []),
+            ] satisfies OpcionSelector<Rol>[]}
+          />
+          {rolOperador === 'SUPERVISOR' && (
+            <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
+              Como supervisor, gestionas exclusivamente trabajadores a tu cargo.
+            </p>
+          )}
+          {rolSeleccionado && (
+            <p className="mt-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2.5 text-xs text-[var(--tf-texto-tenue)]">
+              {rolSeleccionado.descripcion}
+            </p>
+          )}
+        </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Contraseña Inicial</label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              maxLength={CONTRASENA_MAXIMO}
-              autoComplete="new-password"
-              placeholder={AYUDA_CONTRASENA}
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
-            />
-          </div>
+        <div>
+          <label htmlFor="crear-zona" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+            Zona Horaria
+          </label>
+          <SelectorZona
+            id="crear-zona"
+            value={zonaHoraria}
+            onChange={setZonaHoraria}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-          <div>
-            <label htmlFor="crear-rol" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol en el Sistema (RBAC)</label>
-            <Selector
-              id="crear-rol"
-              ariaLabel="Rol en el Sistema (RBAC)"
-              disabled={rolOperador === 'SUPERVISOR'}
-              valor={rol}
-              onChange={(v) => setRol(v as Rol)}
-              opciones={[
-                {
-                  valor: 'TRABAJADOR',
-                  etiqueta: 'Trabajador',
-                  subtitulo: 'Registro de tiempo y actividades',
-                },
-                ...(rolOperador !== 'SUPERVISOR'
-                  ? [
-                      {
-                        valor: 'SUPERVISOR' as Rol,
-                        etiqueta: 'Supervisor',
-                        subtitulo: 'Monitoreo de equipo y reportes',
-                      },
-                      {
-                        valor: 'ADMINISTRADOR' as Rol,
-                        etiqueta: 'Administrador',
-                        subtitulo: 'Control total del sistema',
-                      },
-                    ]
-                  : []),
-              ] satisfies OpcionSelector<Rol>[]}
-            />
-            {rolOperador === 'SUPERVISOR' && (
-              <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
-                Como supervisor, gestionas exclusivamente trabajadores a tu cargo.
-              </p>
-            )}
-            {rolSeleccionado && (
-              <p className="mt-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2.5 text-xs text-[var(--tf-texto-tenue)]">
-                {rolSeleccionado.descripcion}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="crear-zona" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
-              Zona Horaria
-            </label>
-            <SelectorZona
-              id="crear-zona"
-              value={zonaHoraria}
-              onChange={setZonaHoraria}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={enviando}
-              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={enviando}
-              style={{ backgroundColor: colorPrimario }}
-              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
-            >
-              {enviando ? 'Guardando…' : 'Crear Trabajador'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={enviando}
+            className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={enviando}
+            style={{ backgroundColor: colorPrimario }}
+            className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+          >
+            {enviando ? 'Guardando…' : 'Crear Trabajador'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -806,178 +848,193 @@ function ModalEditarUsuario({
   const rolSeleccionado = roles.find((r) => r.codigo === rol);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="tf-modal-entra max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 text-[var(--tf-texto)] shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
-          <div>
-            <h2 className="text-lg font-bold text-[var(--tf-texto)]">Editar Usuario</h2>
-            <p className="text-xs text-[var(--tf-texto-tenue)]">{usuario.email}</p>
-          </div>
-          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">✕</button>
+    <Modal
+      ancho="md"
+      bloqueado={enviando}
+      onCerrar={onCerrar}
+      titulo={
+        <div>
+          <span className="block text-lg font-bold text-[var(--tf-texto)]">Editar Usuario</span>
+          <span className="block text-xs font-normal text-[var(--tf-texto-tenue)]">{usuario.email}</span>
+        </div>
+      }
+    >
+      {error && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre Completo</label>
+          <input
+            type="text"
+            required
+            value={nombreCompleto}
+            onChange={(e) => setNombreCompleto(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
-            {error}
-          </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico (Ingreso)</label>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="editar-rol" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol Asignado (RBAC)</label>
+          <Selector
+            id="editar-rol"
+            ariaLabel="Rol Asignado (RBAC)"
+            disabled={rolOperador === 'SUPERVISOR'}
+            valor={rol}
+            onChange={(v) => setRol(v as Rol)}
+            opciones={[
+              {
+                valor: 'TRABAJADOR',
+                etiqueta: 'Trabajador',
+                subtitulo: 'Registro de tiempo y actividades',
+              },
+              ...(rolOperador !== 'SUPERVISOR'
+                ? [
+                    {
+                      valor: 'SUPERVISOR' as Rol,
+                      etiqueta: 'Supervisor',
+                      subtitulo: 'Monitoreo de equipo y reportes',
+                    },
+                    {
+                      valor: 'ADMINISTRADOR' as Rol,
+                      etiqueta: 'Administrador',
+                      subtitulo: 'Control total del sistema',
+                    },
+                  ]
+                : []),
+            ] satisfies OpcionSelector<Rol>[]}
+          />
+          {rolOperador === 'SUPERVISOR' && (
+            <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
+              La asignación o modificación de roles superiores está reservada a administradores.
+            </p>
+          )}
+          {rolSeleccionado && (
+            <p className="mt-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2.5 text-xs text-[var(--tf-texto-tenue)]">
+              {rolSeleccionado.descripcion}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+          <input
+            type="checkbox"
+            id="activo-check"
+            checked={activo}
+            onChange={(e) => setActivo(e.target.checked)}
+            className="h-4 w-4 rounded-sm text-sky-500 focus:ring-sky-400"
+          />
+          <label htmlFor="activo-check" className="text-sm font-medium text-[var(--tf-texto)]">
+            Usuario Activo (permite iniciar sesión en la plataforma)
+          </label>
+        </div>
+
+        {muestraExtras && (
+          <fieldset className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+            <legend className="inline-flex items-center gap-1 px-1 text-xs font-semibold text-[var(--tf-texto-tenue)]">
+              <span>Permisos extra</span>
+              <TooltipAyuda
+                etiqueta="Ayuda sobre permisos extra RBAC"
+                titulo="Privilegios excepcionales"
+                texto="Otorga capacidades puntuales a un trabajador sin cambiar su rol base. Se aplican de inmediato en su próxima acción."
+                tamano={13}
+              />
+            </legend>
+            <p className="mb-2 text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">
+              Además de los de su rol de trabajador. Rigen desde su próxima acción en la aplicación.
+            </p>
+            <div className="space-y-2">
+              {PERMISOS_EXTRA.map((p) => (
+                <label
+                  key={p.codigo}
+                  htmlFor={`extra-${p.codigo}`}
+                  className="flex cursor-pointer items-start gap-3 rounded-lg p-1.5 transition hover:bg-[var(--tf-hover)]"
+                >
+                  <input
+                    type="checkbox"
+                    id={`extra-${p.codigo}`}
+                    checked={extras.includes(p.codigo)}
+                    onChange={() => alternarExtra(p.codigo)}
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded-sm text-sky-500 focus:ring-sky-400"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-[var(--tf-texto)]">
+                      <span>{p.nombre}</span>
+                      <TooltipAyuda
+                        etiqueta={`Impacto de ${p.nombre}`}
+                        texto={p.descripcion}
+                        tamano={12}
+                      />
+                    </span>
+                    <span className="block text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">{p.descripcion}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre Completo</label>
-            <input
-              type="text"
-              required
-              value={nombreCompleto}
-              onChange={(e) => setNombreCompleto(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+            Nueva Contraseña <span className="font-normal text-[var(--tf-texto-suave)]">(dejar en blanco para conservar la actual)</span>
+          </label>
+          <input
+            type="password"
+            minLength={8}
+            maxLength={CONTRASENA_MAXIMO}
+            autoComplete="new-password"
+            placeholder={`Opcional. ${AYUDA_CONTRASENA}`}
+            value={nuevaContrasena}
+            onChange={(e) => setNuevaContrasena(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico (Ingreso)</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
+        <div>
+          <label htmlFor="editar-zona" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+            Zona Horaria
+          </label>
+          <SelectorZona
+            id="editar-zona"
+            value={zonaHoraria}
+            onChange={setZonaHoraria}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-          <div>
-            <label htmlFor="editar-rol" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol Asignado (RBAC)</label>
-            <Selector
-              id="editar-rol"
-              ariaLabel="Rol Asignado (RBAC)"
-              disabled={rolOperador === 'SUPERVISOR'}
-              valor={rol}
-              onChange={(v) => setRol(v as Rol)}
-              opciones={[
-                {
-                  valor: 'TRABAJADOR',
-                  etiqueta: 'Trabajador',
-                  subtitulo: 'Registro de tiempo y actividades',
-                },
-                ...(rolOperador !== 'SUPERVISOR'
-                  ? [
-                      {
-                        valor: 'SUPERVISOR' as Rol,
-                        etiqueta: 'Supervisor',
-                        subtitulo: 'Monitoreo de equipo y reportes',
-                      },
-                      {
-                        valor: 'ADMINISTRADOR' as Rol,
-                        etiqueta: 'Administrador',
-                        subtitulo: 'Control total del sistema',
-                      },
-                    ]
-                  : []),
-              ] satisfies OpcionSelector<Rol>[]}
-            />
-            {rolOperador === 'SUPERVISOR' && (
-              <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
-                La asignación o modificación de roles superiores está reservada a administradores.
-              </p>
-            )}
-            {rolSeleccionado && (
-              <p className="mt-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2.5 text-xs text-[var(--tf-texto-tenue)]">
-                {rolSeleccionado.descripcion}
-              </p>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
-            <input
-              type="checkbox"
-              id="activo-check"
-              checked={activo}
-              onChange={(e) => setActivo(e.target.checked)}
-              className="h-4 w-4 rounded-sm text-sky-500 focus:ring-sky-400"
-            />
-            <label htmlFor="activo-check" className="text-sm font-medium text-[var(--tf-texto)]">
-              Usuario Activo (permite iniciar sesión en la plataforma)
-            </label>
-          </div>
-
-          {muestraExtras && (
-            <fieldset className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
-              <legend className="px-1 text-xs font-semibold text-[var(--tf-texto-tenue)]">Permisos extra</legend>
-              <p className="mb-2 text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">
-                Además de los de su rol de trabajador. Rigen desde su próxima acción en la aplicación.
-              </p>
-              <div className="space-y-2">
-                {PERMISOS_EXTRA.map((p) => (
-                  <label
-                    key={p.codigo}
-                    htmlFor={`extra-${p.codigo}`}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg p-1.5 transition hover:bg-[var(--tf-hover)]"
-                  >
-                    <input
-                      type="checkbox"
-                      id={`extra-${p.codigo}`}
-                      checked={extras.includes(p.codigo)}
-                      onChange={() => alternarExtra(p.codigo)}
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded-sm text-sky-500 focus:ring-sky-400"
-                    />
-                    <span>
-                      <span className="block text-sm font-medium text-[var(--tf-texto)]">{p.nombre}</span>
-                      <span className="block text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">{p.descripcion}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
-              Nueva Contraseña <span className="font-normal text-[var(--tf-texto-suave)]">(dejar en blanco para conservar la actual)</span>
-            </label>
-            <input
-              type="password"
-              minLength={8}
-              maxLength={CONTRASENA_MAXIMO}
-              autoComplete="new-password"
-              placeholder={`Opcional. ${AYUDA_CONTRASENA}`}
-              value={nuevaContrasena}
-              onChange={(e) => setNuevaContrasena(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-sky-400"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="editar-zona" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
-              Zona Horaria
-            </label>
-            <SelectorZona
-              id="editar-zona"
-              value={zonaHoraria}
-              onChange={setZonaHoraria}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={enviando}
-              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={enviando}
-              style={{ backgroundColor: colorPrimario }}
-              className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
-            >
-              {enviando ? 'Guardando…' : 'Guardar Cambios'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={enviando}
+            className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={enviando}
+            style={{ backgroundColor: colorPrimario }}
+            className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+          >
+            {enviando ? 'Guardando…' : 'Guardar Cambios'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

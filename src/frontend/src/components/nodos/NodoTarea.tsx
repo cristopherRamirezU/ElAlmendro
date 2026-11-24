@@ -2,30 +2,28 @@
 
 import { useState } from 'react';
 import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
-import { Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, Lock, PlayCircle, XCircle } from 'lucide-react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
+import { estadoDeActividad } from '@/lib/formato';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 
-/**
- * Fase de la tarea, con colores tipo semaforo: gris sin empezar, naranjo en
- * progreso, verde completada. Los estados especiales muestran su nombre:
- * inconclusa en naranjo (hubo trabajo), bloqueada en rojo y cancelada en gris.
- * `rgb` tine el degradado, el borde, la sombra y el texto de la fase; `color`,
- * el punto, el porcentaje y la barra.
- */
-const FASES: Record<string, { texto: string; rgb: string; color: string; colorClaro: string }> = {
-  PENDIENTE: { texto: 'Sin empezar', rgb: '148,163,184', color: '#64748b', colorClaro: '#475569' },
-  EN_PROGRESO: { texto: 'En progreso', rgb: '245,158,11', color: '#f59e0b', colorClaro: '#b45309' },
-  INCONCLUSA: { texto: 'Inconclusa', rgb: '245,158,11', color: '#f59e0b', colorClaro: '#b45309' },
-  COMPLETADA: { texto: 'Completada', rgb: '16,185,129', color: '#10b981', colorClaro: '#047857' },
-  BLOQUEADA: { texto: 'Bloqueada', rgb: '244,63,94', color: '#f43f5e', colorClaro: '#be123c' },
-  CANCELADA: { texto: 'Cancelada', rgb: '148,163,184', color: '#64748b', colorClaro: '#475569' },
-};
-
-export function faseDeTarea(estado: string) {
-  return FASES[estado] ?? FASES.PENDIENTE;
+function IconoEstado({ estado }: { estado: string }) {
+  switch (estado) {
+    case 'COMPLETADA':
+      return <CheckCircle2 size={10} aria-hidden className="shrink-0" />;
+    case 'EN_PROGRESO':
+      return <PlayCircle size={10} aria-hidden className="shrink-0" />;
+    case 'BLOQUEADA':
+      return <Lock size={10} aria-hidden className="shrink-0" />;
+    case 'INCONCLUSA':
+      return <AlertCircle size={10} aria-hidden className="shrink-0" />;
+    case 'CANCELADA':
+      return <XCircle size={10} aria-hidden className="shrink-0" />;
+    default:
+      return <Circle size={10} aria-hidden className="shrink-0" />;
+  }
 }
 
 export interface DatosNodoTarea {
@@ -52,6 +50,7 @@ export interface DatosNodoTarea {
   prerequisitoTitulo?: string | null;
   ordenEnRama?: number | null;
   esMapaClaro?: boolean;
+  seleccionadoEdicion?: boolean;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -70,7 +69,8 @@ export default function NodoTarea({ id, data }: NodeProps) {
   // terminar, React Flow vuelve a medir sus manillas.
   const actualizarManillas = useUpdateNodeInternals();
   const disposicion = disposicionNodo(d.orientacion);
-  const fase = d.bloqueadaPorOrden ? FASES.BLOQUEADA : faseDeTarea(d.estado);
+  const estadoEfectivo = d.bloqueadaPorOrden ? 'BLOQUEADA' : d.estado;
+  const fase = estadoDeActividad(estadoEfectivo);
   const porcentaje = porcentajeLlenado(d.llenado ?? 0);
   const entrando = d.retrasoEntrada !== undefined;
   const [agregando, setAgregando] = useState(false);
@@ -102,7 +102,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
       <div
         className={`tf-tarea relative flex h-full w-full items-center gap-2 overflow-hidden rounded-xl pb-[3px] pl-2 pr-3 ${
           d.bloqueadaPorOrden ? 'opacity-80' : ''
-        }`}
+        } ${d.seleccionadoEdicion ? 'ring-2 ring-amber-400/85 ring-offset-1 ring-offset-transparent' : ''}`}
         style={{ '--c': fase.rgb } as React.CSSProperties}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
@@ -153,9 +153,10 @@ export default function NodoTarea({ id, data }: NodeProps) {
               <span />
             )}
             <span
-              className="shrink-0 font-semibold"
+              className="inline-flex shrink-0 items-center gap-1 font-semibold"
               style={{ color: d.esMapaClaro ? fase.colorClaro : `rgb(${fase.rgb})` }}
             >
+              <IconoEstado estado={estadoEfectivo} />
               {fase.texto}
             </span>
             <span

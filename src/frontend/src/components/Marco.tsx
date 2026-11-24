@@ -12,6 +12,7 @@ import {
   ChevronsRight,
   ChevronsUp,
   History,
+  Keyboard,
   LayoutGrid,
   LogOut,
   LucideIcon,
@@ -56,6 +57,8 @@ import {
 } from '@/lib/color';
 import { TEMA_FONDO_DEFECTO, useAplicarTemaFondo } from '@/lib/tema';
 import FondoAmbiental from './FondoAmbiental';
+import { EsqueletoPagina } from './ui/Esqueleto';
+import AtajosTeclado, { abrirPanelAtajos } from './ui/AtajosTeclado';
 
 /** La barra lateral escondida se recuerda en este navegador. */
 const CLAVE_BARRA = 'tf_barra_oculta';
@@ -355,11 +358,7 @@ export default function Marco({
   }, [usuario, activo]);
 
   if (!listo) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--tf-fondo)] text-sm text-[var(--tf-texto-tenue)]">
-        Cargando…
-      </main>
-    );
+    return <EsqueletoPagina />;
   }
 
   // Filtrado RBAC: los usuarios solo ven los módulos que tienen autorizados
@@ -568,6 +567,19 @@ export default function Marco({
                 <UserCog size={18} className="shrink-0" />
                 Mi cuenta
               </Link>
+              <button
+                type="button"
+                onClick={abrirPanelAtajos}
+                className="flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-xs text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Keyboard size={16} className="shrink-0" aria-hidden />
+                  Atajos de teclado
+                </span>
+                <kbd className="rounded border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] px-1.5 py-0.5 font-mono text-[10px] font-semibold">
+                  ?
+                </kbd>
+              </button>
               <button
                 onClick={salir}
                 className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
@@ -805,6 +817,7 @@ export default function Marco({
         </div>
       </div>
       {usuario && conChatFlotante && <ChatFlotante yoId={usuario.id} />}
+      <AtajosTeclado activo={activo} />
     </ContextoSesion.Provider>
   );
 

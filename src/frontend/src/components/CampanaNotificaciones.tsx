@@ -4,12 +4,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api';
-import { diaRelativo, hora } from '@/lib/formato';
+import { diaRelativo, hora, tiempoRelativo } from '@/lib/formato';
 import {
   NotificacionItem,
   RespuestaNotificaciones,
   socketNotificaciones,
 } from '@/lib/notificaciones';
+
+function puntoPorTipo(tipo: string): string {
+  const t = tipo.toUpperCase();
+  if (t.includes('COMPLET') || t.includes('DESBLOQ')) return 'bg-emerald-500';
+  if (t.includes('BLOQUE') || t.includes('AUTOCIERR') || t.includes('ALERTA')) return 'bg-amber-500';
+  if (t.includes('ERROR') || t.includes('ELIMIN')) return 'bg-rose-500';
+  if (t.includes('DERIV') || t.includes('REASIG')) return 'bg-violet-500';
+  return 'bg-sky-500';
+}
 
 /**
  * Campana de notificaciones en tiempo real en la cabecera.
@@ -129,7 +138,7 @@ export default function CampanaNotificaciones({
               <button
                 type="button"
                 onClick={marcarTodas}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 transition hover:text-sky-300"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--tf-acento-azul)] transition hover:opacity-80"
               >
                 <CheckCheck size={13} aria-hidden />
                 Marcar leídas
@@ -156,11 +165,19 @@ export default function CampanaNotificaciones({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="flex items-center gap-1.5 text-xs font-semibold text-[var(--tf-texto)]">
-                          {sinLeer && <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />}
+                          {sinLeer && (
+                            <span
+                              aria-hidden
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${puntoPorTipo(n.tipo)}`}
+                            />
+                          )}
                           {n.titulo}
                         </span>
-                        <span className="shrink-0 text-[10px] text-[var(--tf-texto-suave)]">
-                          {diaRelativo(n.creadoEn)} · {hora(n.creadoEn)}
+                        <span
+                          title={`${diaRelativo(n.creadoEn)} · ${hora(n.creadoEn)}`}
+                          className="shrink-0 text-[10px] text-[var(--tf-texto-suave)]"
+                        >
+                          {tiempoRelativo(n.creadoEn)}
                         </span>
                       </div>
                       <p className="text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">{n.mensaje}</p>

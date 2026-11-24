@@ -252,3 +252,50 @@ export function desplazamientoRespectoDelPadre(
   const padre = (a.actividadPadreId && finales.get(a.actividadPadreId)) || posicionRaiz;
   return { x: Math.round(punto.x - padre.x), y: Math.round(punto.y - padre.y) };
 }
+
+/** Todos los IDs descendientes de `actividadId`, con protección frente a ciclos. */
+export function obtenerDescendientes(
+  actividadId: string,
+  actividades: Pick<NodoActividad, 'id' | 'actividadPadreId'>[],
+): Set<string> {
+  const hijosPorPadre = new Map<string, string[]>();
+  for (const a of actividades) {
+    if (!a.actividadPadreId) continue;
+    const lista = hijosPorPadre.get(a.actividadPadreId) ?? [];
+    lista.push(a.id);
+    hijosPorPadre.set(a.actividadPadreId, lista);
+  }
+  const visitados = new Set<string>();
+  const pendientes = [...(hijosPorPadre.get(actividadId) ?? [])];
+  while (pendientes.length > 0) {
+    const actual = pendientes.pop()!;
+    if (visitados.has(actual)) continue;
+    visitados.add(actual);
+    const hijos = hijosPorPadre.get(actual);
+    if (hijos) pendientes.push(...hijos);
+  }
+  return visitados;
+}
+
+/**
+ * Valida antes de enviar al servidor que reasignar el padre de una tarea
+ * no cree ni una autoconexión ni una dependencia circular en el árbol.
+ */
+export function validarCambioPadre(
+  actividadId: string,
+  nuevoPadreId: string | null,
+  actividades: Pick<NodoActividad, 'id' | 'actividadPadreId' | 'titulo'>[],
+): { valido: true } | { valido: false; motivo: string } {
+  if (!nuevoPadreId) return { valido: true };
+  if (nuevoPadreId === actividadId) {
+    return { valido: false, motivo: 'Una tarea no puede depender de sí misma.' };
+  }
+  const descendientes = obtenerDescendientes(actividadId, actividades);
+  if (descendientes.has(nuevoPadreId)) {
+    return {
+      valido: false,
+      motivo: 'Dependencia circular detectada: esta tarea no puede depender de una de sus propias subtareas.',
+    };
+  }
+  return { valido: true };
+}

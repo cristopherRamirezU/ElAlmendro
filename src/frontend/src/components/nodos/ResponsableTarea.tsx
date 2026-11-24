@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Selector from '@/components/ui/Selector';
+import { useToast } from '@/components/ui/Toast';
 import { Actividad, api, ErrorApi, PersonaRef } from '@/lib/api';
-import { iniciales } from '@/lib/formato';
+import { colorAvatarDe, etiquetaRol, iniciales } from '@/lib/formato';
+import type { ContextoEquipoUsuario } from '@/lib/tipos';
 
 /**
  * Responsable de la tarea. Todos lo ven; administrador y supervisor pueden
@@ -13,12 +15,15 @@ import { iniciales } from '@/lib/formato';
 export default function ResponsableTarea({
   actividad,
   puedeGestionar,
+  contextoEquipo,
   onReasignada,
 }: {
   actividad: Actividad;
   puedeGestionar: boolean;
+  contextoEquipo?: Record<string, ContextoEquipoUsuario>;
   onReasignada: () => Promise<void> | void;
 }) {
+  const { toast } = useToast();
   const [abierto, setAbierto] = useState(false);
   const [personas, setPersonas] = useState<PersonaRef[]>([]);
   const [elegido, setElegido] = useState('');
@@ -44,9 +49,17 @@ export default function ResponsableTarea({
         usuarioId: elegido,
         motivo,
       });
+      const personaElegida = personas.find((p) => p.id === elegido);
       setAbierto(false);
       setElegido('');
       setMotivo('');
+      toast({
+        tipo: 'exito',
+        titulo: 'Tarea derivada',
+        descripcion: personaElegida
+          ? `Asignada ahora a ${personaElegida.nombre}.`
+          : 'El nuevo responsable ya recibió el aviso.',
+      });
       await onReasignada();
     } catch (err) {
       setAviso(err instanceof ErrorApi ? err.message : 'No se pudo derivar la tarea.');
@@ -95,11 +108,29 @@ export default function ResponsableTarea({
             valor={elegido}
             onChange={setElegido}
             disabled={ocupado}
-            opciones={candidatos.map((p) => ({
-              valor: p.id,
-              etiqueta: p.nombre,
-              inicialesAvatar: iniciales(p.nombre),
-            }))}
+            opciones={candidatos.map((p) => {
+              const ctx = contextoEquipo?.[p.id];
+              const rolTexto = ctx?.rol ? etiquetaRol(ctx.rol) : undefined;
+              const cargaTexto = ctx
+                ? ctx.activas > 0
+                  ? `${ctx.activas} en curso`
+                  : ctx.total > 0
+                    ? `${ctx.total} en proyecto`
+                    : 'Sin tareas aquí'
+                : undefined;
+              return {
+                valor: p.id,
+                etiqueta: p.nombre,
+                inicialesAvatar: iniciales(p.nombre),
+                colorAvatar: colorAvatarDe(p.id),
+                subtitulo: [rolTexto, cargaTexto].filter(Boolean).join(' · ') || undefined,
+                badge: ctx
+                  ? ctx.activas > 0
+                    ? `${ctx.activas} activas`
+                    : 'Libre'
+                  : undefined,
+              };
+            })}
           />
           <input
             value={motivo}

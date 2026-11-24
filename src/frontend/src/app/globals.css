@@ -688,8 +688,79 @@ body {
 /* Segmentos mas finos, para el nodo principal del mapa. */
 .tf-segmento.tf-segmento-fino { height: 5px; border-radius: 3px; }
 
+/* Skeletons y controles temáticos de React Flow (Dark + Light Mode) */
+.tf-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--tf-hover);
+  border: 1px solid var(--tf-borde);
+}
+.tf-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(148, 163, 184, 0.16) 50%,
+    transparent 100%
+  );
+  animation: tf-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes tf-skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.tf-mapa .react-flow__controls {
+  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 23, 42, 0.88);
+  box-shadow: 0 12px 28px -12px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(10px);
+}
+.tf-mapa .react-flow__controls-button {
+  background: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  fill: currentColor;
+}
+.tf-mapa .react-flow__controls-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+.tf-mapa.tf-mapa-claro .react-flow__controls {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 28px -14px rgba(15, 23, 42, 0.2);
+}
+.tf-mapa.tf-mapa-claro .react-flow__controls-button {
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+  color: #334155;
+}
+.tf-mapa.tf-mapa-claro .react-flow__controls-button:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+.tf-mapa .react-flow__minimap {
+  border-radius: 0.9rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 15, 30, 0.86);
+  box-shadow: 0 14px 32px -14px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+}
+.tf-mapa.tf-mapa-claro .react-flow__minimap {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 32px -14px rgba(15, 23, 42, 0.22);
+}
+
 /* Quien pide menos movimiento ve los relojes y las barras quietos. */
 @media (prefers-reduced-motion: reduce) {
+  .tf-skeleton::after { animation: none; }
   .tf-reloj-brillo,
   .tf-arena-cae { animation: none; }
   .tf-modal-fondo,

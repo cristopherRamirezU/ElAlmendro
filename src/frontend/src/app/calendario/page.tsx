@@ -7,6 +7,7 @@ import { Users } from 'lucide-react';
 import Marco from '@/components/Marco';
 import Drawer from '@/components/ui/Drawer';
 import Selector from '@/components/ui/Selector';
+import { EsqueletoCalendario, EsqueletoPagina } from '@/components/ui/Esqueleto';
 import RejillaMes from '@/components/calendario/RejillaMes';
 import MatrizTrabajadores from '@/components/calendario/MatrizTrabajadores';
 import SemanaHoras from '@/components/calendario/SemanaHoras';
@@ -14,7 +15,8 @@ import PanelDia from '@/components/calendario/PanelDia';
 import PersonalizarVista from '@/components/calendario/PersonalizarVista';
 import { api, ErrorApi } from '@/lib/api';
 import { esAdministrador, useSesion } from '@/lib/sesion';
-import { duracion, fechaLarga, iniciales } from '@/lib/formato';
+import { colorAvatarDe, duracion, fechaLarga, iniciales } from '@/lib/formato';
+import { nombreZona } from '@/lib/zona';
 import {
   guardarPreferenciasCalendario,
   leerPreferenciasCalendario,
@@ -41,13 +43,7 @@ const VISTAS: { valor: Vista; texto: string }[] = [
 
 export default function Pagina() {
   return (
-    <Suspense
-      fallback={
-        <main className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-400">
-          Cargando…
-        </main>
-      }
-    >
+    <Suspense fallback={<EsqueletoPagina />}>
       <Calendario />
     </Suspense>
   );
@@ -85,6 +81,7 @@ function Calendario() {
   const [cargandoDia, setCargandoDia] = useState(false);
   const [foco, setFoco] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recargaToken, setRecargaToken] = useState(0);
   const [prefs, setPrefs] = useState<PreferenciasCalendario>(PREFERENCIAS_CALENDARIO_DEFECTO);
   const [soloAlertas, setSoloAlertas] = useState(false);
 
@@ -144,7 +141,7 @@ function Calendario() {
     return () => {
       vigente = false;
     };
-  }, [mes.desde, mes.hasta, filtro]);
+  }, [mes.desde, mes.hasta, filtro, recargaToken]);
 
   useEffect(() => {
     if (vista !== 'semana') return;
@@ -162,7 +159,7 @@ function Calendario() {
     return () => {
       vigente = false;
     };
-  }, [vista, semana.desde, semana.hasta, filtro]);
+  }, [vista, semana.desde, semana.hasta, filtro, recargaToken]);
 
   useEffect(() => {
     if (!diaAbierto) {
@@ -225,7 +222,7 @@ function Calendario() {
                 aria-pressed={vista === v.valor}
                 className={`px-3 py-1.5 text-sm transition ${
                   vista === v.valor
-                    ? 'bg-sky-500/15 font-semibold text-sky-300'
+                    ? 'bg-sky-500/15 font-semibold text-[var(--tf-acento-azul)]'
                     : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]'
                 }`}
               >
@@ -263,9 +260,22 @@ function Calendario() {
       }
     >
       {error && (
-        <p role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
-          {error}
-        </p>
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-[var(--tf-acento-rojo)]"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setRecargaToken((t) => t + 1);
+            }}
+            className="rounded-lg border border-rose-500/30 bg-rose-500/15 px-2.5 py-1 text-xs font-semibold hover:bg-rose-500/25"
+          >
+            Reintentar
+          </button>
+        </div>
       )}
 
       <section className="tf-card-pro tf-enter rounded-2xl p-5">
@@ -290,8 +300,8 @@ function Calendario() {
                 onClick={() => setSoloAlertas((v) => !v)}
                 className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition ${
                   soloAlertas
-                    ? 'border-amber-500/50 bg-amber-500/20 text-amber-300'
-                    : 'border-[var(--tf-borde)] bg-[var(--tf-hover)] text-amber-400 hover:border-amber-500/40'
+                    ? 'border-amber-500/50 bg-amber-500/20 text-[var(--tf-acento-ambar)]'
+                    : 'border-[var(--tf-borde)] bg-[var(--tf-hover)] text-[var(--tf-acento-ambar)] hover:border-amber-500/40'
                 }`}
               >
                 <span className="h-2 w-2 rounded-full bg-amber-400" />
@@ -306,29 +316,35 @@ function Calendario() {
           </div>
         )}
 
-        {vista === 'rejilla' && (
-          <RejillaMes
-            mes={ancla}
-            dias={resumen?.dias ?? []}
-            seleccionado={diaAbierto}
-            onDia={(fecha) => navegar({ dia: fecha })}
-            prefs={prefs}
-            soloAlertas={soloAlertas}
-          />
-        )}
+        {vista === 'rejilla' &&
+          (!resumen && !error ? (
+            <EsqueletoCalendario tipo="mes" />
+          ) : (
+            <RejillaMes
+              mes={ancla}
+              dias={resumen?.dias ?? []}
+              seleccionado={diaAbierto}
+              onDia={(fecha) => navegar({ dia: fecha })}
+              prefs={prefs}
+              soloAlertas={soloAlertas}
+            />
+          ))}
 
-        {vista === 'matriz' && (
-          <MatrizTrabajadores
-            mes={ancla}
-            trabajadores={resumen?.trabajadores ?? []}
-            celdas={resumen?.celdas ?? []}
-            seleccionado={diaAbierto}
-            onCelda={(fecha, id) => {
-              setFoco(id);
-              navegar({ dia: fecha });
-            }}
-          />
-        )}
+        {vista === 'matriz' &&
+          (!resumen && !error ? (
+            <EsqueletoCalendario tipo="mes" />
+          ) : (
+            <MatrizTrabajadores
+              mes={ancla}
+              trabajadores={resumen?.trabajadores ?? []}
+              celdas={resumen?.celdas ?? []}
+              seleccionado={diaAbierto}
+              onCelda={(fecha, id) => {
+                setFoco(id);
+                navegar({ dia: fecha });
+              }}
+            />
+          ))}
 
         {vista === 'semana' &&
           (semanal ? (
@@ -338,7 +354,7 @@ function Calendario() {
               onDia={(fecha) => navegar({ dia: fecha })}
             />
           ) : (
-            <p className="p-6 text-center text-sm text-slate-500">Cargando la semana…</p>
+            <EsqueletoCalendario tipo="semana" />
           ))}
       </section>
 
@@ -400,7 +416,9 @@ function SelectorTrabajador({
         ...equipo.map((w) => ({
           valor: w.id,
           etiqueta: w.nombre,
+          subtitulo: nombreZona(w.zonaHoraria),
           inicialesAvatar: iniciales(w.nombre),
+          colorAvatar: colorAvatarDe(w.id),
         })),
       ]}
     />

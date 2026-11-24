@@ -78,6 +78,14 @@ export interface NodoActividad {
   ordenEnRama?: number | null;
 }
 
+export interface ContextoEquipoUsuario {
+  rol?: string;
+  rolEnProyecto?: string;
+  activas: number;
+  pendientes: number;
+  total: number;
+}
+
 export interface Derivacion {
   id: string;
   motivo: string;

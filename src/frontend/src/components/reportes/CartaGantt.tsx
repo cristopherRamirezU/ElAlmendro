@@ -4,30 +4,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { DateTime } from 'luxon';
 import Selector from '@/components/ui/Selector';
-import { duracion, ESTADOS, fechaLarga } from '@/lib/formato';
+import { duracion, estadoDeActividad, ESTADOS, fechaLarga, vencimientoRelativo } from '@/lib/formato';
 import { TareaGantt } from '@/lib/tipos';
 import { zonaActual } from '@/lib/zona';
 
 const TAMANO_VENTANA = 21;
 const PASO_VENTANA = 7;
-
-const COLOR_BARRA: Record<string, string> = {
-  COMPLETADA: 'bg-emerald-500/35 border-emerald-400/60',
-  EN_PROGRESO: 'bg-amber-500/35 border-amber-400/60',
-  PENDIENTE: 'bg-sky-500/30 border-sky-400/50',
-  BLOQUEADA: 'bg-rose-500/35 border-rose-400/60',
-  INCONCLUSA: 'bg-orange-500/35 border-orange-400/60',
-  CANCELADA: 'bg-slate-500/25 border-slate-400/40',
-};
-
-const COLOR_CELDA: Record<string, string> = {
-  COMPLETADA: 'bg-emerald-400',
-  EN_PROGRESO: 'bg-amber-400',
-  PENDIENTE: 'bg-sky-400',
-  BLOQUEADA: 'bg-rose-400',
-  INCONCLUSA: 'bg-orange-400',
-  CANCELADA: 'bg-slate-400',
-};
 
 function claveLocal(iso: string, zona: string): string {
   return DateTime.fromISO(iso, { zone: zona }).toFormat('yyyy-MM-dd');
@@ -155,18 +137,18 @@ export default function CartaGantt({
               { valor: 'TODAS', etiqueta: 'Todos los estados' },
               {
                 valor: 'EN_PROGRESO',
-                etiqueta: 'En progreso',
-                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${COLOR_CELDA.EN_PROGRESO}`} />,
+                etiqueta: ESTADOS.EN_PROGRESO.texto,
+                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${ESTADOS.EN_PROGRESO.celdaGantt}`} />,
               },
               {
                 valor: 'COMPLETADA',
                 etiqueta: 'Completadas',
-                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${COLOR_CELDA.COMPLETADA}`} />,
+                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${ESTADOS.COMPLETADA.celdaGantt}`} />,
               },
               {
                 valor: 'PENDIENTES',
                 etiqueta: 'Por hacer / Bloqueadas',
-                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${COLOR_CELDA.PENDIENTE}`} />,
+                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${ESTADOS.PENDIENTE.celdaGantt}`} />,
               },
             ]}
           />
@@ -258,7 +240,8 @@ export default function CartaGantt({
             {/* Filas de tareas */}
             {filtradas.map((t) => {
               const abierta = seleccionada === t.id;
-              const estado = ESTADOS[t.estado] ?? ESTADOS.PENDIENTE;
+              const estado = estadoDeActividad(t.estado);
+              const vencimiento = vencimientoRelativo(t.fechaLimite, t.estado === 'COMPLETADA');
               const porDia = new Map(t.diasTrabajados.map((d) => [d.dia, d.segundos]));
 
               const inicioClave = claveLocal(t.inicioTrabajoEn ?? t.creadoEn, zona);
@@ -333,9 +316,7 @@ export default function CartaGantt({
                       {hayBarra && (
                         <div
                           aria-hidden
-                          className={`pointer-events-none absolute top-1/2 z-[1] h-5 -translate-y-1/2 rounded-md border ${
-                            COLOR_BARRA[t.estado] ?? COLOR_BARRA.PENDIENTE
-                          }`}
+                          className={`pointer-events-none absolute top-1/2 z-[1] h-5 -translate-y-1/2 rounded-md border ${estado.barraGantt}`}
                           style={{
                             left: `calc(${leftPct}% + 2px)`,
                             width: `calc(${widthPct}% - 4px)`,
@@ -370,9 +351,7 @@ export default function CartaGantt({
                           >
                             {segDia > 0 && (
                               <span
-                                className={`h-3 w-3 rounded-sm shadow-sm ${
-                                  COLOR_CELDA[t.estado] ?? COLOR_CELDA.PENDIENTE
-                                }`}
+                                className={`h-3 w-3 rounded-sm shadow-sm ${estado.celdaGantt}`}
                               />
                             )}
                             {esLimite && (
@@ -422,6 +401,21 @@ export default function CartaGantt({
                           <span className="font-mono text-[var(--tf-texto)]">
                             {formatearFechaCorta(t.fechaLimite, zona)}
                           </span>
+                          {vencimiento && (
+                            <span
+                              className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                                vencimiento.tono === 'peligro'
+                                  ? 'bg-rose-500/15 text-[var(--tf-acento-rojo)]'
+                                  : vencimiento.tono === 'alerta'
+                                    ? 'bg-amber-500/15 text-[var(--tf-acento-ambar)]'
+                                    : vencimiento.tono === 'ok'
+                                      ? 'bg-emerald-500/15 text-[var(--tf-acento-verde)]'
+                                      : 'bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)]'
+                              }`}
+                            >
+                              {vencimiento.texto}
+                            </span>
+                          )}
                         </span>
                         {t.completadaEn && (
                           <span>
@@ -434,7 +428,7 @@ export default function CartaGantt({
                       </div>
 
                       <Link
-                        href={`/nodos?proyectoId=${encodeURIComponent(t.proyectoId)}`}
+                        href={`/nodos?proyectoId=${encodeURIComponent(t.proyectoId)}&nombre=${encodeURIComponent(t.proyectoNombre)}&tarea=${encodeURIComponent(t.id)}`}
                         className="rounded-lg border border-sky-500/35 bg-sky-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-azul)] transition hover:bg-sky-500/20"
                       >
                         Abrir en Nodos →

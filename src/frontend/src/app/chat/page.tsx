@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Marco from '@/components/Marco';
+import { EsqueletoPagina } from '@/components/ui/Esqueleto';
 import ListaContactos from '@/components/chat/ListaContactos';
 import Conversacion from '@/components/chat/Conversacion';
 import { CANAL_GENERAL as GENERAL } from '@/lib/chat';
@@ -12,13 +13,7 @@ import { useSalaChat } from '@/lib/useSalaChat';
 /** Chat en vivo del equipo: canal general y conversaciones privadas. */
 export default function Pagina() {
   return (
-    <Suspense
-      fallback={
-        <main className="grid min-h-screen place-items-center bg-[var(--tf-fondo)] text-sm text-[var(--tf-texto-tenue)]">
-          Cargando…
-        </main>
-      }
-    >
+    <Suspense fallback={<EsqueletoPagina />}>
       <Marco activo="/chat" titulo="Chat del equipo" subtitulo="Conversa en vivo con tus compañeros">
         <Chat />
       </Marco>

@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, ChevronDown } from 'lucide-react';
 import Marco from '@/components/Marco';
+import { EsqueletoLista } from '@/components/ui/Esqueleto';
+import TooltipAyuda from '@/components/ui/TooltipAyuda';
+import { useToast } from '@/components/ui/Toast';
 import { api, ErrorApi, OrganizacionMia } from '@/lib/api';
+import { etiquetaPlan } from '@/lib/formato';
 import { useSesion, useTienePermiso } from '@/lib/sesion';
 import { PERMISOS } from '@/lib/rbac';
 import {
@@ -121,6 +125,7 @@ export default function ConfiguracionPage() {
 
 function ContenidoConfiguracion() {
   const router = useRouter();
+  const { toast } = useToast();
   const usuario = useSesion();
   const puedeGestionar = useTienePermiso(PERMISOS.CONFIGURACION_GESTIONAR);
 
@@ -153,17 +158,17 @@ function ContenidoConfiguracion() {
 
   if (!puedeGestionar) {
     return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900 p-8 text-center shadow-sm backdrop-blur">
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-rose-400 font-bold text-lg">
+      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-[var(--tf-superficie)] p-8 text-center shadow-sm backdrop-blur">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-lg font-bold text-[var(--tf-acento-rojo)]">
           ✕
         </div>
-        <h2 className="text-lg font-bold text-white">Acceso Restringido</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <h2 className="text-lg font-bold text-[var(--tf-texto)]">Acceso Restringido</h2>
+        <p className="mt-1 text-sm text-[var(--tf-texto-tenue)]">
           Solo el Administrador de la empresa puede personalizar la apariencia.
         </p>
         <button
           onClick={() => router.push('/panel')}
-          className="mt-5 rounded-xl bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-600"
+          className="mt-5 rounded-xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] px-5 py-2.5 text-sm font-semibold text-[var(--tf-texto)] transition hover:bg-[var(--tf-borde)]"
         >
           Volver a mis proyectos
         </button>
@@ -172,14 +177,12 @@ function ContenidoConfiguracion() {
   }
 
   if (cargando) {
-    return (
-      <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-sm text-slate-500">
-        Cargando configuración…
-      </p>
-    );
+    return <EsqueletoLista filas={4} />;
   }
 
   async function guardar() {
+    const colorAnterior = orgInfo?.colorPrimario ?? usuario?.organizacionColor ?? COLOR_PRIMARIO_DEFECTO;
+    const temaAnterior = orgInfo?.temaFondo ?? usuario?.organizacionTema ?? TEMA_FONDO_DEFECTO;
     setMensaje(null);
     setGuardando(true);
     try {
@@ -201,8 +204,37 @@ function ContenidoConfiguracion() {
           },
         });
       }
-
+      setOrgInfo(actualizada);
       setMensaje({ tipo: 'exito', texto: 'Apariencia actualizada.' });
+      toast({
+        tipo: 'exito',
+        titulo: 'Apariencia actualizada',
+        descripcion: 'Todos los miembros de tu empresa ven el nuevo tema.',
+        duracionMs: 7000,
+        accion: {
+          etiqueta: 'Deshacer',
+          alHacer: async () => {
+            const restaurada = await api.patch<OrganizacionMia>('/organizaciones/mia/color', {
+              colorPrimario: colorAnterior,
+              temaFondo: temaAnterior,
+            });
+            setColor(restaurada.colorPrimario || COLOR_PRIMARIO_DEFECTO);
+            setTema(restaurada.temaFondo || TEMA_FONDO_DEFECTO);
+            setOrgInfo(restaurada);
+            const cacheActual = leerCacheSesion();
+            if (cacheActual?.usuario) {
+              guardarCacheSesion({
+                ...cacheActual,
+                usuario: {
+                  ...cacheActual.usuario,
+                  organizacionColor: restaurada.colorPrimario,
+                  organizacionTema: restaurada.temaFondo,
+                },
+              });
+            }
+          },
+        },
+      });
     } catch (err) {
       setMensaje({
         tipo: 'error',
@@ -257,7 +289,7 @@ function ContenidoConfiguracion() {
                   }}
                   className="rounded-full border px-3 py-1 text-xs font-bold"
                 >
-                  Plan {orgInfo.plan === 'GRATIS' ? 'Básico' : orgInfo.plan}
+                  Plan {etiquetaPlan(orgInfo.plan)}
                 </span>
               )}
             </div>
@@ -310,7 +342,14 @@ function ContenidoConfiguracion() {
         )}
 
         <section className="tf-card-pro rounded-2xl p-6">
-          <h2 className="tf-display font-bold text-[var(--tf-texto)]">Tema de fondo</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="tf-display font-bold text-[var(--tf-texto)]">Tema de fondo</h2>
+            <TooltipAyuda
+              etiqueta="Ayuda sobre el tema de fondo"
+              titulo="Tema global de la empresa"
+              texto="Define la paleta de superficies (Medianoche, Grafito o Nube) para todo tu equipo. Las vistas respetan automáticamente los contrastes."
+            />
+          </div>
           <p className="mt-1 text-xs text-[var(--tf-texto-tenue)]">
             Define el fondo y los textos de toda la app para tu equipo.
           </p>
@@ -349,8 +388,14 @@ function ContenidoConfiguracion() {
             })}
           </div>
 
-          <p className="mb-2 mt-7 text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-suave)]">
-            Colores sugeridos
+          <p className="mb-2 mt-7 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-suave)]">
+            <span>Colores sugeridos</span>
+            <TooltipAyuda
+              etiqueta="Ayuda sobre el color primario"
+              titulo="Color de marca"
+              texto="Tiñe botones principales, enlaces activos y barras de avance. TimeFlow ajusta automáticamente el texto blanco u oscuro para mantener legibilidad."
+              tamano={13}
+            />
           </p>
           <div className="flex flex-wrap gap-3">
             {PRESETS.map((preset) => {

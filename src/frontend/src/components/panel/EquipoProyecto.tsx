@@ -2,25 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Selector from '@/components/ui/Selector';
-import { api, ErrorApi, MiembroProyecto, PersonaRef } from '@/lib/api';
-
-/** Colores de los avatares: cada persona tiene siempre el mismo. */
-const COLORES = ['#3f6bff', '#825aff', '#1d9e75', '#0ea5e9', '#d4537e', '#ba7517'];
-
-function colorDe(id: string) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return COLORES[Math.abs(h) % COLORES.length];
-}
-
-function iniciales(nombre: string) {
-  return nombre
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-}
+import { api, ErrorApi, MiembroProyecto, PersonaRef, UsuarioItem } from '@/lib/api';
+import { colorAvatarDe, etiquetaRol, iniciales } from '@/lib/formato';
+import { PERMISOS } from '@/lib/rbac';
+import { useTienePermiso } from '@/lib/sesion';
 
 /**
  * Equipo de un proyecto, compacto: en una fila, lo que va a la izquierda
@@ -40,11 +25,12 @@ export default function EquipoProyecto({
   children?: React.ReactNode;
 }) {
   const [miembros, setMiembros] = useState<MiembroProyecto[]>([]);
-  const [personas, setPersonas] = useState<PersonaRef[]>([]);
+  const [personas, setPersonas] = useState<(PersonaRef & { rol?: string })[]>([]);
   const [elegido, setElegido] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [abierto, setAbierto] = useState(false);
+  const puedeVerUsuarios = useTienePermiso(PERMISOS.USUARIOS_VER);
 
   useEffect(() => {
     let vigente = true;
@@ -54,15 +40,23 @@ export default function EquipoProyecto({
       .then((m) => vigente && setMiembros(m))
       .catch(() => vigente && setAviso('No se pudo cargar el equipo.'));
     if (puedeGestionar) {
-      api
-        .get<PersonaRef[]>('/usuarios/trabajadores')
-        .then((p) => vigente && setPersonas(p))
+      Promise.all([
+        api.get<PersonaRef[]>('/usuarios/trabajadores'),
+        puedeVerUsuarios
+          ? api.get<UsuarioItem[]>('/usuarios').catch(() => [] as UsuarioItem[])
+          : Promise.resolve([] as UsuarioItem[]),
+      ])
+        .then(([p, usuarios]) => {
+          if (!vigente) return;
+          const rolPorId = new Map(usuarios.map((u) => [u.id, u.rol]));
+          setPersonas(p.map((item) => ({ ...item, rol: rolPorId.get(item.id) })));
+        })
         .catch(() => undefined);
     }
     return () => {
       vigente = false;
     };
-  }, [proyectoId, puedeGestionar]);
+  }, [proyectoId, puedeGestionar, puedeVerUsuarios]);
 
   const disponibles = personas.filter((p) => !miembros.some((m) => m.id === p.id));
 
@@ -94,7 +88,7 @@ export default function EquipoProyecto({
             className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--tf-superficie-solida)] text-[10px] font-semibold text-white ${
               i > 0 ? '-ml-2' : ''
             } ${m.activo ? '' : 'opacity-50'}`}
-            style={{ background: colorDe(m.id) }}
+            style={{ background: colorAvatarDe(m.id) }}
           >
             {iniciales(m.nombre)}
           </span>
@@ -132,7 +126,7 @@ export default function EquipoProyecto({
                 <li key={m.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
                   <span
                     className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[9px] font-semibold text-white"
-                    style={{ background: colorDe(m.id) }}
+                    style={{ background: colorAvatarDe(m.id) }}
                   >
                     {iniciales(m.nombre)}
                   </span>
@@ -169,8 +163,9 @@ export default function EquipoProyecto({
                 opciones={disponibles.map((p) => ({
                   valor: p.id,
                   etiqueta: p.nombre,
+                  subtitulo: p.rol ? etiquetaRol(p.rol) : undefined,
                   inicialesAvatar: iniciales(p.nombre),
-                  colorAvatar: colorDe(p.id),
+                  colorAvatar: colorAvatarDe(p.id),
                 }))}
               />
               <button
