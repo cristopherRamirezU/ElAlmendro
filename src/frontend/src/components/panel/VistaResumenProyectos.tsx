@@ -155,13 +155,12 @@ export default function VistaResumenProyectos({
               type="button"
               onClick={onCrear}
               title="Nuevo proyecto"
+              aria-label="Nuevo proyecto"
               style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
-              className="tf-shimmer-cta inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-semibold shadow-sm transition hover:brightness-110 xl:px-3.5"
+              className="inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[11px] font-semibold shadow-sm transition hover:brightness-110"
             >
-              <Plus size={14} aria-hidden />
-              <span>
-                Nuevo<span className="md:hidden xl:inline"> proyecto</span>
-              </span>
+              <Plus size={12} strokeWidth={2.5} aria-hidden />
+              <span>Nuevo</span>
             </button>
           )}
           <span aria-hidden className="hidden h-5 w-px bg-[var(--tf-borde)] md:block" />

@@ -11,6 +11,7 @@ import {
   etiquetaEntidad,
   etiquetaPlan,
   etiquetaRol,
+  hora,
   horasBreves,
   iniciales,
   tiempoRelativo,
@@ -57,6 +58,8 @@ describe('Utilidades de formato y lectura humana', () => {
     expect(colorAvatarDe('u-123')).toBe(colorAvatarDe('u-123'));
     expect(colorAvatarDe('u-123')).toMatch(/^#[0-9a-f]{6}$/i);
     expect(horasBreves(23400)).toBe('6,5 h');
+    expect(hora('2026-11-24T09:05:00Z', 'UTC')).toBe('09:05 AM');
+    expect(hora('2026-11-24T13:05:00Z', 'UTC')).toBe('01:05 PM');
   });
 
   it('tiempoRelativo clasifica segundos, minutos, horas, ayer, dias e ISO invalido', () => {

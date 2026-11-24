@@ -638,26 +638,24 @@ export default function Marco({
                 <UserCog size={18} className="shrink-0" />
                 Mi cuenta
               </Link>
-              <button
-                type="button"
-                onClick={abrirPanelAtajos}
-                className="flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-xs text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
-              >
-                <span className="flex items-center gap-2.5">
-                  <Keyboard size={16} className="shrink-0" aria-hidden />
-                  Atajos de teclado
-                </span>
-                <kbd className="rounded border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] px-1.5 py-0.5 font-mono text-[10px] font-semibold">
-                  ?
-                </kbd>
-              </button>
-              <button
-                onClick={salir}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
-              >
-                <LogOut size={18} className="shrink-0" />
-                Cerrar sesión
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={salir}
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+                >
+                  <LogOut size={18} className="shrink-0" />
+                  <span className="truncate">Cerrar sesión</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={abrirPanelAtajos}
+                  title="Atajos de teclado (?)"
+                  aria-label="Atajos de teclado"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[var(--tf-texto-suave)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+                >
+                  <Keyboard size={14} aria-hidden />
+                </button>
+              </div>
             </div>
           </div>
         </aside>
