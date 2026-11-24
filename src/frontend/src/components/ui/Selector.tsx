@@ -500,7 +500,9 @@ export default function Selector<T extends string = string>({
                 >
                   {renderMini(op)}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate leading-tight">{op.etiqueta}</span>
+                    <span title={op.etiqueta} className="block truncate leading-tight">
+                      {op.etiqueta}
+                    </span>
                     {op.subtitulo && (
                       <span className={`mt-0.5 block truncate text-[11px] font-normal ${claseTextoTenue}`}>
                         {op.subtitulo}
@@ -538,7 +540,11 @@ export default function Selector<T extends string = string>({
   );
 
   return (
-    <div className={`relative ${forma === 'defecto' ? 'w-full' : 'inline-block'} ${className}`}>
+    <div
+      className={`relative max-w-full min-w-0 ${
+        forma === 'defecto' || className.includes('w-full') ? 'block w-full' : 'inline-block'
+      } ${className}`}
+    >
       {name && <input type="hidden" name={name} value={valor} />}
       <button
         ref={botonRef}
@@ -549,6 +555,7 @@ export default function Selector<T extends string = string>({
         aria-expanded={abierto}
         aria-controls={abierto ? listboxId : undefined}
         aria-label={ariaLabel}
+        title={opcionActiva?.etiqueta}
         disabled={disabled}
         onClick={(e) => {
           e.stopPropagation();
@@ -556,7 +563,7 @@ export default function Selector<T extends string = string>({
           else abrir();
         }}
         onKeyDown={(e) => manejarTecla(e, false)}
-        className={`flex w-full items-center justify-between gap-2 border outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${claseFormaBoton} ${claseTemaBoton}`}
+        className={`flex w-full min-w-0 items-center justify-between gap-2 border outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${claseFormaBoton} ${claseTemaBoton}`}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2">
           {opcionActiva && renderMini(opcionActiva)}

@@ -28,6 +28,16 @@ done
 
 [[ -f .env ]] || { echo "Falta $RAIZ/.env (ver deploy/env.production.example)"; exit 1; }
 
+# Serializa tambien ejecuciones directas de update.sh frente a auto-deploy.sh.
+if [[ "${TIMEFLOW_DEPLOY_LOCKED:-0}" != "1" ]]; then
+  CANDADO="$HOME/.timeflow-autodeploy.lock"
+  exec 9>"$CANDADO"
+  if ! flock -w 900 9; then
+    echo "Otro despliegue sigue activo tras 15 minutos; se aborta update.sh." >&2
+    exit 1
+  fi
+fi
+
 # Las NEXT_PUBLIC_* se incrustan en el bundle en tiempo de build: next build
 # no lee el .env de la raiz por su cuenta, por eso se exporta todo aqui.
 set -a; source .env; set +a
@@ -49,11 +59,13 @@ SCARF_ANALYTICS=false npm ci --include=dev --no-audit --no-fund
 
 echo "== [2/7] prisma generate + build"
 npm run db:generate
+rm -rf src/backend/dist
 npm run build -w @timeflow/api
 # El commit desplegado viaja en el bundle (NEXT_PUBLIC_* se incrusta en tiempo
 # de build) y tambien como archivo estatico: comparando ambos, una pestana
 # abierta se entera de que hay una version nueva.
 export NEXT_PUBLIC_VERSION="$(git rev-parse --short HEAD)"
+rm -rf src/frontend/.next
 npm run build -w @timeflow/web
 echo "{\"version\":\"$NEXT_PUBLIC_VERSION\"}" > src/frontend/public/version.json
 
@@ -75,13 +87,13 @@ if [[ $PRIMERA_VEZ -eq 1 ]]; then
   sudo install -m 0644 "$CADDY_SRC" /etc/caddy/Caddyfile
   sudo -u caddy caddy validate --config /etc/caddy/Caddyfile
   sudo systemctl restart caddy
-  pm2 start ecosystem.config.cjs
+  pm2 start ecosystem.config.cjs 9>&-
   pm2 save
   sudo env PATH="$PATH:$(dirname "$(command -v node)")" pm2 startup systemd -u "$USER" --hp "$HOME" >/dev/null
   pm2 save
 else
   # --update-env relee el ecosystem (y con el, el .env) en cada restart.
-  pm2 restart ecosystem.config.cjs --update-env
+  pm2 restart ecosystem.config.cjs --update-env 9>&-
   # Si cambio el Caddyfile en el repo, se aplica sin cortar conexiones.
   # Se valida ANTES de instalarlo: si trae un error, el servidor sigue con el
   # que funcionaba y el deploy se detiene avisando.

@@ -505,7 +505,7 @@ export default function PanelTarea({
             }}
           />
           {puedeGestionar && actividadesProyecto && actividadesProyecto.length > 0 && (
-            <div className="tf-vidrio rounded-2xl px-3 py-2.5">
+            <div className="tf-vidrio min-w-0 overflow-hidden rounded-2xl px-3 py-2.5">
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--tf-texto-tenue)]">
                   <GitBranch size={12} aria-hidden />
@@ -520,6 +520,7 @@ export default function PanelTarea({
               <Selector
                 ariaLabel="Tarea padre de este nodo"
                 forma="compacto"
+                className="w-full"
                 buscable={actividadesProyecto.length > 6}
                 placeholderBusqueda="Buscar tarea padre…"
                 disabled={cambiandoPadre}

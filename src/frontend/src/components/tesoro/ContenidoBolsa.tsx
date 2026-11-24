@@ -218,8 +218,8 @@ export default function ContenidoBolsa({
   if (modo === 'reloj') {
     return (
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2">
-          <h2 className="min-w-0 flex-1 truncate text-sm font-medium text-white" title={titulo}>
+        <div className="flex shrink-0 items-center gap-2 border-b border-[var(--tf-borde)] px-3 py-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--tf-texto)]" title={titulo}>
             {titulo}
           </h2>
           {acciones}
@@ -234,15 +234,15 @@ export default function ContenidoBolsa({
     // pestanas de objetivos y evidencia en el espacio que queda. Si una lista
     // es larga, solo se desplaza esa zona; el contador queda siempre a la vista.
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-start gap-3 border-b border-white/10 px-4 py-3">
+      <div className="flex shrink-0 items-start gap-3 border-b border-[var(--tf-borde)] px-4 py-3">
         <div className="min-w-0 flex-1">
           <h2
-            className="truncate text-lg font-medium leading-snug tracking-[-0.01em] text-white"
+            className="truncate text-lg font-medium leading-snug tracking-[-0.01em] text-[var(--tf-texto)]"
             title={titulo}
           >
             {titulo}
           </h2>
-          <p className="truncate text-[11px] text-[#8fa0d0]">
+          <p className="truncate text-[11px] text-[var(--tf-texto-tenue)]">
             {actividad?.proyecto.nombre ?? ''}
             {actividad ? ` · ${porcentajeLlenado(llenado)}%` : ''}
           </p>
@@ -256,7 +256,7 @@ export default function ContenidoBolsa({
         {aviso && (
           <p
             role="alert"
-            className="shrink-0 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300"
+            className="shrink-0 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]"
           >
             {aviso}
           </p>
@@ -264,7 +264,7 @@ export default function ContenidoBolsa({
 
         {/* Un solo aviso de una linea, el que corresponda. */}
         {terminada ? (
-          <p className="shrink-0 text-center text-[11px] text-[#8fa0d0]">
+          <p className="shrink-0 text-center text-[11px] text-[var(--tf-texto-tenue)]">
             Tarea terminada ·{' '}
             <button
               onClick={async () => {
@@ -286,24 +286,24 @@ export default function ContenidoBolsa({
                 });
               }}
               disabled={ocupado}
-              className="font-semibold text-[#9fb4ff] hover:text-white disabled:opacity-40"
+              className="font-semibold text-[var(--color-primario)] hover:underline disabled:opacity-40"
             >
               reabrirla
             </button>
           </p>
         ) : sesion && !enEstaTarea ? (
-          <p className="shrink-0 truncate text-center text-[11px] text-[#8fa0d0]" title={sesion.actividad.titulo}>
+          <p className="shrink-0 truncate text-center text-[11px] text-[var(--tf-texto-tenue)]" title={sesion.actividad.titulo}>
             Cronómetro ocupado en «{sesion.actividad.titulo}»
           </p>
         ) : !hayRespaldo ? (
-          <p className="shrink-0 text-center text-[11px] text-[#8fa0d0]">
+          <p className="shrink-0 text-center text-[11px] text-[var(--tf-texto-tenue)]">
             Adjunta una evidencia para poder terminarla.
           </p>
         ) : null}
 
         {/* ------------------------------------------ pestanas */}
         <div className="tf-vidrio flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl">
-          <div role="tablist" aria-label="Contenido de la tarea" className="flex shrink-0 border-b border-white/10">
+          <div role="tablist" aria-label="Contenido de la tarea" className="flex shrink-0 border-b border-[var(--tf-borde)]">
             <Pestana activa={pestana === 'objetivos'} onClick={() => setPestana('objetivos')}>
               Objetivos
               <Contador>{objetivos.length > 0 ? `${listos}/${objetivos.length}` : '0'}</Contador>
@@ -333,19 +333,19 @@ export default function ContenidoBolsa({
                       onBlur={agregarObjetivo}
                       aria-label="Nuevo objetivo"
                       placeholder="Nuevo objetivo…"
-                      className="mb-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-white outline-none placeholder:text-slate-500 focus:border-[#7f9dff]"
+                      className="mb-2 w-full rounded-lg border border-[var(--tf-borde-fuerte)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] outline-none placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)]"
                     />
                   ) : (
                     <button
                       onClick={() => setAgregando(true)}
-                      className="mb-2 w-full rounded-lg border border-dashed border-white/15 py-2 text-[11px] font-semibold text-[#9fb4ff] transition hover:bg-white/5 hover:text-white"
+                      className="mb-2 w-full rounded-lg border border-dashed border-[var(--tf-borde-fuerte)] py-2 text-[11px] font-semibold text-[var(--color-primario)] transition hover:bg-[var(--tf-hover)]"
                     >
                       + Agregar objetivo
                     </button>
                   ))}
 
                 {objetivos.length === 0 ? (
-                  <p className="px-2 py-2 text-center text-[11px] text-slate-500">
+                  <p className="px-2 py-2 text-center text-[11px] text-[var(--tf-texto-suave)]">
                     Cada objetivo es un paso pequeño de la tarea.
                   </p>
                 ) : (
@@ -356,13 +356,13 @@ export default function ContenidoBolsa({
                           onClick={() => alternarObjetivo(m)}
                           disabled={terminada}
                           aria-pressed={m.completada}
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-white/5 disabled:opacity-60"
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition hover:bg-[var(--tf-hover)] disabled:opacity-60"
                         >
                           <span
                             className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] ${
                               m.completada
-                                ? 'border-[#7f9dff] bg-[#7f9dff] text-slate-900'
-                                : 'border-white/25 text-transparent'
+                                ? 'border-[var(--color-primario)] bg-[var(--color-primario)] text-[var(--tf-texto-primario)]'
+                                : 'border-[var(--tf-borde-fuerte)] text-transparent'
                             }`}
                             aria-hidden
                           >
@@ -370,7 +370,7 @@ export default function ContenidoBolsa({
                           </span>
                           <span
                             className={`min-w-0 flex-1 truncate text-xs ${
-                              m.completada ? 'text-slate-500 line-through' : 'text-slate-200'
+                              m.completada ? 'text-[var(--tf-texto-suave)] line-through' : 'text-[var(--tf-texto)]'
                             }`}
                           >
                             {m.titulo}
@@ -415,7 +415,9 @@ function Pestana({
       aria-selected={activa}
       onClick={onClick}
       className={`flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition ${
-        activa ? 'border-[#7f9dff] text-white' : 'border-transparent text-[#8fa0d0] hover:text-white'
+        activa
+          ? 'border-[var(--color-primario)] text-[var(--tf-texto)]'
+          : 'border-transparent text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
       }`}
     >
       {children}
@@ -425,7 +427,7 @@ function Pestana({
 
 function Contador({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-slate-300">
+    <span className="rounded-full bg-[var(--tf-hover)] px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-[var(--tf-texto-tenue)]">
       {children}
     </span>
   );

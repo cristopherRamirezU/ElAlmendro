@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { permisosEfectivos } from '../../common/rbac';
 import { normalizarCorreo } from '../../common/organizacion';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { invalidarCacheUsuario } from '../../common/seguridad/cache-usuario';
 import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { problemaContrasena } from '../../common/seguridad/politica-contrasena';
 import { firmarSesion } from '../../common/seguridad/sesion';
@@ -46,11 +48,13 @@ export class AuthService {
 
   /** Guarda las preferencias visuales del propio usuario. */
   async actualizarPreferencias(usuarioId: string, dto: ActualizarPreferenciasDto) {
-    return this.prisma.usuario.update({
+    const actualizado = await this.prisma.usuario.update({
       where: { id: usuarioId },
       data: { fondoMapa: dto.fondoMapa },
       select: { fondoMapa: true },
     });
+    invalidarCacheUsuario(usuarioId);
+    return actualizado;
   }
 
   /**
@@ -59,11 +63,13 @@ export class AuthService {
    */
   async actualizarZonaHoraria(usuarioId: string, zona: string) {
     const zonaHoraria = await exigirZonaHoraria(this.prisma, zona);
-    return this.prisma.usuario.update({
+    const actualizado = await this.prisma.usuario.update({
       where: { id: usuarioId },
       data: { zonaHoraria },
       select: { zonaHoraria: true },
     });
+    invalidarCacheUsuario(usuarioId);
+    return actualizado;
   }
 
   /**
@@ -178,6 +184,7 @@ export class AuthService {
         },
       });
     });
+    invalidarCacheUsuario(u.id);
   }
 
   /**
@@ -228,7 +235,23 @@ export class AuthService {
       return r;
     });
 
+    invalidarCacheUsuario(u.id);
     return firmarSesion(this.jwt, actualizado);
+  }
+
+  /** Limpieza diaria de tokens de refresco expirados para mantener acotada la tabla. */
+  @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async purgarTokensExpirados() {
+    try {
+      const { count } = await this.prisma.tokenRefresco.deleteMany({
+        where: { expiraEn: { lt: new Date() } },
+      });
+      if (count > 0) {
+        this.registro.log(`Purga programada: ${count} token(s) de refresco expirados eliminados.`);
+      }
+    } catch (error) {
+      this.registro.warn(`No se pudieron purgar tokens expirados: ${(error as Error).message}`);
+    }
   }
 
   /** Un fallo de auditoria nunca debe cambiar la respuesta del login. */

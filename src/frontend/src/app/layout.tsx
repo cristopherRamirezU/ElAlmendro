@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
-import '@fontsource-variable/plus-jakarta-sans';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/jetbrains-mono';
 import '@fontsource-variable/sora';
-import '@fontsource-variable/space-grotesk';
 import './globals.css';
 import { ProveedorTesoro } from '@/lib/tesoro';
 import { ProveedorToast } from '@/components/ui/Toast';

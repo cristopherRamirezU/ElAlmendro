@@ -87,7 +87,7 @@ body {
 }
 
 .tf-display {
-  font-family: 'Plus Jakarta Sans Variable', 'Inter Variable', system-ui, sans-serif;
+  font-family: 'Sora Variable', 'Inter Variable', system-ui, sans-serif;
   letter-spacing: -0.024em;
 }
 
@@ -97,11 +97,11 @@ body {
 }
 
 .tf-fuente-titulo {
-  font-family: 'Sora Variable', 'Plus Jakarta Sans Variable', system-ui, sans-serif;
+  font-family: 'Sora Variable', 'Inter Variable', system-ui, sans-serif;
 }
 
 .tf-fuente-escena {
-  font-family: 'Space Grotesk Variable', 'Inter Variable', system-ui, sans-serif;
+  font-family: 'Sora Variable', 'Inter Variable', system-ui, sans-serif;
 }
 
 /* Superficie elevada moderna adaptable a temas oscuros y claros */

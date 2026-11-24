@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Optional,
   Query,
   Res,
   StreamableFile,
@@ -14,6 +15,7 @@ import { ReportesService } from './reportes.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermisosGuard } from '../../common/guards/permisos.guard';
 import { ExigirPermisos } from '../../common/decorators/permisos.decorator';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
 import { exigirOrganizacion } from '../../common/organizacion';
 import { ExportacionService } from '../../common/exportacion/exportacion.service';
@@ -68,6 +70,7 @@ export class ReportesController {
   constructor(
     private readonly reportes: ReportesService,
     private readonly exportacion: ExportacionService,
+    @Optional() private readonly limites?: LimiteIntentosService,
   ) {}
 
   /**
@@ -165,6 +168,7 @@ export class ReportesController {
     @Query() q: ExportarPeriodoDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    this.limites?.consumir(`exportar:${u.id}`, REGLAS.exportacionReportes);
     const desde = new Date(q.desde);
     const hasta = new Date(q.hasta);
 
@@ -209,6 +213,7 @@ export class ReportesController {
     @Query() q: ExportarPeriodoDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    this.limites?.consumir(`exportar:${u.id}`, REGLAS.exportacionReportes);
     const desde = new Date(q.desde);
     const hasta = new Date(q.hasta);
 
@@ -245,6 +250,7 @@ export class ReportesController {
     @Query() q: ExportarDiaDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
+    this.limites?.consumir(`exportar:${u.id}`, REGLAS.exportacionReportes);
     const filas = await this.reportes.dia(
       q.fecha,
       this.alcance(u),

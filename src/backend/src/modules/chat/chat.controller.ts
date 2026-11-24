@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Optional, Param, ParseUUIDPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { PERMISOS } from '../../common/rbac';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { PermisosGuard } from '../../common/guards/permisos.guard';
 import { ExigirPermisos } from '../../common/decorators/permisos.decorator';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
 import { ChatService } from './chat.service';
 import { EnviarMensajeDto } from './dto/enviar-mensaje.dto';
@@ -19,7 +20,10 @@ import { ListarMensajesDto } from './dto/listar-mensajes.dto';
 @ExigirPermisos(PERMISOS.CHAT_USAR)
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chat: ChatService) {}
+  constructor(
+    private readonly chat: ChatService,
+    @Optional() private readonly limites?: LimiteIntentosService,
+  ) {}
 
   @Get('contactos')
   contactos(@Usuario() u: UsuarioActual) {
@@ -38,6 +42,7 @@ export class ChatController {
 
   @Post('mensajes')
   enviar(@Usuario() u: UsuarioActual, @Body() dto: EnviarMensajeDto) {
+    this.limites?.consumir(`chat:${u.id}`, REGLAS.mensajeChat);
     return this.chat.enviar(u, dto);
   }
 

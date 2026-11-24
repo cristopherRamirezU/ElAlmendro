@@ -96,4 +96,39 @@ describe('ProyectosService', () => {
       }),
     );
   });
+
+  it('mios calcula totalTareas y tareasCompletadas via groupBy sin traer todas las filas', async () => {
+    const creado = new Date('2026-11-01T12:00:00Z');
+    prisma.proyecto.findMany.mockResolvedValue([
+      { id: 'p-1', nombre: 'Alpha', descripcion: null, estado: 'ACTIVO', creadoEn: creado },
+      { id: 'p-2', nombre: 'Beta', descripcion: 'Desc', estado: 'ACTIVO', creadoEn: creado },
+    ] as never);
+    (prisma.actividad.groupBy as jest.Mock).mockResolvedValue([
+      { proyectoId: 'p-1', estado: 'COMPLETADA', _count: { _all: 3 } },
+      { proyectoId: 'p-1', estado: 'EN_PROGRESO', _count: { _all: 2 } },
+    ]);
+
+    const res = await servicio.mios(ADMIN);
+
+    expect(res).toEqual([
+      {
+        id: 'p-1',
+        nombre: 'Alpha',
+        descripcion: null,
+        estado: 'ACTIVO',
+        creadoEn: creado,
+        totalTareas: 5,
+        tareasCompletadas: 3,
+      },
+      {
+        id: 'p-2',
+        nombre: 'Beta',
+        descripcion: 'Desc',
+        estado: 'ACTIVO',
+        creadoEn: creado,
+        totalTareas: 0,
+        tareasCompletadas: 0,
+      },
+    ]);
+  });
 });

@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Palette } from 'lucide-react';
 import { ControlesUsuarioBarra } from '@/components/Marco';
 import BuscadorPanel from '@/components/panel/BuscadorPanel';
-import type { ProyectoItem } from '@/lib/api';
+import { api, MiembroProyecto, ProyectoItem } from '@/lib/api';
+import { precargarDatos } from '@/lib/cacheDatos';
+import { useColorPrimario } from '@/lib/color';
 import { fuenteEscena } from '@/lib/fuentes';
 import { useTemaFondo } from '@/lib/tema';
+import type { Derivacion, NodoActividad } from '@/lib/tipos';
 import {
   EscenaConstelacion,
   FONDOS,
@@ -156,6 +159,7 @@ export default function ConstelacionProyectos({
 
   // Fondo de la escena: se adapta por defecto al tema global (claro u oscuro) y respeta la eleccion guardada por polaridad.
   const temaFondo = useTemaFondo();
+  const colorPrimario = useColorPrimario();
   const temaEsClaro = temaFondo === 'claro-nube';
   const [fondo, setFondo] = useState<Fondo>(temaEsClaro ? 'lienzo-claro' : 'nebulosa');
   const [eligiendoFondo, setEligiendoFondo] = useState(false);
@@ -266,6 +270,31 @@ export default function ConstelacionProyectos({
   useEffect(() => {
     if (escena.current) escena.current.fondo = fondo;
   }, [fondo]);
+
+  useEffect(() => {
+    if (escena.current) escena.current.colorPrimario = colorPrimario;
+  }, [colorPrimario]);
+
+  // Prefetch silencioso del mapa de nodos cuando el usuario enfoca un proyecto.
+  useEffect(() => {
+    if (!enfocado) return;
+    const timer = window.setTimeout(() => {
+      void precargarDatos(
+        `nodos:${enfocado}`,
+        async () => {
+          const [arbol, miembros] = await Promise.all([
+            api.get<{ actividades: NodoActividad[]; derivaciones: Derivacion[] }>(
+              `/nodos?proyectoId=${enfocado}`,
+            ),
+            api.get<MiembroProyecto[]>(`/proyectos/${enfocado}/miembros`).catch(() => [] as MiembroProyecto[]),
+          ]);
+          return { ...arbol, miembros };
+        },
+        15_000,
+      );
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [enfocado]);
 
   // Proyectos de la pestaña actual que coinciden con lo buscado.
   const buscado = normalizarTexto(busqueda);

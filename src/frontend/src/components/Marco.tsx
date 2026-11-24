@@ -36,19 +36,23 @@ import { cerrarSocketChat } from '@/lib/socket';
 import { cerrarSocketNotificaciones } from '@/lib/notificaciones';
 import ChatFlotante from '@/components/chat/ChatFlotante';
 import InsigniaChat from '@/components/chat/InsigniaChat';
-import CampanaNotificaciones from '@/components/CampanaNotificaciones';
+import CampanaNotificaciones, { limpiarCacheNotificaciones } from '@/components/CampanaNotificaciones';
 import LogoTimeFlow from '@/components/login/LogoTimeFlow';
 import '@/components/login/login.css';
+import { invalidarCacheDatos } from '@/lib/cacheDatos';
 import {
+  esCacheSesionFresca,
   guardarCacheSesion,
   leerCacheSesion,
   leerCacheSesionServidor,
   limpiarCacheSesion,
+  revalidarSesionUnica,
   suscribirCacheSesion,
 } from '@/lib/cacheSesion';
 import { precalentarRutas } from '@/lib/precalentar';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
 import {
+  aplicarColorMarcaEnDocumento,
   colorConAlfa,
   COLOR_PRIMARIO_DEFECTO,
   colorRgb,
@@ -281,28 +285,31 @@ export default function Marco({
     temaFondo === 'claro-nube' && textoPrimario === '#0f172a' ? '#0f172a' : colorPrimario;
 
   useEffect(() => {
-    const root = document.documentElement.style;
-    root.setProperty('--color-primario', colorPrimario);
-    root.setProperty('--color-primario-2', colorSecundario);
-    root.setProperty('--tf-primario-rgb', colorRgb(colorPrimario));
-    root.setProperty('--tf-primario-2-rgb', colorRgb(colorSecundario));
-    root.setProperty('--tf-texto-primario', textoPrimario);
-  }, [colorPrimario, colorSecundario, textoPrimario]);
+    aplicarColorMarcaEnDocumento(document, colorPrimario);
+  }, [colorPrimario]);
 
   useEffect(() => {
+    if (cache?.usuario && esCacheSesionFresca()) {
+      setRespondio(true);
+      return;
+    }
+
     let vigente = true;
     (async () => {
       try {
-        // Las dos peticiones son independientes: en paralelo, no en cascada.
-        const [u, j] = await Promise.all([
-          api.get<Usuario>('/auth/yo'),
-          api.get<Jornada | null>('/jornadas/actual'),
-        ]);
-        if (!vigente) return;
-        guardarCacheSesion({ usuario: u, jornada: j });
+        // Las dos peticiones son independientes y se deduplican si hay llamadas simultaneas.
+        await revalidarSesionUnica(async () => {
+          const [u, j] = await Promise.all([
+            api.get<Usuario>('/auth/yo'),
+            api.get<Jornada | null>('/jornadas/actual'),
+          ]);
+          return { usuario: u, jornada: j };
+        });
       } catch (err) {
         if (err instanceof ErrorApi && err.estado === 401) {
           limpiarCacheSesion();
+          limpiarCacheNotificaciones();
+          invalidarCacheDatos();
           router.replace('/login');
           return;
         }
@@ -423,6 +430,8 @@ export default function Marco({
     cerrarSocketChat();
     cerrarSocketNotificaciones();
     limpiarCacheSesion();
+    limpiarCacheNotificaciones();
+    invalidarCacheDatos();
     limpiarBolsaAbierta();
     await api.post('/auth/logout');
     router.replace('/login');

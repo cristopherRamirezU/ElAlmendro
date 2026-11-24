@@ -206,6 +206,7 @@ model Proyecto {
 
   @@index([organizacionId, estado])
   @@index([organizacionId, eliminadoEn])
+  @@index([propietarioId])
   @@map("proyectos")
 }
 
@@ -219,6 +220,7 @@ model MiembroProyecto {
   usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
 
   @@id([proyectoId, usuarioId])
+  @@index([usuarioId])
   @@map("miembros_proyecto")
 }
 
@@ -288,7 +290,9 @@ model Actividad {
   derivacionesDestino Derivacion[]    @relation("NodoDestino")
 
   @@index([proyectoId, estado])
+  @@index([proyectoId, eliminadoEn])
   @@index([responsableId, estado])
+  @@index([responsableId, eliminadoEn])
   @@index([actividadPadreId])
   @@map("actividades")
 }
@@ -344,6 +348,7 @@ model Jornada {
   sesiones SesionTrabajo[]
 
   @@index([usuarioId, inicioEn])
+  @@index([usuarioId, estado])
   @@index([organizacionId, inicioEn])
   @@map("jornadas")
 }
@@ -370,7 +375,9 @@ model SesionTrabajo {
   evidencias Evidencia[]
 
   @@index([usuarioId, inicioEn])
+  @@index([usuarioId, estado])
   @@index([actividadId])
+  @@index([jornadaId])
   @@map("sesiones_trabajo")
 }
 

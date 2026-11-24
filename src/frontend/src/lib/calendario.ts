@@ -22,7 +22,7 @@ export interface TrabajadorRef {
   id: string;
   nombre: string;
   /** Zona en que trabaja: sus dias y sus horas se leen en ella. */
-  zonaHoraria: string;
+  zonaHoraria?: string | null;
 }
 
 export interface AlertasDia {

@@ -64,11 +64,13 @@ export function zonasDisponibles(): { frecuentes: string[]; resto: string[] } {
 }
 
 /** "America/Santiago" -> "Santiago (America) · GMT-3", legible en una lista. */
-export function nombreZona(zona: string): string {
+export function nombreZona(zona: string | null | undefined): string {
+  if (!zona) return '';
   const partes = zona.split('/');
   const ciudad = partes[partes.length - 1].replace(/_/g, ' ');
   const region = partes.length > 1 ? partes[0] : '';
-  return `${ciudad}${region ? ` (${region})` : ''} · ${desfase(zona)}`;
+  const off = desfase(zona);
+  return `${ciudad}${region ? ` (${region})` : ''}${off ? ` · ${off}` : ''}`;
 }
 
 /** Desfase actual respecto de UTC, p. ej. "GMT-3" (cambia con el horario de verano). */

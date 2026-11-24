@@ -62,13 +62,16 @@ const CABECERAS_SEGURIDAD = [
     // El microfono solo para el propio sitio: los comentarios de voz de las
     // tareas lo usan. Un iframe ajeno sigue sin acceso.
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()',
+    value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
   },
 ];
 
 const config: NextConfig = {
   reactStrictMode: true,
   devIndicators: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@xyflow/react', 'luxon'],
+  },
   // No anunciar "X-Powered-By: Next.js": no ayuda a nadie salvo a quien
   // busca versiones vulnerables.
   poweredByHeader: false,

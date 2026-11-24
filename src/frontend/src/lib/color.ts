@@ -116,7 +116,22 @@ function hslAHex(h: number, s: number, l: number): string {
 }
 
 /**
- * Color de marca de la empresa del usuario en sesion, o el celeste por
+ * Aplica las variables CSS del color de marca sobre un `Document` (el principal
+ * o el de la ventana flotante Document Picture-in-Picture).
+ */
+export function aplicarColorMarcaEnDocumento(doc: Document, colorPrimario: string): void {
+  const colorSecundario = colorSecundarioDeMarca(colorPrimario);
+  const textoPrimario = colorTextoSobre(colorPrimario);
+  const root = doc.documentElement.style;
+  root.setProperty('--color-primario', colorPrimario);
+  root.setProperty('--color-primario-2', colorSecundario);
+  root.setProperty('--tf-primario-rgb', colorRgb(colorPrimario));
+  root.setProperty('--tf-primario-2-rgb', colorRgb(colorSecundario));
+  root.setProperty('--tf-texto-primario', textoPrimario);
+}
+
+/**
+ * Color de marca de la empresa de quien usa la app, o el celeste por
  * defecto si no personalizó ninguno (Configuración > Apariencia).
  */
 export function useColorPrimario(): string {

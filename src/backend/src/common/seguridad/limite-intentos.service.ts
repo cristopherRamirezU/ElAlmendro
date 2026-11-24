@@ -26,6 +26,12 @@ export const REGLAS = {
   subidaArchivos: { maximo: 60, ventanaMs: 60 * MINUTO, bloqueoMs: 15 * MINUTO },
   /** Registros publicos de empresas desde una IP: nadie crea cinco empresas en una hora. */
   registroIp: { maximo: 5, ventanaMs: 60 * MINUTO, bloqueoMs: 60 * MINUTO },
+  /** Busquedas rapidas globales en el panel de proyectos/tareas. */
+  busquedaActividades: { maximo: 60, ventanaMs: 1 * MINUTO, bloqueoMs: 1 * MINUTO },
+  /** Exportaciones pesadas a Excel, PDF o CSV. */
+  exportacionReportes: { maximo: 20, ventanaMs: 5 * MINUTO, bloqueoMs: 5 * MINUTO },
+  /** Envio continuo de mensajes al chat del equipo. */
+  mensajeChat: { maximo: 40, ventanaMs: 1 * MINUTO, bloqueoMs: 1 * MINUTO },
 } satisfies Record<string, ReglaLimite>;
 
 interface Registro {

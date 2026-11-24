@@ -37,74 +37,31 @@ export class NodosService {
       }
 
       if (esTrabajador) {
-        const tieneTarea = await this.prisma.actividad.findFirst({
-          where: { proyectoId, responsableId: u.id, eliminadoEn: null },
-          select: { id: true },
-        });
-
-        const estaAsignado =
+        const esPropietarioOMiembro =
           proyecto.propietarioId === u.id ||
-          proyecto.miembros.some((m) => m.usuarioId === u.id) ||
-          Boolean(tieneTarea);
+          proyecto.miembros.some((m) => m.usuarioId === u.id);
 
-        if (!estaAsignado) {
-          throw new ForbiddenException('No estás asignado a este proyecto.');
+        if (!esPropietarioOMiembro) {
+          const tieneTarea = await this.prisma.actividad.findFirst({
+            where: { proyectoId, responsableId: u.id, eliminadoEn: null },
+            select: { id: true },
+          });
+          if (!tieneTarea) {
+            throw new ForbiddenException('No estás asignado a este proyecto.');
+          }
         }
       }
     }
 
-    const actividades = await this.prisma.actividad.findMany({
-      where: {
-        eliminadoEn: null,
-        ...(proyectoId
-          ? { proyectoId }
-          : {
-              proyecto: {
-                eliminadoEn: null,
-                ...filtroOrganizacion(u),
-                ...(esTrabajador
-                  ? {
-                      OR: [
-                        { propietarioId: u.id },
-                        { miembros: { some: { usuarioId: u.id } } },
-                        { actividades: { some: { responsableId: u.id, eliminadoEn: null } } },
-                      ],
-                    }
-                  : {}),
-              },
-            }),
-      },
-      orderBy: [{ actividadPadreId: 'asc' }, { orden: 'asc' }, { creadoEn: 'asc' }],
-      select: {
-        id: true,
-        titulo: true,
-        estado: true,
-        prioridad: true,
-        actividadPadreId: true,
-        posicionNodo: true,
-        ladosLinea: true,
-        orden: true,
-        bloquearOrdenHijas: true,
-        responsableId: true,
-        responsable: { select: { id: true, nombreCompleto: true } },
-        // Fechas de la carta Gantt: nace, vence y se guarda en el cofre.
-        creadoEn: true,
-        fechaLimite: true,
-        completadaEn: true,
-        // Monedas de cada bolsa: con ellas la vista dibuja cuanto lleva
-        // llena la tarea sin pedir el detalle de una en una.
-        subtareas: { select: { completada: true } },
-      },
-    });
-
-    const derivaciones = await this.prisma.derivacion.findMany({
-      where: {
-        actividad: {
+    const [actividades, derivaciones] = await Promise.all([
+      this.prisma.actividad.findMany({
+        where: {
           eliminadoEn: null,
           ...(proyectoId
             ? { proyectoId }
             : {
                 proyecto: {
+                  eliminadoEn: null,
                   ...filtroOrganizacion(u),
                   ...(esTrabajador
                     ? {
@@ -118,18 +75,62 @@ export class NodosService {
                 },
               }),
         },
-      },
-      orderBy: { ocurridoEn: 'desc' },
-      take: 20,
-      select: {
-        id: true,
-        motivo: true,
-        ocurridoEn: true,
-        actividad: { select: { titulo: true } },
-        deUsuario: { select: { nombreCompleto: true } },
-        aUsuario: { select: { nombreCompleto: true } },
-      },
-    });
+        orderBy: [{ actividadPadreId: 'asc' }, { orden: 'asc' }, { creadoEn: 'asc' }],
+        select: {
+          id: true,
+          titulo: true,
+          estado: true,
+          prioridad: true,
+          actividadPadreId: true,
+          posicionNodo: true,
+          ladosLinea: true,
+          orden: true,
+          bloquearOrdenHijas: true,
+          responsableId: true,
+          responsable: { select: { id: true, nombreCompleto: true } },
+          // Fechas de la carta Gantt: nace, vence y se guarda en el cofre.
+          creadoEn: true,
+          fechaLimite: true,
+          completadaEn: true,
+          // Monedas de cada bolsa: con ellas la vista dibuja cuanto lleva
+          // llena la tarea sin pedir el detalle de una en una.
+          subtareas: { select: { completada: true } },
+        },
+      }),
+      this.prisma.derivacion.findMany({
+        where: {
+          actividad: {
+            eliminadoEn: null,
+            ...(proyectoId
+              ? { proyectoId }
+              : {
+                  proyecto: {
+                    ...filtroOrganizacion(u),
+                    ...(esTrabajador
+                      ? {
+                          OR: [
+                            { propietarioId: u.id },
+                            { miembros: { some: { usuarioId: u.id } } },
+                            { actividades: { some: { responsableId: u.id, eliminadoEn: null } } },
+                          ],
+                        }
+                      : {}),
+                  },
+                }),
+          },
+        },
+        orderBy: { ocurridoEn: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          motivo: true,
+          ocurridoEn: true,
+          actividad: { select: { titulo: true } },
+          deUsuario: { select: { nombreCompleto: true } },
+          aUsuario: { select: { nombreCompleto: true } },
+        },
+      }),
+    ]);
 
     // Cuando se empezo a trabajar de verdad cada bolsa: la primera vez que se
     // encendio su cronometro. En el Gantt separa la espera del trabajo.

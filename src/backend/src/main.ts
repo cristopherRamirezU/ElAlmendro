@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { json, urlencoded, type NextFunction, type Request, type Response } from 'express';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
@@ -22,7 +23,28 @@ async function bootstrap() {
   app.disable('x-powered-by');
 
   app.use(helmet());
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
   app.use(cookieParser());
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const inicioNs = process.hrtime.bigint();
+    const writeHeadOriginal = res.writeHead.bind(res);
+    res.writeHead = ((...args: Parameters<Response['writeHead']>) => {
+      if (!res.headersSent) {
+        const durMs = Number(process.hrtime.bigint() - inicioNs) / 1_000_000;
+        res.setHeader('Server-Timing', `app;dur=${durMs.toFixed(1)}`);
+      }
+      return writeHeadOriginal(...args);
+    }) as Response['writeHead'];
+
+    res.on('finish', () => {
+      const durMs = Number(process.hrtime.bigint() - inicioNs) / 1_000_000;
+      if (durMs > 250) {
+        registro.warn(`Peticion lenta (${durMs.toFixed(1)} ms): ${req.method} ${req.originalUrl}`);
+      }
+    });
+    next();
+  });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
@@ -57,6 +79,12 @@ async function bootstrap() {
  */
 function revisarSecretoJwt(registro: Logger) {
   const secreto = secretoJwt();
+  if (/^CAMBIAR/i.test(secreto) && esProduccion()) {
+    registro.error(
+      'CRITICO: JWT_ACCESS_SECRET usa un valor de ejemplo en produccion. Cambialo de inmediato por uno de 32+ caracteres (openssl rand -hex 32).',
+    );
+    return;
+  }
   if (secreto.length < 32 || /^CAMBIAR/i.test(secreto)) {
     registro.warn(
       'JWT_ACCESS_SECRET es corto o es el de ejemplo: cambialo por uno de 32+ caracteres (openssl rand -hex 32).',
