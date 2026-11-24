@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Marco from '@/components/Marco';
+import Selector from '@/components/ui/Selector';
 import {
   api,
   ErrorApi,
@@ -544,15 +545,18 @@ function ModalCrearOrganizacion({
             </div>
             <div>
               <label className="text-[11px] font-semibold text-slate-300">Plan Asignado</label>
-              <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value as PlanSaaS)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              >
-                <option value="GRATIS">GRATIS</option>
-                <option value="PRO">PRO</option>
-                <option value="EMPRESA">EMPRESA</option>
-              </select>
+              <Selector
+                ariaLabel="Plan Asignado"
+                forzarTema="oscuro"
+                valor={plan}
+                onChange={(v) => setPlan(v as PlanSaaS)}
+                className="mt-1"
+                opciones={[
+                  { valor: 'GRATIS', etiqueta: 'GRATIS', badge: 'Básico' },
+                  { valor: 'PRO', etiqueta: 'PRO', badge: 'Popular' },
+                  { valor: 'EMPRESA', etiqueta: 'EMPRESA', badge: 'Ilimitado' },
+                ]}
+              />
             </div>
             <div>
               <label className="text-[11px] font-semibold text-slate-300">Máx Usuarios</label>
@@ -703,15 +707,18 @@ function ModalEditarOrganizacion({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[11px] font-semibold text-slate-300">Plan SaaS</label>
-              <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value as PlanSaaS)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              >
-                <option value="GRATIS">GRATIS</option>
-                <option value="PRO">PRO</option>
-                <option value="EMPRESA">EMPRESA</option>
-              </select>
+              <Selector
+                ariaLabel="Plan SaaS"
+                forzarTema="oscuro"
+                valor={plan}
+                onChange={(v) => setPlan(v as PlanSaaS)}
+                className="mt-1"
+                opciones={[
+                  { valor: 'GRATIS', etiqueta: 'GRATIS', badge: 'Básico' },
+                  { valor: 'PRO', etiqueta: 'PRO', badge: 'Popular' },
+                  { valor: 'EMPRESA', etiqueta: 'EMPRESA', badge: 'Ilimitado' },
+                ]}
+              />
             </div>
             <div>
               <label className="text-[11px] font-semibold text-slate-300">RUT</label>

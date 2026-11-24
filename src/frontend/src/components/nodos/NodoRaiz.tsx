@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
+import Selector from '@/components/ui/Selector';
 import { ALTO_RAIZ, ANCHO_RAIZ, type Orientacion } from '@/lib/mapaMental';
 import { api, PersonaRef } from '@/lib/api';
+import { iniciales } from '@/lib/formato';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
@@ -342,24 +344,24 @@ export default function NodoRaiz({ id, data }: NodeProps) {
                   : 'border-white/15 bg-white/5 text-white placeholder-slate-500'
               }`}
             />
-            <select
-              value={responsableId}
-              onChange={(e) => setResponsableId(e.target.value)}
-              aria-label="Responsable de la tarea"
+            <Selector
+              ariaLabel="Responsable de la tarea"
+              enPortal={false}
+              forzarTema={d.esMapaClaro ? 'claro' : 'oscuro'}
+              forma="compacto"
+              buscable={(personas?.length ?? 0) > 6}
+              placeholderBusqueda="Buscar persona…"
               disabled={!personas}
-              className={`mb-2 w-full rounded-lg border px-2 py-1.5 text-[11px] outline-none focus:border-amber-400 disabled:opacity-50 ${
-                d.esMapaClaro
-                  ? 'border-slate-200 bg-white text-slate-900'
-                  : 'border-white/15 bg-slate-950 text-white'
-              }`}
-            >
-              <option value="">{personas ? 'Elige a la persona…' : 'Cargando equipo…'}</option>
-              {personas?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
+              placeholder={personas ? 'Elige a la persona…' : 'Cargando equipo…'}
+              valor={responsableId}
+              onChange={setResponsableId}
+              className="mb-2 w-full"
+              opciones={(personas ?? []).map((p) => ({
+                valor: p.id,
+                etiqueta: p.nombre,
+                inicialesAvatar: iniciales(p.nombre),
+              }))}
+            />
             {aviso && (
               <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-500">
                 {aviso}

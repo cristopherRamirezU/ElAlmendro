@@ -3,8 +3,10 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DateTime } from 'luxon';
+import { Users } from 'lucide-react';
 import Marco from '@/components/Marco';
 import Drawer from '@/components/ui/Drawer';
+import Selector from '@/components/ui/Selector';
 import RejillaMes from '@/components/calendario/RejillaMes';
 import MatrizTrabajadores from '@/components/calendario/MatrizTrabajadores';
 import SemanaHoras from '@/components/calendario/SemanaHoras';
@@ -12,7 +14,7 @@ import PanelDia from '@/components/calendario/PanelDia';
 import PersonalizarVista from '@/components/calendario/PersonalizarVista';
 import { api, ErrorApi } from '@/lib/api';
 import { esAdministrador, useSesion } from '@/lib/sesion';
-import { duracion, fechaLarga } from '@/lib/formato';
+import { duracion, fechaLarga, iniciales } from '@/lib/formato';
 import {
   guardarPreferenciasCalendario,
   leerPreferenciasCalendario,
@@ -379,21 +381,29 @@ function SelectorTrabajador({
   if (!esAdministrador(usuario) || equipo.length < 2) return null;
 
   return (
-    <select
+    <Selector
       id="filtro-trabajador-calendario"
       name="trabajadorId"
-      value={valor ?? ''}
-      onChange={(e) => onCambio(e.target.value || null)}
-      aria-label="Filtrar por trabajador"
-      className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-    >
-      <option value="">Todo el equipo</option>
-      {equipo.map((w) => (
-        <option key={w.id} value={w.id}>
-          {w.nombre}
-        </option>
-      ))}
-    </select>
+      ariaLabel="Filtrar por trabajador"
+      forma="pildora"
+      buscable={equipo.length > 6}
+      placeholderBusqueda="Buscar persona…"
+      minAnchoMenu={210}
+      valor={valor ?? ''}
+      onChange={(v) => onCambio(v || null)}
+      opciones={[
+        {
+          valor: '',
+          etiqueta: 'Todo el equipo',
+          icono: <Users size={13} aria-hidden className="text-[var(--tf-texto-tenue)]" />,
+        },
+        ...equipo.map((w) => ({
+          valor: w.id,
+          etiqueta: w.nombre,
+          inicialesAvatar: iniciales(w.nombre),
+        })),
+      ]}
+    />
   );
 }
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Palette, Search, X } from 'lucide-react';
+import { ChevronDown, Palette } from 'lucide-react';
+import BuscadorPanel from '@/components/panel/BuscadorPanel';
 import type { ProyectoItem } from '@/lib/api';
 import { fuenteEscena } from '@/lib/fuentes';
 import { useTemaFondo } from '@/lib/tema';
@@ -289,46 +290,21 @@ export default function ConstelacionProyectos({
       {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div role="search" className="min-w-0 flex-1 sm:w-56 sm:flex-none">
-            <label htmlFor="buscar-proyecto" className="relative block">
-              <span className="sr-only">Buscar proyecto por nombre</span>
-              <Search
-                size={14}
-                aria-hidden
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tf-texto-suave)]"
-              />
-              <input
-                id="buscar-proyecto"
-                name="buscarProyecto"
-                type="search"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setBusqueda('');
-                }}
-                placeholder="Buscar proyecto…"
-                autoComplete="off"
-                className="h-9 w-full rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
-              />
-              {busqueda && (
-                <button
-                  type="button"
-                  onClick={() => setBusqueda('')}
-                  aria-label="Limpiar búsqueda"
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] transition-colors hover:text-[var(--tf-texto)]"
-                >
-                  <X size={13} aria-hidden />
-                </button>
-              )}
-            </label>
-            {buscado && (
-              <p aria-live="polite" className="mt-1 pl-3 text-[11px] text-[var(--tf-texto-tenue)]">
-                {coincidentes.length === 0
-                  ? 'Sin resultados en esta pestaña'
-                  : `${coincidentes.length} de ${enPestana.length} ${enPestana.length === 1 ? 'proyecto' : 'proyectos'}`}
-              </p>
-            )}
-          </div>
+          <BuscadorPanel
+            id="buscar-proyecto"
+            valor={busqueda}
+            onCambio={setBusqueda}
+            proyectos={proyectos}
+            onIrAlMapa={onIrAlMapa}
+            onElegirProyecto={onElegir}
+          />
+          {buscado && (
+            <span className="sr-only" aria-live="polite">
+              {coincidentes.length === 0
+                ? 'Sin resultados en esta pestaña'
+                : `${coincidentes.length} de ${enPestana.length} ${enPestana.length === 1 ? 'proyecto' : 'proyectos'}`}
+            </span>
+          )}
 
           <div
             ref={filtros}

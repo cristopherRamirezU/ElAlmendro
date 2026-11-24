@@ -756,4 +756,82 @@ describe('ActividadesService', () => {
       ).resolves.toBeUndefined();
     });
   });
+
+  describe('buscar', () => {
+    it('retorna [] sin consultar la base si el texto tiene menos de 2 caracteres', async () => {
+      expect(await servicio.buscar(ACTOR, '')).toEqual([]);
+      expect(await servicio.buscar(ACTOR, '   a  ')).toEqual([]);
+      expect(prisma.actividad.findMany).not.toHaveBeenCalled();
+    });
+
+    it('filtra por organizacion, excluye eliminados y mapea el formato esperado para admin/supervisor', async () => {
+      const supervisor = { ...ACTOR, id: 'sup-1', rol: 'SUPERVISOR' } as UsuarioActual;
+      prisma.actividad.findMany.mockResolvedValueOnce([
+        {
+          id: 'act-1',
+          titulo: 'Diseñar login',
+          estado: 'EN_PROGRESO',
+          proyectoId: 'proy-1',
+          proyecto: { nombre: 'Portal Web' },
+          responsable: { nombreCompleto: 'Ana Perez' },
+        },
+      ] as never);
+
+      const res = await servicio.buscar(supervisor, '  login ');
+
+      expect(prisma.actividad.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          take: 15,
+          where: expect.objectContaining({
+            eliminadoEn: null,
+            proyecto: { eliminadoEn: null, organizacionId: 'org-1' },
+            OR: [
+              { titulo: { contains: 'login', mode: 'insensitive' } },
+              { descripcion: { contains: 'login', mode: 'insensitive' } },
+            ],
+          }),
+        }),
+      );
+      expect(res).toEqual([
+        {
+          id: 'act-1',
+          titulo: 'Diseñar login',
+          estado: 'EN_PROGRESO',
+          proyectoId: 'proy-1',
+          proyectoNombre: 'Portal Web',
+          responsableNombre: 'Ana Perez',
+        },
+      ]);
+    });
+
+    it('restringe la busqueda de un trabajador a sus tareas o proyectos donde participa', async () => {
+      prisma.actividad.findMany.mockResolvedValueOnce([] as never);
+
+      await servicio.buscar(ACTOR, 'factura');
+
+      expect(prisma.actividad.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            eliminadoEn: null,
+            proyecto: { eliminadoEn: null, organizacionId: 'org-1' },
+            AND: [
+              {
+                OR: [
+                  { responsableId: ACTOR.id },
+                  { proyecto: { propietarioId: ACTOR.id } },
+                  { proyecto: { miembros: { some: { usuarioId: ACTOR.id } } } },
+                ],
+              },
+              {
+                OR: [
+                  { titulo: { contains: 'factura', mode: 'insensitive' } },
+                  { descripcion: { contains: 'factura', mode: 'insensitive' } },
+                ],
+              },
+            ],
+          }),
+        }),
+      );
+    });
+  });
 });

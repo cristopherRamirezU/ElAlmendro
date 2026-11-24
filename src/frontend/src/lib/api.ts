@@ -216,6 +216,15 @@ export interface ProyectoItem {
   tareasCompletadas: number;
 }
 
+export interface TareaBusquedaItem {
+  id: string;
+  titulo: string;
+  estado: string;
+  proyectoId: string;
+  proyectoNombre: string;
+  responsableNombre: string;
+}
+
 export interface Actividad {
   id: string;
   titulo: string;

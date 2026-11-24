@@ -10,8 +10,9 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, Download } from 'lucide-react';
+import { Building2, CalendarDays, ChevronDown, Download } from 'lucide-react';
 import Marco from '@/components/Marco';
+import Selector from '@/components/ui/Selector';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
 import CartaGantt from '@/components/reportes/CartaGantt';
 import { api, ErrorApi, URL_API, OrganizacionItem, Usuario } from '@/lib/api';
@@ -181,37 +182,48 @@ function ReportesContenido() {
       acciones={
         <div className="flex flex-wrap items-center gap-2">
           {esSuperAdmin && (
-            <select
+            <Selector
               id="reportes-organizacion"
               name="organizacionId"
-              aria-label="Filtrar por organización"
-              value={orgSeleccionada}
-              onChange={(e) => cambiarOrganizacion(e.target.value)}
-              className="rounded-xl border border-sky-500/30 bg-slate-900 px-3 py-2 text-sm text-sky-200 outline-none focus:border-sky-400"
-            >
-              <option value="">🏢 Todas las Empresas (Consolidado Global)</option>
-              {organizaciones.map((org) => (
-                <option key={org.id} value={org.id}>
-                  🏢 {org.nombre} ({org.plan})
-                </option>
-              ))}
-            </select>
+              ariaLabel="Filtrar por organización"
+              forma="pildora"
+              buscable={organizaciones.length > 5}
+              placeholderBusqueda="Buscar empresa…"
+              minAnchoMenu={260}
+              valor={orgSeleccionada}
+              onChange={cambiarOrganizacion}
+              opciones={[
+                {
+                  valor: '',
+                  etiqueta: 'Todas las Empresas',
+                  subtitulo: 'Consolidado Global',
+                  icono: <Building2 size={13} aria-hidden className="text-[var(--tf-acento-azul)]" />,
+                },
+                ...organizaciones.map((org) => ({
+                  valor: org.id,
+                  etiqueta: org.nombre,
+                  subtitulo: org.slug,
+                  badge: org.plan,
+                  icono: <Building2 size={13} aria-hidden className="text-[var(--tf-texto-tenue)]" />,
+                })),
+              ]}
+            />
           )}
 
-          <select
+          <Selector
             id="reportes-rango"
             name="dias"
-            aria-label="Rango de días"
-            value={dias}
-            onChange={(e) => setDias(Number(e.target.value))}
-            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 py-2 text-xs font-medium text-[var(--tf-texto)] outline-none focus:border-sky-400"
-          >
-            {RANGOS.map((r) => (
-              <option key={r.dias} value={r.dias}>
-                {r.texto}
-              </option>
-            ))}
-          </select>
+            ariaLabel="Rango de días"
+            forma="pildora"
+            minAnchoMenu={175}
+            valor={String(dias)}
+            onChange={(v) => setDias(Number(v))}
+            opciones={RANGOS.map((r) => ({
+              valor: String(r.dias),
+              etiqueta: r.texto,
+              icono: <CalendarDays size={13} aria-hidden className="text-[var(--tf-texto-tenue)]" />,
+            }))}
+          />
 
           {puedeExportar && (
             <div ref={exportRef} className="relative">

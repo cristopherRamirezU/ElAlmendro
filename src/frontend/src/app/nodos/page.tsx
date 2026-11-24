@@ -15,6 +15,7 @@ import AristaMapa, { DatosAristaMapa } from '@/components/nodos/AristaMapa';
 import { type Ancla, idManilla } from '@/components/nodos/orientacion';
 import PanelTarea from '@/components/nodos/PanelTarea';
 import Modal from '@/components/ui/Modal';
+import Selector from '@/components/ui/Selector';
 import { llenadoDeBolsa } from '@/components/tesoro/llenado';
 import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
 import { Derivacion, NodoActividad } from '@/lib/tipos';
@@ -1037,44 +1038,38 @@ function Nodos() {
             <span className="min-w-0 truncate font-semibold text-[var(--tf-acento-ambar)]">
               Línea hacia «{actividades.find((a) => a.id === lineaSeleccionada.target)?.titulo}»
             </span>
-            <label className="flex items-center gap-1.5">
-              Sale por
-              <select
-                value={ladosLineaSeleccionada.salida ?? ''}
-                onChange={(e) =>
+            <span className="flex items-center gap-1.5">
+              <span>Sale por</span>
+              <Selector
+                ariaLabel="Sale por"
+                forma="compacto"
+                minAnchoMenu={145}
+                valor={ladosLineaSeleccionada.salida ?? ''}
+                onChange={(v) =>
                   guardarLados(lineaSeleccionada.target, {
                     ...ladosLineaSeleccionada,
-                    salida: (e.target.value || undefined) as LadoLinea | undefined,
+                    salida: (v || undefined) as LadoLinea | undefined,
                   })
                 }
-                className="rounded-md border border-[var(--tf-borde)] bg-[var(--tf-input)] px-1.5 py-1 text-xs text-[var(--tf-texto)] outline-none focus:border-amber-400"
-              >
-                {OPCIONES_LADO.map((o) => (
-                  <option key={o.valor} value={o.valor}>
-                    {o.texto}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-1.5">
-              Llega por
-              <select
-                value={ladosLineaSeleccionada.entrada ?? ''}
-                onChange={(e) =>
+                opciones={OPCIONES_LADO.map((o) => ({ valor: o.valor, etiqueta: o.texto }))}
+              />
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span>Llega por</span>
+              <Selector
+                ariaLabel="Llega por"
+                forma="compacto"
+                minAnchoMenu={145}
+                valor={ladosLineaSeleccionada.entrada ?? ''}
+                onChange={(v) =>
                   guardarLados(lineaSeleccionada.target, {
                     ...ladosLineaSeleccionada,
-                    entrada: (e.target.value || undefined) as LadoLinea | undefined,
+                    entrada: (v || undefined) as LadoLinea | undefined,
                   })
                 }
-                className="rounded-md border border-[var(--tf-borde)] bg-[var(--tf-input)] px-1.5 py-1 text-xs text-[var(--tf-texto)] outline-none focus:border-amber-400"
-              >
-                {OPCIONES_LADO.map((o) => (
-                  <option key={o.valor} value={o.valor}>
-                    {o.texto}
-                  </option>
-                ))}
-              </select>
-            </label>
+                opciones={OPCIONES_LADO.map((o) => ({ valor: o.valor, etiqueta: o.texto }))}
+              />
+            </span>
             <button
               onClick={() => guardarLados(lineaSeleccionada.target, null)}
               disabled={!ladosLineaSeleccionada.salida && !ladosLineaSeleccionada.entrada}

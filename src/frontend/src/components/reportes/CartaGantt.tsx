@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { DateTime } from 'luxon';
+import Selector from '@/components/ui/Selector';
 import { duracion, ESTADOS, fechaLarga } from '@/lib/formato';
 import { TareaGantt } from '@/lib/tipos';
 import { zonaActual } from '@/lib/zona';
@@ -125,36 +126,50 @@ export default function CartaGantt({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {proyectos.length > 1 && (
-            <select
+            <Selector
               id="gantt-filtro-proyecto"
               name="proyectoId"
-              aria-label="Filtrar por proyecto"
-              value={filtroProyecto}
-              onChange={(e) => setFiltroProyecto(e.target.value)}
-              className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-xs text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            >
-              <option value="">Todos los proyectos ({proyectos.length})</option>
-              {proyectos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
+              ariaLabel="Filtrar por proyecto"
+              forma="pildora"
+              buscable={proyectos.length > 6}
+              placeholderBusqueda="Buscar proyecto…"
+              minAnchoMenu={220}
+              valor={filtroProyecto}
+              onChange={setFiltroProyecto}
+              opciones={[
+                { valor: '', etiqueta: `Todos los proyectos (${proyectos.length})` },
+                ...proyectos.map((p) => ({ valor: p.id, etiqueta: p.nombre })),
+              ]}
+            />
           )}
 
-          <select
+          <Selector
             id="gantt-filtro-estado"
             name="estado"
-            aria-label="Filtrar por estado"
-            value={filtroEstado}
-            onChange={(e) => setFiltroEstado(e.target.value)}
-            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-xs text-[var(--tf-texto)] outline-none focus:border-sky-400"
-          >
-            <option value="TODAS">Todos los estados</option>
-            <option value="EN_PROGRESO">En progreso</option>
-            <option value="COMPLETADA">Completadas</option>
-            <option value="PENDIENTES">Por hacer / Bloqueadas</option>
-          </select>
+            ariaLabel="Filtrar por estado"
+            forma="pildora"
+            minAnchoMenu={200}
+            valor={filtroEstado}
+            onChange={setFiltroEstado}
+            opciones={[
+              { valor: 'TODAS', etiqueta: 'Todos los estados' },
+              {
+                valor: 'EN_PROGRESO',
+                etiqueta: 'En progreso',
+                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${COLOR_CELDA.EN_PROGRESO}`} />,
+              },
+              {
+                valor: 'COMPLETADA',
+                etiqueta: 'Completadas',
+                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${COLOR_CELDA.COMPLETADA}`} />,
+              },
+              {
+                valor: 'PENDIENTES',
+                etiqueta: 'Por hacer / Bloqueadas',
+                icono: <span aria-hidden className={`inline-block h-2 w-2 rounded-full ${COLOR_CELDA.PENDIENTE}`} />,
+              },
+            ]}
+          />
 
           <label
             htmlFor="gantt-solo-activas"

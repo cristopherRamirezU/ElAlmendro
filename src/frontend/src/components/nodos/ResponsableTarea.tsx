@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Selector from '@/components/ui/Selector';
 import { Actividad, api, ErrorApi, PersonaRef } from '@/lib/api';
+import { iniciales } from '@/lib/formato';
 
 /**
  * Responsable de la tarea. Todos lo ven; administrador y supervisor pueden
@@ -85,19 +87,20 @@ export default function ResponsableTarea({
 
       {abierto && (
         <div className="mt-3 flex flex-col gap-2">
-          <select
-            value={elegido}
-            onChange={(e) => setElegido(e.target.value)}
+          <Selector
+            ariaLabel="Seleccionar nuevo responsable"
+            placeholder="Derivar a…"
+            buscable={candidatos.length > 5}
+            placeholderBusqueda="Buscar persona…"
+            valor={elegido}
+            onChange={setElegido}
             disabled={ocupado}
-            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400/50"
-          >
-            <option value="">Derivar a…</option>
-            {candidatos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
+            opciones={candidatos.map((p) => ({
+              valor: p.id,
+              etiqueta: p.nombre,
+              inicialesAvatar: iniciales(p.nombre),
+            }))}
+          />
           <input
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}

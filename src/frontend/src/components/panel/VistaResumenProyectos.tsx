@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2, FolderKanban, Plus, Search, Sparkles, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FolderKanban, Plus, Sparkles } from 'lucide-react';
+import BuscadorPanel from '@/components/panel/BuscadorPanel';
 import type { ProyectoItem } from '@/lib/api';
 import { colorConAlfa, colorTextoSobre, useColorPrimario } from '@/lib/color';
 import { useTemaFondo } from '@/lib/tema';
@@ -113,31 +114,14 @@ export default function VistaResumenProyectos({
       {/* Barra superior alineada con Constelacion */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
-            <Search
-              size={14}
-              aria-hidden
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tf-texto-suave)]"
-            />
-            <input
-              id="resumen-buscar-proyecto"
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar proyecto…"
-              className="h-9 w-full rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
-            />
-            {busqueda && (
-              <button
-                type="button"
-                onClick={() => setBusqueda('')}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]"
-              >
-                <X size={13} aria-hidden />
-              </button>
-            )}
-          </div>
+          <BuscadorPanel
+            id="resumen-buscar-proyecto"
+            valor={busqueda}
+            onCambio={setBusqueda}
+            proyectos={proyectos}
+            onIrAlMapa={onIrAlMapa}
+            onElegirProyecto={onElegir}
+          />
 
           <div className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
             {(

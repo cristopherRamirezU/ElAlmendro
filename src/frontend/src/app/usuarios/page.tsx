@@ -11,6 +11,7 @@ import {
   ROLES_CON_PERMISOS_EXTRA,
 } from '@/lib/rbac';
 import Marco from '@/components/Marco';
+import Selector, { type OpcionSelector } from '@/components/ui/Selector';
 import SelectorZona from '@/components/ui/SelectorZona';
 import { api, ErrorApi, RolCatalogoItem, UsuarioItem } from '@/lib/api';
 import { iniciales } from '@/lib/formato';
@@ -655,21 +656,35 @@ function ModalCrearUsuario({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol en el Sistema (RBAC)</label>
-            <select
-              value={rol}
+            <label htmlFor="crear-rol" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol en el Sistema (RBAC)</label>
+            <Selector
+              id="crear-rol"
+              ariaLabel="Rol en el Sistema (RBAC)"
               disabled={rolOperador === 'SUPERVISOR'}
-              onChange={(e) => setRol(e.target.value as Rol)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400 disabled:opacity-60 disabled:text-[var(--tf-texto-suave)]"
-            >
-              <option value="TRABAJADOR">Trabajador (Registro de tiempo y actividades)</option>
-              {rolOperador !== 'SUPERVISOR' && (
-                <>
-                  <option value="SUPERVISOR">Supervisor (Monitoreo de equipo y reportes)</option>
-                  <option value="ADMINISTRADOR">Administrador (Control total del sistema)</option>
-                </>
-              )}
-            </select>
+              valor={rol}
+              onChange={(v) => setRol(v as Rol)}
+              opciones={[
+                {
+                  valor: 'TRABAJADOR',
+                  etiqueta: 'Trabajador',
+                  subtitulo: 'Registro de tiempo y actividades',
+                },
+                ...(rolOperador !== 'SUPERVISOR'
+                  ? [
+                      {
+                        valor: 'SUPERVISOR' as Rol,
+                        etiqueta: 'Supervisor',
+                        subtitulo: 'Monitoreo de equipo y reportes',
+                      },
+                      {
+                        valor: 'ADMINISTRADOR' as Rol,
+                        etiqueta: 'Administrador',
+                        subtitulo: 'Control total del sistema',
+                      },
+                    ]
+                  : []),
+              ] satisfies OpcionSelector<Rol>[]}
+            />
             {rolOperador === 'SUPERVISOR' && (
               <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
                 Como supervisor, gestionas exclusivamente trabajadores a tu cargo.
@@ -831,21 +846,35 @@ function ModalEditarUsuario({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol Asignado (RBAC)</label>
-            <select
-              value={rol}
+            <label htmlFor="editar-rol" className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Rol Asignado (RBAC)</label>
+            <Selector
+              id="editar-rol"
+              ariaLabel="Rol Asignado (RBAC)"
               disabled={rolOperador === 'SUPERVISOR'}
-              onChange={(e) => setRol(e.target.value as Rol)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400 disabled:opacity-60 disabled:text-[var(--tf-texto-suave)]"
-            >
-              <option value="TRABAJADOR">Trabajador</option>
-              {rolOperador !== 'SUPERVISOR' && (
-                <>
-                  <option value="SUPERVISOR">Supervisor</option>
-                  <option value="ADMINISTRADOR">Administrador</option>
-                </>
-              )}
-            </select>
+              valor={rol}
+              onChange={(v) => setRol(v as Rol)}
+              opciones={[
+                {
+                  valor: 'TRABAJADOR',
+                  etiqueta: 'Trabajador',
+                  subtitulo: 'Registro de tiempo y actividades',
+                },
+                ...(rolOperador !== 'SUPERVISOR'
+                  ? [
+                      {
+                        valor: 'SUPERVISOR' as Rol,
+                        etiqueta: 'Supervisor',
+                        subtitulo: 'Monitoreo de equipo y reportes',
+                      },
+                      {
+                        valor: 'ADMINISTRADOR' as Rol,
+                        etiqueta: 'Administrador',
+                        subtitulo: 'Control total del sistema',
+                      },
+                    ]
+                  : []),
+              ] satisfies OpcionSelector<Rol>[]}
+            />
             {rolOperador === 'SUPERVISOR' && (
               <p className="mt-1 text-xs text-[var(--tf-acento-azul)]">
                 La asignación o modificación de roles superiores está reservada a administradores.

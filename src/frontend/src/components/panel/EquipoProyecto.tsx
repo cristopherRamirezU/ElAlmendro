@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Selector from '@/components/ui/Selector';
 import { api, ErrorApi, MiembroProyecto, PersonaRef } from '@/lib/api';
 
 /** Colores de los avatares: cada persona tiene siempre el mismo. */
@@ -155,19 +156,23 @@ export default function EquipoProyecto({
           )}
           {puedeGestionar && (
             <div className="mt-1 flex gap-2 border-t border-[var(--tf-borde)] px-1 pt-2">
-              <select
-                value={elegido}
-                onChange={(e) => setElegido(e.target.value)}
+              <Selector
+                ariaLabel="Agregar persona al proyecto"
+                forma="compacto"
+                buscable={disponibles.length > 5}
+                placeholderBusqueda="Buscar persona…"
+                placeholder={disponibles.length === 0 ? 'Todo el equipo ya está asignado' : 'Agregar persona…'}
                 disabled={ocupado || disponibles.length === 0}
-                className="min-w-0 flex-1 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-[var(--color-primario)] disabled:opacity-50"
-              >
-                <option value="">{disponibles.length === 0 ? 'Todo el equipo ya está asignado' : 'Agregar persona…'}</option>
-                {disponibles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
+                valor={elegido}
+                onChange={setElegido}
+                className="min-w-0 flex-1"
+                opciones={disponibles.map((p) => ({
+                  valor: p.id,
+                  etiqueta: p.nombre,
+                  inicialesAvatar: iniciales(p.nombre),
+                  colorAvatar: colorDe(p.id),
+                }))}
+              />
               <button
                 onClick={() =>
                   ejecutar(() =>

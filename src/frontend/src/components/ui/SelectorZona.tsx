@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Selector, { type OpcionSelector } from '@/components/ui/Selector';
 import { nombreZona, zonasDisponibles } from '@/lib/zona';
 
 /**
@@ -20,40 +21,39 @@ export default function SelectorZona({
   disabled?: boolean;
   className?: string;
 }) {
-  const { frecuentes, resto } = useMemo(() => {
+  const opciones = useMemo<OpcionSelector[]>(() => {
     const z = zonasDisponibles();
-    const etiquetar = (lista: string[]) => lista.map((zona) => ({ zona, texto: nombreZona(zona) }));
-    return { frecuentes: etiquetar(z.frecuentes), resto: etiquetar(z.resto) };
-  }, []);
+    const conocidas = new Set([...z.frecuentes, ...z.resto]);
+    const lista: OpcionSelector[] = [];
 
-  // Una zona guardada que este navegador no lista igual debe poder verse.
-  const conocida = frecuentes.some((o) => o.zona === value) || resto.some((o) => o.zona === value);
+    // Una zona guardada que este navegador no lista igual debe poder verse.
+    if (value && !conocidas.has(value)) {
+      lista.push({ valor: value, etiqueta: value, grupo: 'Actual' });
+    }
+    for (const zona of z.frecuentes) {
+      lista.push({ valor: zona, etiqueta: nombreZona(zona), grupo: 'Frecuentes' });
+    }
+    for (const zona of z.resto) {
+      lista.push({ valor: zona, etiqueta: nombreZona(zona), grupo: 'Todas las zonas' });
+    }
+    return lista;
+  }, [value]);
+
+  // Se mantiene `className` en props por compatibilidad con llamadores previos;
+  // la estética visual la gobierna `Selector`.
+  void className;
 
   return (
-    <select
+    <Selector
       id={id}
-      value={value}
+      ariaLabel="Zona horaria"
+      buscable
+      placeholderBusqueda="Buscar ciudad o zona horaria…"
+      mensajeVacio="No se encontraron zonas horarias"
+      valor={value}
+      onChange={onChange}
       disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-      className={className}
-    >
-      {!conocida && value && <option value={value}>{value}</option>}
-      <optgroup label="Frecuentes">
-        {frecuentes.map((o) => (
-          <option key={o.zona} value={o.zona}>
-            {o.texto}
-          </option>
-        ))}
-      </optgroup>
-      {resto.length > 0 && (
-        <optgroup label="Todas las zonas">
-          {resto.map((o) => (
-            <option key={o.zona} value={o.zona}>
-              {o.texto}
-            </option>
-          ))}
-        </optgroup>
-      )}
-    </select>
+      opciones={opciones}
+    />
   );
 }
