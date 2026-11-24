@@ -162,7 +162,7 @@ export default function BuscadorPanel({
     !cargando && !errorBusqueda && proyectosVisibles.length === 0 && tareas.length === 0;
 
   return (
-    <div ref={contenedorRef} role="search" className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+    <div ref={contenedorRef} role="search" className="relative min-w-[8rem] flex-1 sm:max-w-64">
       <label htmlFor={id} className="relative block">
         <span className="sr-only">Buscar proyecto o tarea</span>
         <Search

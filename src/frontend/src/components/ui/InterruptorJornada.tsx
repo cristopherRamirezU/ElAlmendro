@@ -15,6 +15,7 @@ export default function InterruptorJornada({
   pendiente,
   desde,
   variante = 'cabecera',
+  compactarHora = false,
   onAlternar,
 }: {
   encendido: boolean;
@@ -23,6 +24,8 @@ export default function InterruptorJornada({
   desde?: string | null;
   /** En barra lateral se organiza verticalmente para caber sin cortarse en w-60. */
   variante?: 'cabecera' | 'sidebar';
+  /** Muestra la hora solo en pantallas muy anchas (2xl+) y en el tooltip. */
+  compactarHora?: boolean;
   onAlternar: () => void;
 }) {
   const visible = pendiente ?? encendido;
@@ -82,16 +85,24 @@ export default function InterruptorJornada({
     );
   }
 
+  const tituloCabecera = visible
+    ? desde
+      ? `En jornada desde ${hora(desde)} · Apaga para marcar la salida`
+      : 'Apaga para marcar la salida'
+    : 'Enciende para marcar la entrada';
+
   return (
     <button
       type="button"
       role="switch"
       aria-checked={visible}
       aria-label={visible ? 'Jornada abierta: marcar salida' : 'Jornada cerrada: marcar entrada'}
-      title={visible ? 'Apaga para marcar la salida' : 'Enciende para marcar la entrada'}
+      title={tituloCabecera}
       onClick={onAlternar}
       disabled={pendiente !== null}
-      className="tf-interruptor flex items-center gap-3 rounded-full py-1.5 pl-3.5 pr-1.5 text-left disabled:cursor-wait"
+      className={`tf-interruptor flex items-center rounded-full text-left disabled:cursor-wait ${
+        compactarHora ? 'gap-2.5 py-0.5 pl-3 pr-1' : 'gap-3 py-1.5 pl-3.5 pr-1.5'
+      }`}
       data-encendido={visible}
     >
       <span className="flex items-center gap-2">
@@ -114,7 +125,11 @@ export default function InterruptorJornada({
             {visible ? 'En jornada' : 'Fuera de jornada'}
           </span>
           {visible && desde && pendiente === null && (
-            <span className="hidden font-mono text-[11px] font-semibold text-[var(--tf-texto-tenue)] sm:inline">
+            <span
+              className={`hidden font-mono text-[11px] font-semibold text-[var(--tf-texto-tenue)] ${
+                compactarHora ? '2xl:inline' : 'sm:inline'
+              }`}
+            >
               · {hora(desde)}
             </span>
           )}

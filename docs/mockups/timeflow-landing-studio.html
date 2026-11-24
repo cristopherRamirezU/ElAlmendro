@@ -1,0 +1,4505 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="oscuro-medianoche" data-bg="A" data-hero="1">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeFlow · Estudio Interactivo de Landing Page</title>
+  <meta name="description"
+    content="TimeFlow organiza cada proyecto como un mapa de tareas, registra la jornada y sesiones de trabajo de cada persona y muestra quién trabajó en qué, cuándo y cuánto. Plan Básico gratis." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Sora:wght@600;700;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* ==========================================================================
+       1. TOKENS DE DISENO Y TEMAS (Fieles a globals.css y tema.ts)
+       ========================================================================== */
+    :root {
+      --font-display: 'Sora', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+      --brand: #38bdf8;
+      --brand-rgb: 56, 189, 248;
+      --brand-2: #6366f1;
+      --brand-2-rgb: 99, 102, 241;
+      --brand-on: #04101f;
+      --brand-ink: #7dd3fc;
+      --brand-soft: rgba(56, 189, 248, 0.13);
+      --brand-border: rgba(56, 189, 248, 0.38);
+
+      --bg: #040814;
+      --bg-elevated: #070d1f;
+      --surface: rgba(12, 20, 39, 0.78);
+      --surface-solid: #0c1427;
+      --surface-2: rgba(20, 31, 56, 0.86);
+      --surface-hover: rgba(255, 255, 255, 0.055);
+      --input-bg: rgba(6, 11, 25, 0.88);
+      --nav-bg: rgba(4, 8, 20, 0.74);
+
+      --text: #f6f8ff;
+      --text-secondary: #b6c2e2;
+      --text-muted: #8b99be;
+
+      --border: rgba(148, 163, 196, 0.14);
+      --border-strong: rgba(148, 163, 196, 0.28);
+      --shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.78);
+      --shadow-sm: 0 12px 30px -16px rgba(0, 0, 0, 0.65);
+
+      --ok: #34d399;
+      --ok-ink: #6ee7b7;
+      --ok-soft: rgba(52, 211, 153, 0.14);
+      --warn: #fbbf24;
+      --warn-ink: #fcd34d;
+      --warn-soft: rgba(251, 191, 36, 0.14);
+      --info: #38bdf8;
+      --info-ink: #7dd3fc;
+      --info-soft: rgba(56, 189, 248, 0.14);
+      --violet: #a78bfa;
+      --violet-ink: #c4b5fd;
+      --violet-soft: rgba(167, 139, 250, 0.15);
+      --danger: #fb7185;
+      --danger-ink: #fda4af;
+      --danger-soft: rgba(251, 113, 133, 0.15);
+
+      --node-bg: #0d1426;
+      --dot-grid: rgba(148, 163, 184, 0.14);
+      --dock-bg: rgba(8, 14, 30, 0.88);
+      color-scheme: dark;
+    }
+
+    :root[data-tema="claro-nube"] {
+      --bg: #eef5fc;
+      --bg-elevated: #e4eef9;
+      --surface: rgba(255, 255, 255, 0.88);
+      --surface-solid: #ffffff;
+      --surface-2: #f4f8fe;
+      --surface-hover: rgba(15, 23, 42, 0.045);
+      --input-bg: #f8fbff;
+      --nav-bg: rgba(238, 245, 252, 0.82);
+
+      --text: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #52637c;
+
+      --border: rgba(15, 23, 42, 0.10);
+      --border-strong: rgba(15, 23, 42, 0.19);
+      --shadow: 0 20px 50px -24px rgba(15, 23, 42, 0.15);
+      --shadow-sm: 0 10px 26px -14px rgba(15, 23, 42, 0.12);
+
+      --ok: #059669;
+      --ok-ink: #047857;
+      --ok-soft: rgba(5, 150, 105, 0.11);
+      --warn: #d97706;
+      --warn-ink: #b45309;
+      --warn-soft: rgba(217, 119, 6, 0.12);
+      --info: #0284c7;
+      --info-ink: #0369a1;
+      --info-soft: rgba(2, 132, 199, 0.11);
+      --violet: #7c3aed;
+      --violet-ink: #6d28d9;
+      --violet-soft: rgba(124, 58, 237, 0.11);
+      --danger: #e11d48;
+      --danger-ink: #be123c;
+      --danger-soft: rgba(225, 29, 72, 0.11);
+
+      --node-bg: #ffffff;
+      --dot-grid: rgba(15, 23, 42, 0.09);
+      --dock-bg: rgba(255, 255, 255, 0.92);
+      color-scheme: light;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background-color 280ms ease, color 280ms ease;
+      padding-bottom: 96px;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    input {
+      font-family: inherit;
+    }
+
+    .mono {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .display-font {
+      font-family: var(--font-display);
+      letter-spacing: -0.028em;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ==========================================================================
+       2. CAPAS DE FONDO ANIMADAS (Opciones A, B, C, D)
+       ========================================================================== */
+    .bg-stage {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #bg-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      transition: opacity 320ms ease;
+    }
+
+    #bg-aurora {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 420ms ease;
+    }
+
+    html[data-bg="B"] #bg-aurora {
+      opacity: 1;
+    }
+
+    .aurora-blob {
+      position: absolute;
+      border-radius: 9999px;
+      filter: blur(88px);
+      will-change: transform;
+      opacity: 0.34;
+    }
+
+    :root[data-tema="claro-nube"] .aurora-blob {
+      opacity: 0.22;
+    }
+
+    .aurora-a {
+      width: 54vw;
+      height: 54vw;
+      max-width: 760px;
+      max-height: 760px;
+      left: -8%;
+      top: -18%;
+      background: radial-gradient(circle, rgba(var(--brand-rgb), 0.72), transparent 68%);
+      animation: aurora-drift-a 22s ease-in-out infinite;
+    }
+
+    .aurora-b {
+      width: 48vw;
+      height: 48vw;
+      max-width: 680px;
+      max-height: 680px;
+      right: -10%;
+      top: 8%;
+      background: radial-gradient(circle, rgba(var(--brand-2-rgb), 0.65), transparent 68%);
+      animation: aurora-drift-b 28s ease-in-out infinite;
+    }
+
+    .aurora-c {
+      width: 42vw;
+      height: 42vw;
+      max-width: 580px;
+      max-height: 580px;
+      left: 28%;
+      bottom: -14%;
+      background: radial-gradient(circle, rgba(52, 211, 153, 0.34), transparent 70%);
+      animation: aurora-drift-c 25s ease-in-out infinite;
+    }
+
+    @keyframes aurora-drift-a {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      50% {
+        transform: translate(6%, 8%) scale(1.07);
+      }
+    }
+
+    @keyframes aurora-drift-b {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      50% {
+        transform: translate(-7%, 5%) scale(0.94);
+      }
+    }
+
+    @keyframes aurora-drift-c {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      50% {
+        transform: translate(4%, -7%) scale(1.06);
+      }
+    }
+
+    #bg-editorial {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 380ms ease;
+    }
+
+    html[data-bg="D"] #bg-editorial {
+      opacity: 1;
+    }
+
+    html[data-bg="D"] #bg-canvas {
+      opacity: 0;
+    }
+
+    .editorial-beam {
+      position: absolute;
+      left: 50%;
+      top: -160px;
+      transform: translateX(-50%);
+      width: min(1300px, 115vw);
+      height: 680px;
+      background:
+        radial-gradient(56% 52% at 50% 24%, rgba(var(--brand-rgb), 0.19), transparent 72%),
+        radial-gradient(36% 42% at 50% 10%, rgba(var(--brand-2-rgb), 0.14), transparent 70%);
+    }
+
+    :root[data-tema="claro-nube"] .editorial-beam {
+      background:
+        radial-gradient(56% 52% at 50% 24%, rgba(var(--brand-rgb), 0.16), transparent 72%),
+        radial-gradient(36% 42% at 50% 10%, rgba(var(--brand-2-rgb), 0.11), transparent 70%);
+    }
+
+    .editorial-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.032;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px 180px;
+    }
+
+    .page-shell {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ==========================================================================
+       3. SUPERFICIES, SPOTLIGHT, BOTONES Y UTILIDADES
+       ========================================================================== */
+    .glass-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+    }
+
+    .spot-card {
+      position: relative;
+      overflow: hidden;
+      transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease, box-shadow 240ms ease;
+    }
+
+    .spot-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--brand-rgb), 0.55), transparent 65%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 220ms ease;
+    }
+
+    .spot-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 220ms ease;
+      background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--brand-rgb), 0.11), transparent 68%);
+    }
+
+    .spot-card:hover::before,
+    .spot-card:hover::after {
+      opacity: 1;
+    }
+
+    .spot-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+    }
+
+    html[data-bg="D"] .spot-card:hover::before {
+      background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), rgba(var(--brand-rgb), 0.85), transparent 62%);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      transition: transform 160ms ease, filter 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+      white-space: nowrap;
+    }
+
+    .btn:focus-visible,
+    button:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--brand);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: var(--brand-on);
+      box-shadow: 0 10px 26px -10px rgba(var(--brand-rgb), 0.6);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.07);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border-color: var(--border-strong);
+      color: var(--text);
+      backdrop-filter: blur(12px);
+    }
+
+    .btn-secondary:hover {
+      background: var(--surface-hover);
+      border-color: rgba(var(--brand-rgb), 0.42);
+    }
+
+    .btn-lg {
+      min-height: 52px;
+      padding: 0 24px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+      color: var(--brand-ink);
+    }
+
+    .section-pad {
+      padding: 96px 0;
+      overflow-x: clip;
+    }
+
+    .section-head {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 680px;
+      margin-bottom: 44px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.85rem, 3.3vw, 2.75rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.028em;
+      color: var(--text);
+    }
+
+    .section-desc {
+      margin: 0;
+      font-size: 16.5px;
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       4. NAVBAR FLOTANTE GLASSMORPHISM
+       ========================================================================== */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      border-bottom: 1px solid transparent;
+      transition: background-color 240ms ease, border-color 240ms ease, backdrop-filter 240ms ease;
+    }
+
+    .navbar.scrolled {
+      background: var(--nav-bg);
+      border-bottom-color: var(--border);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 74px;
+    }
+
+    .brand-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .brand-wordmark {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-wordmark span {
+      color: var(--brand-ink);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      padding: 8px 2px;
+      transition: color 160ms ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-burger {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 11px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mobile-drawer {
+      display: none;
+      border-top: 1px solid var(--border);
+      background: var(--surface-solid);
+      padding: 16px 24px 22px;
+    }
+
+    .mobile-drawer.open {
+      display: block;
+    }
+
+    .mobile-drawer-links {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .mobile-drawer-links a {
+      text-decoration: none;
+      color: var(--text-secondary);
+      padding: 9px 10px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .mobile-drawer-links a:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .mobile-drawer-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ==========================================================================
+       5. HERO INTERACTIVO (LAYOUT 1 SPLIT / LAYOUT 2 PANORAMICO)
+       ========================================================================== */
+    .hero-section {
+      padding: 58px 0 76px;
+      overflow-x: clip;
+    }
+
+    .hero-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.05fr);
+      gap: 44px;
+      align-items: center;
+    }
+
+    html[data-hero="2"] .hero-shell {
+      grid-template-columns: 1fr;
+      gap: 38px;
+      justify-items: center;
+      text-align: center;
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      min-width: 0;
+    }
+
+    html[data-hero="2"] .hero-copy {
+      align-items: center;
+      max-width: 820px;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      align-self: flex-start;
+      padding: 7px 14px;
+      border-radius: 9999px;
+      border: 1px solid var(--brand-border);
+      background: var(--brand-soft);
+      color: var(--brand-ink);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    html[data-hero="2"] .hero-pill {
+      align-self: center;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 9999px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px var(--ok-soft);
+      flex: none;
+    }
+
+    .hero-h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: clamp(2.45rem, 4.9vw, 4.15rem);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.034em;
+      color: var(--text);
+    }
+
+    html[data-hero="2"] .hero-h1 {
+      font-size: clamp(2.65rem, 5.4vw, 4.55rem);
+    }
+
+    .hero-accent {
+      background: linear-gradient(110deg, var(--brand-ink) 12%, var(--brand) 55%, var(--violet-ink) 95%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    :root[data-tema="claro-nube"] .hero-accent {
+      background: linear-gradient(110deg, var(--brand-ink) 10%, var(--brand) 60%, var(--violet) 98%);
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .hero-lead {
+      margin: 0;
+      max-width: 58ch;
+      font-size: clamp(1rem, 1.35vw, 1.14rem);
+      line-height: 1.65;
+      color: var(--text-secondary);
+    }
+
+    .hero-ctas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 2px;
+    }
+
+    html[data-hero="2"] .hero-ctas {
+      justify-content: center;
+    }
+
+    .hero-caps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      padding-top: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    html[data-hero="2"] .hero-caps {
+      justify-content: center;
+    }
+
+    .hero-cap-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .hero-cap-item svg {
+      color: var(--ok-ink);
+      flex: none;
+    }
+
+    /* Hero Stage (Compite en Split o se convierte en Browser Panoramico en Hero 2) */
+    .hero-stage-wrap {
+      width: 100%;
+      min-width: 0;
+      perspective: 1400px;
+    }
+
+    html[data-hero="2"] .hero-stage-wrap {
+      max-width: 1080px;
+    }
+
+    .hero-stage {
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: var(--shadow), 0 0 0 1px rgba(var(--brand-rgb), 0.12);
+      transform-origin: center top;
+      transition: transform 180ms ease-out, box-shadow 260ms ease;
+    }
+
+    .browser-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    html[data-hero="2"] .browser-bar {
+      display: flex;
+    }
+
+    .traffic-dots {
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .traffic-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      opacity: 0.78;
+    }
+
+    .browser-url {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .hero-stage-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .jornada-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 11px;
+      border-radius: 9999px;
+      border: 1px solid rgba(52, 211, 153, 0.38);
+      background: var(--ok-soft);
+      color: var(--ok-ink);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .hero-controls-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mini-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 10px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-solid);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      transition: border-color 180ms ease, background-color 180ms ease, color 180ms ease;
+    }
+
+    .mini-toggle[aria-pressed="true"] {
+      border-color: var(--brand-border);
+      background: var(--brand-soft);
+      color: var(--brand-ink);
+    }
+
+    /* Canvas del Mapa en el Hero */
+    .hero-map-canvas {
+      position: relative;
+      min-height: 390px;
+      padding: 22px 18px;
+      background:
+        radial-gradient(var(--dot-grid) 1.1px, transparent 1.1px) 0 0 / 22px 22px,
+        var(--bg-elevated);
+      overflow: hidden;
+    }
+
+    html[data-hero="2"] .hero-map-canvas {
+      min-height: 360px;
+      padding: 26px 28px;
+    }
+
+    .map-edges-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .hero-map-grid {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: auto auto;
+      gap: 24px 18px;
+      align-items: center;
+      min-height: 332px;
+    }
+
+    .hero-node-root {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      justify-self: center;
+      position: relative;
+      padding: 1.5px;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 18px 40px -16px rgba(var(--brand-rgb), 0.55);
+      min-width: 168px;
+    }
+
+    .hero-node-root::before {
+      content: '';
+      position: absolute;
+      inset: -110%;
+      background: conic-gradient(from 0deg, transparent 0 55%, var(--brand) 74%, var(--brand-2) 88%, transparent 100%);
+      animation: spin-slow 7s linear infinite;
+    }
+
+    .hero-node-root-inner {
+      position: relative;
+      border-radius: 17px;
+      padding: 14px 16px;
+      background: var(--surface-solid);
+      text-align: center;
+    }
+
+    @keyframes spin-slow {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .seg-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 9px;
+    }
+
+    .seg-bar span {
+      flex: 1;
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(var(--brand-rgb), 0.16);
+    }
+
+    .seg-bar span.done {
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    .seg-bar span.active {
+      background: var(--warn);
+    }
+
+    .hero-task-node {
+      position: relative;
+      text-align: left;
+      border-radius: 15px;
+      padding: 12px 13px;
+      border: 1px solid var(--border-strong);
+      background: var(--node-bg);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+    }
+
+    .hero-task-node:hover {
+      transform: translateY(-2px);
+      border-color: var(--brand-border);
+    }
+
+    .hero-task-node.is-selected {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-soft), var(--shadow-sm);
+    }
+
+    .hero-task-node.is-locked {
+      opacity: 0.78;
+      border-style: dashed;
+    }
+
+    .hero-task-node.shake {
+      animation: node-shake 360ms ease;
+    }
+
+    @keyframes node-shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      25% {
+        transform: translateX(-5px);
+      }
+
+      75% {
+        transform: translateX(5px);
+      }
+    }
+
+    .hn-tl {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .hn-tr {
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    .hn-bl {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .hn-br {
+      grid-column: 3;
+      grid-row: 2;
+    }
+
+    .node-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+
+    .st-ok {
+      color: var(--ok-ink);
+    }
+
+    .st-run {
+      color: var(--warn-ink);
+    }
+
+    .st-todo {
+      color: var(--brand-ink);
+    }
+
+    .st-lock {
+      color: var(--danger-ink);
+    }
+
+    .hero-stage-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-solid);
+      font-size: 12.5px;
+    }
+
+    /* ==========================================================================
+       6. PRODUCT SHOWCASE INTERACTIVO POR PESTANAS
+       ========================================================================== */
+    .showcase-frame {
+      border-radius: 26px;
+      overflow: hidden;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .showcase-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease;
+    }
+
+    .tab-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .tab-btn[aria-selected="true"] {
+      background: var(--brand-soft);
+      border-color: var(--brand-border);
+      color: var(--brand-ink);
+    }
+
+    .showcase-panel {
+      display: none;
+      padding: 22px;
+    }
+
+    .showcase-panel.active {
+      display: block;
+      animation: panel-in 240ms ease;
+    }
+
+    @keyframes panel-in {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* Tab 1: Mapa completo */
+    .sc-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .sc-toolbar-left,
+    .sc-toolbar-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 11px;
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border-strong);
+      background: var(--input-bg);
+      color: var(--text-muted);
+    }
+
+    .search-pill input {
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 12.5px;
+      width: 170px;
+      outline: none;
+    }
+
+    .autosave-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--ok-ink);
+      padding: 5px 10px;
+      border-radius: 9999px;
+      background: var(--ok-soft);
+    }
+
+    .sc-map-area {
+      position: relative;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(var(--dot-grid) 1.1px, transparent 1.1px) 0 0 / 22px 22px,
+        var(--bg-elevated);
+      padding: 26px 20px;
+      overflow-x: auto;
+    }
+
+    .sc-map-board {
+      position: relative;
+      min-width: 720px;
+      min-height: 360px;
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .sc-map-board.is-vertical {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto;
+      justify-items: center;
+      gap: 34px;
+    }
+
+    .sc-tasks-grid {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(210px, 1fr));
+      gap: 14px;
+      width: 100%;
+    }
+
+    .sc-map-board.is-vertical .sc-tasks-grid {
+      grid-template-columns: repeat(3, minmax(190px, 1fr));
+    }
+
+    .sc-root-card {
+      position: relative;
+      z-index: 2;
+      border-radius: 18px;
+      padding: 16px;
+      border: 1px solid var(--brand-border);
+      background: var(--surface-solid);
+      box-shadow: 0 16px 36px -18px rgba(var(--brand-rgb), 0.55);
+      width: 100%;
+      max-width: 250px;
+    }
+
+    .sc-node {
+      position: relative;
+      text-align: left;
+      border-radius: 15px;
+      padding: 13px 14px;
+      border: 1px solid var(--border-strong);
+      background: var(--node-bg);
+      color: var(--text);
+      transition: border-color 180ms ease, transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+    }
+
+    .sc-node:hover {
+      border-color: var(--brand-border);
+      transform: translateY(-2px);
+    }
+
+    .sc-node.is-selected {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px var(--brand-soft);
+    }
+
+    .sc-node.is-dimmed {
+      opacity: 0.34;
+    }
+
+    .sc-node.is-match {
+      border-color: var(--ok);
+      box-shadow: 0 0 0 3px var(--ok-soft);
+    }
+
+    .sc-minimap {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      z-index: 3;
+      width: 118px;
+      padding: 8px;
+      border-radius: 11px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Tab 2: Jornada y Calendario */
+    .cal-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.85fr);
+      gap: 18px;
+    }
+
+    .tf-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 12px 6px 8px;
+      border-radius: 14px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-solid);
+      color: var(--text);
+      transition: border-color 240ms ease, background-color 240ms ease;
+    }
+
+    .tf-switch[aria-pressed="true"] {
+      border-color: rgba(16, 185, 129, 0.52);
+      background: var(--ok-soft);
+    }
+
+    .tf-switch-track {
+      position: relative;
+      width: 58px;
+      height: 28px;
+      border-radius: 9999px;
+      background: #475569;
+      transition: background 240ms ease;
+      flex: none;
+    }
+
+    .tf-switch[aria-pressed="true"] .tf-switch-track {
+      background: linear-gradient(135deg, #059669, #10b981);
+    }
+
+    .tf-switch-knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .tf-switch[aria-pressed="true"] .tf-switch-knob {
+      transform: translateX(30px);
+    }
+
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .cal-head {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 4px 0;
+    }
+
+    .cal-day {
+      min-height: 54px;
+      border-radius: 11px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      color: var(--text);
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: left;
+      transition: border-color 160ms ease, transform 160ms ease, background-color 180ms ease;
+    }
+
+    .cal-day:hover {
+      border-color: var(--brand-border);
+      transform: translateY(-1px);
+    }
+
+    .cal-day.selected {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px var(--brand-soft);
+    }
+
+    .cal-day.heat-1 {
+      background: rgba(var(--brand-rgb), 0.10);
+    }
+
+    .cal-day.heat-2 {
+      background: rgba(var(--brand-rgb), 0.22);
+    }
+
+    .cal-day.heat-3 {
+      background: rgba(var(--brand-rgb), 0.36);
+    }
+
+    /* Tab 3: Carta Gantt y Tareas */
+    .gantt-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(270px, 0.9fr);
+      gap: 18px;
+    }
+
+    .gantt-table {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      overflow-x: auto;
+      padding: 14px;
+    }
+
+    .gantt-rows {
+      min-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 155px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .gantt-track {
+      position: relative;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+
+    .gantt-bar {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #ffffff;
+      text-align: left;
+      transition: filter 160ms ease, transform 160ms ease;
+    }
+
+    .gantt-bar:hover {
+      filter: brightness(1.08);
+      transform: scaleY(1.04);
+    }
+
+    .gantt-bar.selected {
+      outline: 2px solid var(--text);
+      outline-offset: 1px;
+    }
+
+    .voice-player {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-2);
+    }
+
+    .voice-bars {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 24px;
+    }
+
+    .voice-bars span {
+      flex: 1;
+      border-radius: 99px;
+      background: var(--brand);
+      opacity: 0.42;
+      transition: height 160ms ease, opacity 160ms ease;
+    }
+
+    .voice-bars span.lit {
+      opacity: 1;
+    }
+
+    /* Tab 4: Reportes y Roles */
+    .reports-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr);
+      gap: 18px;
+    }
+
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .kpi-box {
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+    }
+
+    .rbac-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    .rbac-table th,
+    .rbac-table td {
+      padding: 9px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .rbac-table th {
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ==========================================================================
+       7. BENTO GRID (12 COLUMNAS)
+       ========================================================================== */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .bento-card {
+      border-radius: 22px;
+      padding: 26px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .col-7 {
+      grid-column: span 7;
+    }
+
+    .col-6 {
+      grid-column: span 6;
+    }
+
+    .col-5 {
+      grid-column: span 5;
+    }
+
+    .bento-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--brand-soft);
+      border: 1px solid var(--brand-border);
+      color: var(--brand-ink);
+    }
+
+    .bento-title {
+      margin: 12px 0 6px;
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .bento-text {
+      margin: 0;
+      font-size: 14.5px;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    .bento-preview {
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--surface-solid);
+      padding: 13px 14px;
+      font-size: 12.5px;
+    }
+
+    /* ==========================================================================
+       8. COMO FUNCIONA (3 PASOS CONECTADOS)
+       ========================================================================== */
+    .steps-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .step-card {
+      position: relative;
+      border-radius: 22px;
+      padding: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step-num {
+      display: inline-grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      font-family: var(--font-display);
+      font-size: 19px;
+      font-weight: 800;
+      background: var(--brand-soft);
+      border: 1px solid var(--brand-border);
+      color: var(--brand-ink);
+    }
+
+    /* ==========================================================================
+       9. ROLES DEL EQUIPO (SELECTOR INTERACTIVO)
+       ========================================================================== */
+    .roles-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+      gap: 26px;
+      align-items: stretch;
+    }
+
+    .role-tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .role-tab {
+      text-align: left;
+      padding: 18px 20px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
+    }
+
+    .role-tab:hover {
+      border-color: var(--border-strong);
+      transform: translateX(3px);
+    }
+
+    .role-tab[aria-selected="true"] {
+      border-color: var(--brand);
+      background: var(--surface-solid);
+      box-shadow: 0 0 0 3px var(--brand-soft), var(--shadow-sm);
+    }
+
+    .role-detail-card {
+      border-radius: 22px;
+      padding: 28px;
+      background: var(--surface-solid);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .perm-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .perm-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 11px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    /* ==========================================================================
+       10. PLAN BASICO + ESCALABILIDAD + CTA FINAL + FOOTER
+       ========================================================================== */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .glow-ring {
+      position: relative;
+      padding: 1.5px;
+      border-radius: 26px;
+      overflow: hidden;
+      background: var(--border-strong);
+      box-shadow: 0 24px 60px -24px rgba(var(--brand-rgb), 0.45);
+    }
+
+    .glow-ring::before {
+      content: '';
+      position: absolute;
+      inset: -120%;
+      background: conic-gradient(from 0deg, transparent 0 56%, var(--brand) 74%, var(--brand-2) 88%, transparent 100%);
+      animation: spin-slow 7.5s linear infinite;
+    }
+
+    .glow-ring-inner {
+      position: relative;
+      height: 100%;
+      border-radius: 24.5px;
+      background: var(--surface-solid);
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .plan-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .plan-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    .enterprise-card {
+      border-radius: 26px;
+      padding: 32px;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 22px;
+    }
+
+    .final-cta {
+      border-radius: 28px;
+      padding: 52px 36px;
+      border: 1px solid var(--brand-border);
+      background:
+        radial-gradient(620px 320px at 50% 0%, rgba(var(--brand-rgb), 0.20), transparent 72%),
+        var(--surface-solid);
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    .site-footer {
+      border-top: 1px solid var(--border);
+      padding: 36px 0 48px;
+      margin-top: 32px;
+    }
+
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      text-decoration: none;
+      color: var(--text-secondary);
+    }
+
+    .footer-links a:hover {
+      color: var(--text);
+    }
+
+    /* ==========================================================================
+       11. STUDIO TOOLBAR FLOTANTE + MODAL DE RESUMEN + TOAST
+       ========================================================================== */
+    .studio-dock-wrap {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      z-index: 60;
+      max-width: calc(100vw - 24px);
+    }
+
+    .studio-dock {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 9px 13px;
+      border-radius: 18px;
+      border: 1px solid var(--border-strong);
+      background: var(--dock-bg);
+      backdrop-filter: blur(18px) saturate(150%);
+      -webkit-backdrop-filter: blur(18px) saturate(150%);
+      box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.55);
+    }
+
+    .studio-dock.collapsed {
+      display: none;
+    }
+
+    .studio-pill-collapsed {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: 9999px;
+      border: 1px solid var(--border-strong);
+      background: var(--dock-bg);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 700;
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow);
+    }
+
+    .studio-pill-collapsed.visible {
+      display: inline-flex;
+    }
+
+    .dock-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 10px;
+      border-right: 1px solid var(--border);
+    }
+
+    .dock-group:last-of-type {
+      border-right: 0;
+      padding-right: 0;
+    }
+
+    .dock-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .seg-btn {
+      padding: 5px 9px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+    }
+
+    .seg-btn:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+
+    .seg-btn[aria-pressed="true"] {
+      background: var(--brand-soft);
+      border-color: var(--brand-border);
+      color: var(--brand-ink);
+    }
+
+    .swatch-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 9999px;
+      border: 2px solid transparent;
+      padding: 0;
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+
+    .swatch-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .swatch-btn[aria-pressed="true"] {
+      box-shadow: 0 0 0 2px var(--surface-solid), 0 0 0 4px var(--text);
+    }
+
+    /* Modal de Resumen */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(2, 6, 18, 0.72);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 540px;
+      border-radius: 22px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-solid);
+      color: var(--text);
+      padding: 26px;
+      box-shadow: var(--shadow);
+    }
+
+    .combo-code-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 15px;
+      border-radius: 13px;
+      border: 1px solid var(--brand-border);
+      background: var(--brand-soft);
+      color: var(--brand-ink);
+      font-size: 13px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+
+    .toast-msg {
+      position: fixed;
+      top: 86px;
+      right: 20px;
+      z-index: 90;
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--brand-border);
+      background: var(--surface-solid);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+
+    .toast-msg.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ==========================================================================
+       12. RESPONSIVE Y REDUCED MOTION
+       ========================================================================== */
+    @media (max-width: 1040px) {
+      .hero-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .cal-layout,
+      .gantt-layout,
+      .reports-layout,
+      .roles-shell,
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .col-7,
+      .col-6,
+      .col-5 {
+        grid-column: span 12;
+      }
+
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 920px) {
+
+      .nav-links,
+      .nav-actions {
+        display: none;
+      }
+
+      .nav-burger {
+        display: inline-flex;
+      }
+    }
+
+    @media (max-width: 680px) {
+      body {
+        padding-bottom: 132px;
+      }
+
+      .section-pad {
+        padding: 68px 0;
+      }
+
+      .hero-section {
+        padding: 36px 0 56px;
+      }
+
+      .hero-map-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        gap: 12px;
+      }
+
+      .hero-node-root {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+      }
+
+      .hn-tl,
+      .hn-tr,
+      .hn-bl,
+      .hn-br {
+        grid-column: 1;
+        grid-row: auto;
+      }
+
+      .kpi-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .studio-dock {
+        padding: 8px 10px;
+        gap: 8px;
+      }
+
+      .dock-group {
+        border-right: 0;
+        padding-right: 0;
+      }
+
+      .final-cta {
+        padding: 36px 20px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .aurora-blob,
+      .hero-node-root::before,
+      .glow-ring::before {
+        animation: none !important;
+      }
+
+      .spot-card,
+      .hero-stage,
+      .tf-switch-knob {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Capas de fondo animadas (A: Nodos, B: Aurora+Grilla, C: Flujo, D: Editorial) -->
+  <div class="bg-stage" aria-hidden="true">
+    <div id="bg-aurora">
+      <div class="aurora-blob aurora-a"></div>
+      <div class="aurora-blob aurora-b"></div>
+      <div class="aurora-blob aurora-c"></div>
+    </div>
+    <canvas id="bg-canvas"></canvas>
+    <div id="bg-editorial">
+      <div class="editorial-beam"></div>
+      <div class="editorial-grain"></div>
+    </div>
+  </div>
+
+  <div class="page-shell">
+    <!-- ======================================================================
+         NAVBAR FLOTANTE GLASSMORPHISM
+         ====================================================================== -->
+    <header class="navbar" id="site-navbar">
+      <div class="container nav-inner">
+        <a href="#inicio" class="brand-link" aria-label="TimeFlow, inicio">
+          <svg width="34" height="34" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M22 18 L36 34 M36 34 L48 24 M36 34 L22 46" stroke="#5aa9ff" stroke-width="5" stroke-linecap="round"
+              fill="none" />
+            <circle cx="20" cy="16" r="9" fill="#34d399" />
+            <circle cx="49" cy="22" r="8" fill="#fbbf24" />
+            <circle cx="36" cy="35" r="11" fill="#38bdf8" />
+            <circle cx="21" cy="47" r="8" fill="#a78bfa" />
+            <circle cx="21" cy="47" r="4" fill="#ddd6fe" />
+          </svg>
+          <span class="brand-wordmark">Time<span>Flow</span></span>
+        </a>
+
+        <nav class="nav-links" aria-label="Principal">
+          <a href="#producto">Producto</a>
+          <a href="#funciones">Funciones</a>
+          <a href="#como-funciona">Cómo funciona</a>
+          <a href="#roles">Roles</a>
+          <a href="#plan">Plan Básico</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="/login" class="btn btn-secondary" data-app-route="/login">Acceso clientes</a>
+          <a href="/registro" class="btn btn-primary" data-app-route="/registro">Crear cuenta gratis</a>
+        </div>
+
+        <button type="button" class="nav-burger" id="nav-burger-btn" aria-expanded="false" aria-controls="mobile-drawer"
+          aria-label="Abrir menú de navegación">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="mobile-drawer" id="mobile-drawer">
+        <div class="mobile-drawer-links">
+          <a href="#producto">Producto</a>
+          <a href="#funciones">Funciones</a>
+          <a href="#como-funciona">Cómo funciona</a>
+          <a href="#roles">Roles</a>
+          <a href="#plan">Plan Básico</a>
+        </div>
+        <div class="mobile-drawer-actions">
+          <a href="/login" class="btn btn-secondary" data-app-route="/login">Acceso clientes</a>
+          <a href="/registro" class="btn btn-primary" data-app-route="/registro">Crear cuenta gratis</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- ====================================================================
+           HERO INTERACTIVO (Layout 1 Split / Layout 2 Panorámico)
+           ==================================================================== -->
+      <section id="inicio" class="hero-section">
+        <div class="container hero-shell">
+          <div class="hero-copy">
+            <p class="hero-pill">
+              <span class="live-dot" aria-hidden="true"></span>
+              Plan Básico gratis · Hasta 10 personas y 5 proyectos · Sin tarjeta
+            </p>
+            <h1 class="hero-h1">
+              El tiempo de tu equipo, <span class="hero-accent">en un mapa.</span>
+            </h1>
+            <p class="hero-lead">
+              TimeFlow organiza cada proyecto como un mapa visual de tareas con bloqueo secuencial, registra la jornada
+              y las sesiones con cronómetro en vivo, y te muestra quién trabajó en qué, cuándo y cuánto.
+            </p>
+            <div class="hero-ctas">
+              <a href="/registro" class="btn btn-primary btn-lg" data-app-route="/registro">
+                Crear mi empresa gratis
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M5 12h14M13 5l7 7-7 7" />
+                </svg>
+              </a>
+              <a href="/login" class="btn btn-secondary btn-lg" data-app-route="/login">
+                Ya tengo cuenta · Ingresar
+              </a>
+            </div>
+            <div class="hero-caps" aria-label="Capacidades principales">
+              <span class="hero-cap-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                Mapa interactivo de nodos
+              </span>
+              <span class="hero-cap-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                Jornada y zona horaria propia
+              </span>
+              <span class="hero-cap-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                Calendario, Gantt y reportes
+              </span>
+              <span class="hero-cap-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+                Chat y notas de voz
+              </span>
+            </div>
+          </div>
+
+          <div class="hero-stage-wrap">
+            <div class="hero-stage spot-card" id="hero-stage">
+              <div class="browser-bar">
+                <div class="traffic-dots" aria-hidden="true">
+                  <span style="background:#fb7185"></span>
+                  <span style="background:#fbbf24"></span>
+                  <span style="background:#34d399"></span>
+                </div>
+                <div class="browser-url mono">app.timeflows.site/nodos</div>
+                <span style="font-size:11.5px;color:var(--text-muted);font-weight:600;">Autoguardado activo</span>
+              </div>
+
+              <div class="hero-stage-toolbar">
+                <div class="jornada-chip">
+                  <span class="live-dot" aria-hidden="true"></span>
+                  <span>En jornada · 09:05 a. m.</span>
+                </div>
+                <div class="hero-controls-group">
+                  <button type="button" class="mini-toggle" id="hero-timer-btn" aria-pressed="true">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="2.2">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 2" />
+                    </svg>
+                    <span class="mono" id="hero-timer-text">01:12:40</span>
+                  </button>
+                  <button type="button" class="mini-toggle" id="hero-lock-btn" aria-pressed="true"
+                    title="Bloqueo secuencial de tareas">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="11" width="16" height="10" rx="2" />
+                      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                    </svg>
+                    <span id="hero-lock-label">Candado secuencial: ON</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="hero-map-canvas" id="hero-map-canvas">
+                <svg class="map-edges-svg" id="hero-edges-svg" aria-hidden="true"></svg>
+                <div class="hero-map-grid" id="hero-map-grid">
+                  <button type="button" class="hero-task-node hn-tl" data-hero-node="t1">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                      <span style="font-size:12.5px;font-weight:700;">1. Diseño de inicio</span>
+                      <span class="mono" style="font-size:11px;color:var(--text-muted);">02:15:00</span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">Camila Rojas · Santiago</div>
+                    <span class="node-status st-ok">● Completada</span>
+                  </button>
+
+                  <button type="button" class="hero-task-node hn-tr is-selected" data-hero-node="t2">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                      <span style="font-size:12.5px;font-weight:700;">2. Formulario de contacto</span>
+                      <span class="mono" style="font-size:11px;color:var(--warn-ink);"
+                        id="hero-node-timer">01:12:40</span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">Mateo Silva · Bogotá</div>
+                    <span class="node-status st-run" id="hero-t2-status">● En progreso</span>
+                  </button>
+
+                  <div class="hero-node-root" id="hero-root-node">
+                    <div class="hero-node-root-inner">
+                      <span
+                        style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--brand-ink);">Proyecto</span>
+                      <div class="display-font" style="font-size:15.5px;font-weight:800;margin-top:2px;">Sitio web</div>
+                      <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="hero-progress-label">2 de
+                        4 tareas</div>
+                      <div class="seg-bar" id="hero-seg-bar" aria-hidden="true">
+                        <span class="done"></span>
+                        <span class="done"></span>
+                        <span class="active"></span>
+                        <span></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button type="button" class="hero-task-node hn-bl" data-hero-node="t3">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                      <span style="font-size:12.5px;font-weight:700;">3. Textos y fotos</span>
+                      <span class="mono" style="font-size:11px;color:var(--text-muted);">00:48:15</span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">Valentina Díaz · CDMX</div>
+                    <span class="node-status st-ok">● Completada</span>
+                  </button>
+
+                  <button type="button" class="hero-task-node hn-br is-locked" data-hero-node="t4" id="hero-node-t4">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+                      <span style="font-size:12.5px;font-weight:700;">4. Revisión final</span>
+                      <span class="mono" style="font-size:11px;color:var(--text-muted);">00:00:00</span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;">Camila Rojas · Santiago</div>
+                    <span class="node-status st-lock" id="hero-t4-status">🔒 Bloqueada hasta completar #2</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="hero-stage-footer">
+                <div id="hero-inspector-text" style="color:var(--text-secondary);">
+                  <strong style="color:var(--text);">Tarea #2 seleccionada:</strong> Cronómetro activo de Mateo Silva
+                  (America/Bogota).
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <button type="button" class="mini-toggle" id="hero-complete-t2-btn">Marcar #2 completada</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           PRODUCT SHOWCASE INTERACTIVO POR PESTAÑAS
+           ==================================================================== -->
+      <section id="producto" class="section-pad">
+        <div class="container">
+          <div class="section-head">
+            <p class="eyebrow">Producto en vivo</p>
+            <h2 class="section-title">Cuatro vistas reales conectadas al mismo flujo de trabajo</h2>
+            <p class="section-desc">
+              Explora cómo funciona TimeFlow por dentro: cambia entre el mapa interactivo de nodos, el calendario con
+              interruptor de jornada, la Carta Gantt con notas de voz y los reportes exportables con roles.
+            </p>
+          </div>
+
+          <div class="showcase-frame">
+            <div class="showcase-tabs" role="tablist" aria-label="Vistas reales de TimeFlow">
+              <button type="button" class="tab-btn" role="tab" id="tab-btn-mapa" aria-selected="true"
+                aria-controls="panel-mapa" data-tab="mapa">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="6" cy="6" r="2.5" />
+                  <circle cx="18" cy="7" r="2.5" />
+                  <circle cx="12" cy="18" r="2.5" />
+                  <path d="M8 7.5L15.5 7M7 8.2L11 15.8M17 9.2L13 15.8" />
+                </svg>
+                Mapa de Nodos
+              </button>
+              <button type="button" class="tab-btn" role="tab" id="tab-btn-calendario" aria-selected="false"
+                aria-controls="panel-calendario" data-tab="calendario">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M8 3v4M16 3v4M3 10h18" />
+                </svg>
+                Jornada y Calendario
+              </button>
+              <button type="button" class="tab-btn" role="tab" id="tab-btn-gantt" aria-selected="false"
+                aria-controls="panel-gantt" data-tab="gantt">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 6h10M8 12h12M6 18h9" />
+                </svg>
+                Carta Gantt y Tareas
+              </button>
+              <button type="button" class="tab-btn" role="tab" id="tab-btn-reportes" aria-selected="false"
+                aria-controls="panel-reportes" data-tab="reportes">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 20V11M12 20V4M19 20v-8" />
+                </svg>
+                Reportes y Roles
+              </button>
+            </div>
+
+            <!-- PESTANA 1: MAPA DE NODOS -->
+            <div class="showcase-panel active" role="tabpanel" id="panel-mapa" aria-labelledby="tab-btn-mapa">
+              <div class="sc-toolbar">
+                <div class="sc-toolbar-left">
+                  <button type="button" class="mini-toggle" id="sc-orient-btn" aria-pressed="false">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 12h16M15 7l5 5-5 5" />
+                    </svg>
+                    <span id="sc-orient-label">Vista: Horizontal</span>
+                  </button>
+                  <button type="button" class="mini-toggle" id="sc-lock-btn" aria-pressed="true">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="4" y="11" width="16" height="10" rx="2" />
+                      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                    </svg>
+                    <span id="sc-lock-label">Bloqueo secuencial</span>
+                  </button>
+                  <button type="button" class="mini-toggle" id="sc-undo-btn" title="Deshacer (Ctrl+Z)" disabled>↶
+                    Deshacer</button>
+                  <button type="button" class="mini-toggle" id="sc-redo-btn" title="Rehacer (Ctrl+Y)" disabled>↷
+                    Rehacer</button>
+                </div>
+                <div class="sc-toolbar-right">
+                  <label class="search-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="M20 20l-3.5-3.5" />
+                    </svg>
+                    <input type="search" id="sc-search-input" placeholder="Buscar proyecto o tarea..."
+                      aria-label="Buscar proyecto o tarea" />
+                  </label>
+                  <span class="autosave-badge" id="sc-autosave">● Autoguardado en vivo</span>
+                </div>
+              </div>
+
+              <div class="sc-map-area" id="sc-map-area">
+                <svg class="map-edges-svg" id="sc-edges-svg" aria-hidden="true"></svg>
+                <div class="sc-map-board" id="sc-map-board">
+                  <div class="sc-root-card" id="sc-root-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                      <span
+                        style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--brand-ink);">Proyecto
+                        raíz</span>
+                      <span class="mono" style="font-size:11.5px;color:var(--ok-ink);" id="sc-root-pct">50%</span>
+                    </div>
+                    <div class="display-font" style="font-size:17px;font-weight:800;margin-top:4px;">Portal Clientes
+                    </div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:3px;">4 tareas · 2 subtareas por flujo
+                    </div>
+                    <div class="seg-bar" id="sc-root-segs" style="margin-top:12px;">
+                      <span class="done"></span><span class="done"></span><span class="active"></span><span></span>
+                    </div>
+                  </div>
+
+                  <div class="sc-tasks-grid" id="sc-tasks-grid">
+                    <button type="button" class="sc-node" data-sc-id="m1" data-label="arquitectura datos api camila">
+                      <div style="display:flex;justify-content:space-between;gap:8px;">
+                        <strong style="font-size:13px;">1. Arquitectura de datos</strong>
+                        <span class="mono" style="font-size:11px;color:var(--ok-ink);">03:10:00</span>
+                      </div>
+                      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Camila Rojas · 2/2 subtareas
+                      </div>
+                      <span class="node-status st-ok">● Completada</span>
+                    </button>
+
+                    <button type="button" class="sc-node is-selected" data-sc-id="m2"
+                      data-label="panel cronometro mateo">
+                      <div style="display:flex;justify-content:space-between;gap:8px;">
+                        <strong style="font-size:13px;">2. Panel de cronómetro</strong>
+                        <span class="mono" style="font-size:11px;color:var(--warn-ink);"
+                          id="sc-m2-timer">00:46:18</span>
+                      </div>
+                      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Mateo Silva · 1/2 subtareas
+                      </div>
+                      <span class="node-status st-run" id="sc-m2-status">● En progreso</span>
+                    </button>
+
+                    <button type="button" class="sc-node" data-sc-id="m3" data-label="exportacion excel pdf valentina">
+                      <div style="display:flex;justify-content:space-between;gap:8px;">
+                        <strong style="font-size:13px;">3. Exportación Excel / PDF</strong>
+                        <span class="mono" style="font-size:11px;color:var(--ok-ink);">01:24:05</span>
+                      </div>
+                      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Valentina Díaz · 2/2 subtareas
+                      </div>
+                      <span class="node-status st-ok">● Completada</span>
+                    </button>
+
+                    <button type="button" class="sc-node" data-sc-id="m4" data-label="validacion qa cierre camila">
+                      <div style="display:flex;justify-content:space-between;gap:8px;">
+                        <strong style="font-size:13px;">4. Validación y cierre</strong>
+                        <span class="mono" style="font-size:11px;color:var(--text-muted);">00:00:00</span>
+                      </div>
+                      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Camila Rojas · Secuencial
+                      </div>
+                      <span class="node-status st-lock" id="sc-m4-status">🔒 Bloqueada hasta completar #2</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Minimapa interactivo -->
+                <div class="sc-minimap" aria-label="Minimapa del proyecto">
+                  <div
+                    style="font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:5px;display:flex;justify-content:space-between;">
+                    <span>MINIMAPA</span>
+                    <span class="mono">100%</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:16px 1fr;gap:5px;align-items:center;">
+                    <span style="height:18px;border-radius:4px;background:var(--brand);"></span>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                      <span style="height:8px;border-radius:2px;background:var(--ok);"></span>
+                      <span style="height:8px;border-radius:2px;background:var(--warn);"></span>
+                      <span style="height:8px;border-radius:2px;background:var(--ok);"></span>
+                      <span style="height:8px;border-radius:2px;background:var(--border-strong);"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:var(--surface-solid);">
+                <div id="sc-node-inspector" style="font-size:13px;color:var(--text-secondary);">
+                  <strong style="color:var(--text);">2. Panel de cronómetro</strong> · En curso por Mateo Silva · Haz
+                  clic para alternar estado o usa Deshacer/Rehacer.
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" class="mini-toggle" id="sc-toggle-m2-btn">Cambiar estado #2</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- PESTANA 2: JORNADA Y CALENDARIO -->
+            <div class="showcase-panel" role="tabpanel" id="panel-calendario" aria-labelledby="tab-btn-calendario">
+              <div class="sc-toolbar">
+                <button type="button" class="tf-switch" id="cal-jornada-switch" aria-pressed="true">
+                  <span class="tf-switch-track" aria-hidden="true"><span class="tf-switch-knob"></span></span>
+                  <span style="text-align:left;">
+                    <strong style="display:block;font-size:13px;" id="cal-jornada-title">En jornada · 09:05 a.
+                      m.</strong>
+                    <span style="display:block;font-size:11.5px;color:var(--text-muted);" id="cal-jornada-sub">Sesión
+                      activa · America/Santiago</span>
+                  </span>
+                </button>
+
+                <div class="sc-toolbar-right">
+                  <button type="button" class="mini-toggle" id="cal-mode-clean" aria-pressed="false">Vista
+                    Limpia</button>
+                  <button type="button" class="mini-toggle" id="cal-mode-heat" aria-pressed="true">Mapa de
+                    calor</button>
+                  <select id="cal-person-filter" aria-label="Filtrar calendario por persona"
+                    style="height:34px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface-solid);color:var(--text);padding:0 10px;font-size:12.5px;font-weight:600;">
+                    <option value="all">Todo el equipo</option>
+                    <option value="Camila">Camila Rojas (Santiago)</option>
+                    <option value="Mateo">Mateo Silva (Bogotá)</option>
+                    <option value="Valentina">Valentina Díaz (CDMX)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="cal-layout">
+                <div
+                  style="border-radius:16px;border:1px solid var(--border);background:var(--surface-2);padding:14px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <strong class="display-font" style="font-size:15px;">Noviembre · Registro del equipo</strong>
+                    <span
+                      style="font-size:12px;color:var(--warn-ink);background:var(--warn-soft);padding:4px 10px;border-radius:999px;font-weight:600;">
+                      ⚠ 1 jornada abierta sin cierre · Mateo Silva
+                    </span>
+                  </div>
+                  <div class="cal-grid" id="cal-grid"></div>
+                </div>
+
+                <aside
+                  style="border-radius:16px;border:1px solid var(--border);background:var(--surface-solid);padding:16px;display:flex;flex-direction:column;justify-content:space-between;gap:14px;">
+                  <div>
+                    <span
+                      style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--brand-ink);"
+                      id="cal-detail-date">Día 18 de noviembre</span>
+                    <h3 class="display-font" style="margin:4px 0 10px;font-size:17px;" id="cal-detail-title">Detalle por
+                      persona y proyecto</h3>
+                    <div id="cal-detail-list" style="display:flex;flex-direction:column;gap:9px;"></div>
+                  </div>
+                  <div
+                    style="padding:10px 12px;border-radius:11px;background:var(--surface-2);border:1px solid var(--border);font-size:12px;color:var(--text-muted);">
+                    Cada persona registra marcajes y pausas en su propia zona horaria sin desfasar los reportes de la
+                    empresa.
+                  </div>
+                </aside>
+              </div>
+            </div>
+
+            <!-- PESTANA 3: CARTA GANTT Y TAREAS -->
+            <div class="showcase-panel" role="tabpanel" id="panel-gantt" aria-labelledby="tab-btn-gantt">
+              <div class="gantt-layout">
+                <div class="gantt-table">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <strong class="display-font" style="font-size:15px;">Carta Gantt · Proyecto Portal Clientes</strong>
+                    <span style="font-size:12px;color:var(--text-muted);">Haz clic en una barra para abrir sus
+                      subtareas, nota de voz y adjuntos</span>
+                  </div>
+                  <div class="gantt-rows" id="gantt-rows">
+                    <div
+                      style="display:grid;grid-template-columns:155px 1fr;gap:12px;font-size:11px;font-weight:700;color:var(--text-muted);">
+                      <span>Tarea / Responsable</span>
+                      <div style="display:grid;grid-template-columns:repeat(3,1fr);text-align:center;">
+                        <span>Semana 1</span><span>Semana 2</span><span>Semana 3</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <aside
+                  style="border-radius:16px;border:1px solid var(--border);background:var(--surface-solid);padding:16px;display:flex;flex-direction:column;gap:14px;">
+                  <div>
+                    <span
+                      style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--brand-ink);"
+                      id="gantt-task-meta">Subtareas · Mateo Silva</span>
+                    <h3 class="display-font" style="margin:4px 0 10px;font-size:17px;" id="gantt-task-title">Panel de
+                      cronómetro</h3>
+                    <div id="gantt-subtasks" style="display:flex;flex-direction:column;gap:7px;"></div>
+                  </div>
+
+                  <div>
+                    <div style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">Nota de voz
+                      en la tarea</div>
+                    <div class="voice-player">
+                      <button type="button" class="mini-toggle" id="voice-play-btn" aria-pressed="false"
+                        aria-label="Reproducir nota de voz">▶</button>
+                      <div class="voice-bars" id="voice-bars" aria-hidden="true"></div>
+                      <span class="mono" style="font-size:11.5px;color:var(--text-secondary);" id="voice-time">0:00 /
+                        0:24</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style="font-size:11.5px;font-weight:700;color:var(--text-muted);margin-bottom:6px;">Adjuntos
+                      (vista previa sin descarga)</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <button type="button" class="mini-toggle" data-preview-doc="Arquitectura_v2.pdf">📄
+                        Arquitectura_v2.pdf</button>
+                      <button type="button" class="mini-toggle" data-preview-doc="Flujo_nodos.png">🖼
+                        Flujo_nodos.png</button>
+                    </div>
+                    <div id="attachment-preview"
+                      style="margin-top:8px;padding:10px 12px;border-radius:11px;border:1px solid var(--border);background:var(--surface-2);font-size:12px;color:var(--text-secondary);">
+                      Vista previa embebida: <strong>Arquitectura_v2.pdf</strong> — Esquema de nodos, permisos RBAC y
+                      estados secuenciales.
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            </div>
+
+            <!-- PESTANA 4: REPORTES Y ROLES -->
+            <div class="showcase-panel" role="tabpanel" id="panel-reportes" aria-labelledby="tab-btn-reportes">
+              <div class="sc-toolbar">
+                <div class="sc-toolbar-left">
+                  <strong class="display-font" style="font-size:15px;">Resumen semanal (datos de demostración)</strong>
+                  <select id="rep-team-filter" aria-label="Filtrar reporte por área"
+                    style="height:34px;border-radius:10px;border:1px solid var(--border-strong);background:var(--surface-solid);color:var(--text);padding:0 10px;font-size:12.5px;font-weight:600;">
+                    <option value="all">Todo el equipo</option>
+                    <option value="Producto">Área Producto</option>
+                    <option value="Ingeniería">Área Ingeniería</option>
+                  </select>
+                </div>
+                <div class="sc-toolbar-right">
+                  <button type="button" class="mini-toggle" data-export-fmt="Excel">⬇ Excel (.xlsx)</button>
+                  <button type="button" class="mini-toggle" data-export-fmt="CSV">⬇ CSV</button>
+                  <button type="button" class="mini-toggle" data-export-fmt="PDF">⬇ PDF</button>
+                </div>
+              </div>
+
+              <div class="reports-layout">
+                <div>
+                  <div class="kpi-strip">
+                    <div class="kpi-box">
+                      <span style="font-size:11.5px;color:var(--text-muted);">Horas registradas</span>
+                      <strong class="mono" style="display:block;font-size:20px;margin-top:3px;" id="rep-kpi-hours">104h
+                        20m</strong>
+                    </div>
+                    <div class="kpi-box">
+                      <span style="font-size:11.5px;color:var(--text-muted);">Jornadas cerradas</span>
+                      <strong class="mono" style="display:block;font-size:20px;margin-top:3px;" id="rep-kpi-shifts">14 /
+                        15</strong>
+                    </div>
+                    <div class="kpi-box">
+                      <span style="font-size:11.5px;color:var(--text-muted);">Proyectos activos</span>
+                      <strong class="mono" style="display:block;font-size:20px;margin-top:3px;" id="rep-kpi-proj">3 /
+                        5</strong>
+                    </div>
+                  </div>
+                  <div id="rep-bars-list"
+                    style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;border:1px solid var(--border);background:var(--surface-solid);">
+                  </div>
+                </div>
+
+                <div
+                  style="border-radius:16px;border:1px solid var(--border);background:var(--surface-solid);padding:16px;overflow-x:auto;">
+                  <strong class="display-font" style="display:block;font-size:15px;margin-bottom:10px;">Control RBAC por
+                    rol</strong>
+                  <table class="rbac-table">
+                    <thead>
+                      <tr>
+                        <th>Capacidad</th>
+                        <th>Admin</th>
+                        <th>Sup.</th>
+                        <th>Trab.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Jornada y cronómetro propio</td>
+                        <td>✓</td>
+                        <td>✓</td>
+                        <td>✓</td>
+                      </tr>
+                      <tr>
+                        <td>Ver todas las tareas y calendario equipo</td>
+                        <td>✓</td>
+                        <td>✓</td>
+                        <td>—</td>
+                      </tr>
+                      <tr>
+                        <td>Editar mapa de nodos</td>
+                        <td>✓</td>
+                        <td>✓</td>
+                        <td>Extra*</td>
+                      </tr>
+                      <tr>
+                        <td>Exportar reportes Excel / CSV / PDF</td>
+                        <td>✓</td>
+                        <td>✓</td>
+                        <td>—</td>
+                      </tr>
+                      <tr>
+                        <td>Gestionar usuarios, roles y marca</td>
+                        <td>✓</td>
+                        <td>—</td>
+                        <td>—</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p style="margin:10px 0 0;font-size:11.5px;color:var(--text-muted);">
+                    *El Administrador puede otorgar permisos extra puntuales a un Trabajador (editar mapa o eliminar
+                    tareas).
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           BENTO GRID DE FUNCIONALIDADES REALES
+           ==================================================================== -->
+      <section id="funciones" class="section-pad">
+        <div class="container">
+          <div class="section-head">
+            <p class="eyebrow">Funciones reales</p>
+            <h2 class="section-title">Diseñado para coordinar tareas, tiempos y comunicación sin fricción</h2>
+            <p class="section-desc">
+              Cada módulo de TimeFlow resuelve un problema concreto del día a día de tu equipo, sin relleno ni
+              herramientas desconectadas.
+            </p>
+          </div>
+
+          <div class="bento-grid">
+            <article class="bento-card spot-card col-7">
+              <div>
+                <div class="bento-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="6" cy="6" r="2.5" />
+                    <circle cx="18" cy="6" r="2.5" />
+                    <circle cx="12" cy="18" r="2.5" />
+                    <path d="M8.5 6h7M7 8.3l4 7.4M17 8.3l-4 7.4" />
+                  </svg>
+                </div>
+                <h3 class="bento-title">Mapa de nodos con bloqueo secuencial</h3>
+                <p class="bento-text">
+                  Cada proyecto es un nodo raíz con tareas y subtareas en vista Horizontal o Vertical, candado
+                  secuencial para flujos ordenados, autoguardado en vivo, Ctrl+Z / Ctrl+Y, minimapa y buscador global.
+                </p>
+              </div>
+              <div class="bento-preview"
+                style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;">
+                <span>🔒 <strong>Secuencial</strong> · Desbloquea al completar la previa</span>
+                <span class="mono" style="color:var(--brand-ink);">Ctrl+Z / Ctrl+Y · Minimapa</span>
+              </div>
+            </article>
+
+            <article class="bento-card spot-card col-5">
+              <div>
+                <div class="bento-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                </div>
+                <h3 class="bento-title">Jornada, cronómetro y zona horaria propia</h3>
+                <p class="bento-text">
+                  Interruptor de inicio/fin de jornada, cronómetro por tarea con pausas y notas de sesión. Cada
+                  integrante mide sus horas en su zona horaria local.
+                </p>
+              </div>
+              <div class="bento-preview mono"
+                style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <span>Santiago · 12:35</span>
+                <span>Bogotá · 10:35</span>
+                <span>CDMX · 09:35</span>
+              </div>
+            </article>
+
+            <article class="bento-card spot-card col-5">
+              <div>
+                <div class="bento-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3" />
+                  </svg>
+                </div>
+                <h3 class="bento-title">Notas de voz y Chat del equipo</h3>
+                <p class="bento-text">
+                  Canal general y mensajes directos en tiempo real, comentarios de texto o audio grabado desde el
+                  micrófono en cada tarea, historial completo de cambios y notificaciones.
+                </p>
+              </div>
+              <div class="bento-preview" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span>💬 #general · Mensajes directos</span>
+                <span style="color:var(--ok-ink);font-weight:600;">🎙 Audio en tarea</span>
+              </div>
+            </article>
+
+            <article class="bento-card spot-card col-7">
+              <div>
+                <div class="bento-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M8 3v4M16 3v4M3 10h18" />
+                  </svg>
+                </div>
+                <h3 class="bento-title">Calendario del equipo y Carta Gantt</h3>
+                <p class="bento-text">
+                  Grilla mensual en vista Limpia o Mapa de calor, alertas de jornadas abiertas, detalle por persona o
+                  proyecto y Carta Gantt con vista previa de adjuntos sin descarga.
+                </p>
+              </div>
+              <div class="bento-preview" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span>Vista Limpia / Mapa de calor</span>
+                <span style="color:var(--warn-ink);font-weight:600;">⚠ Alerta jornada abierta</span>
+                <span>Preview sin descarga</span>
+              </div>
+            </article>
+
+            <article class="bento-card spot-card col-6">
+              <div>
+                <div class="bento-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 3v18M12 3a9 9 0 0 1 0 18" />
+                  </svg>
+                </div>
+                <h3 class="bento-title">3 temas y marca con contraste WCAG</h3>
+                <p class="bento-text">
+                  Elige entre Oscuro Medianoche, Oscuro Grafito y Claro Nube, y aplica el color corporativo de tu
+                  empresa con ajuste automático de contraste legible.
+                </p>
+              </div>
+              <div class="bento-preview"
+                style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span>Medianoche · Grafito · Nube</span>
+                <span class="mono" id="bento-wcag-badge" style="color:var(--brand-ink);font-weight:700;">Color #38bdf8 ·
+                  Contraste WCAG OK</span>
+              </div>
+            </article>
+
+            <article class="bento-card spot-card col-6">
+              <div>
+                <div class="bento-icon" aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3l7 3v5c0 4.5-3 8-7 10c-4-2-7-5.5-7-10V6z" />
+                  </svg>
+                </div>
+                <h3 class="bento-title">Control RBAC y exportación directa</h3>
+                <p class="bento-text">
+                  Permisos claros para Administrador, Supervisor y Trabajador, con exportación de horas, marcajes y
+                  tareas directamente a Excel, CSV y PDF.
+                </p>
+              </div>
+              <div class="bento-preview"
+                style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <span>Administrador · Supervisor · Trabajador</span>
+                <span class="mono" style="color:var(--ok-ink);font-weight:700;">Excel · CSV · PDF</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           COMO FUNCIONA (3 PASOS CONECTADOS)
+           ==================================================================== -->
+      <section id="como-funciona" class="section-pad">
+        <div class="container">
+          <div class="section-head">
+            <p class="eyebrow">Cómo funciona</p>
+            <h2 class="section-title">De crear tu empresa a tu primer reporte, en tres pasos</h2>
+            <p class="section-desc">
+              Empieza sin instalaciones ni tarjetas. Configura tu equipo en minutos y comienza a visualizar el trabajo
+              real en el mapa.
+            </p>
+          </div>
+
+          <ol class="steps-grid" style="list-style:none;margin:0;padding:0;">
+            <li class="step-card spot-card">
+              <span class="step-num">1</span>
+              <h3 class="display-font" style="margin:4px 0 0;font-size:19px;">Crea tu empresa gratis</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--text-secondary);">
+                Registra tu cuenta en el Plan Básico sin tarjeta. Quedas como Administrador para personalizar tema,
+                color corporativo y proyectos.
+              </p>
+            </li>
+            <li class="step-card spot-card">
+              <span class="step-num">2</span>
+              <h3 class="display-font" style="margin:4px 0 0;font-size:19px;">Suma a tu equipo con roles y zonas
+                horarias</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--text-secondary);">
+                Crea las cuentas de Supervisores y Trabajadores, define permisos y deja que cada persona elija su zona
+                horaria real.
+              </p>
+            </li>
+            <li class="step-card spot-card">
+              <span class="step-num">3</span>
+              <h3 class="display-font" style="margin:4px 0 0;font-size:19px;">Trabajen en el mapa y midan en calendario
+                y reportes</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--text-secondary);">
+                Cada integrante activa su jornada, cronometra tareas y colabora por chat o voz mientras tú sigues
+                avance, Gantt y exportaciones.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           DISENADO PARA CADA ROL DEL EQUIPO
+           ==================================================================== -->
+      <section id="roles" class="section-pad">
+        <div class="container">
+          <div class="section-head">
+            <p class="eyebrow">Control RBAC real</p>
+            <h2 class="section-title">Diseñado para cada rol del equipo</h2>
+            <p class="section-desc">
+              Cada persona ve y opera exactamente lo que necesita según su responsabilidad, sin ruido ni configuraciones
+              expuestas.
+            </p>
+          </div>
+
+          <div class="roles-shell">
+            <div class="role-tabs" role="tablist" aria-label="Roles de TimeFlow">
+              <button type="button" class="role-tab" role="tab" aria-selected="true" data-role="ADMINISTRADOR">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong class="display-font" style="font-size:17px;">Administrador</strong>
+                  <span style="font-size:12px;font-weight:700;color:var(--brand-ink);">Control total</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:13.5px;color:var(--text-secondary);">
+                  Gestiona usuarios, roles, permisos extra, personalización de marca y reportes globales de toda la
+                  empresa.
+                </p>
+              </button>
+
+              <button type="button" class="role-tab" role="tab" aria-selected="false" data-role="SUPERVISOR">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong class="display-font" style="font-size:17px;">Supervisor</strong>
+                  <span style="font-size:12px;font-weight:700;color:var(--violet-ink);">Operación diaria</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:13.5px;color:var(--text-secondary);">
+                  Organiza el mapa de nodos, revisa avances en Carta Gantt y calendario del equipo y exporta reportes
+                  operativos.
+                </p>
+              </button>
+
+              <button type="button" class="role-tab" role="tab" aria-selected="false" data-role="TRABAJADOR">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong class="display-font" style="font-size:17px;">Trabajador</strong>
+                  <span style="font-size:12px;font-weight:700;color:var(--ok-ink);">Foco operativo</span>
+                </div>
+                <p style="margin:6px 0 0;font-size:13.5px;color:var(--text-secondary);">
+                  Marca su jornada en su zona horaria, cronometra tareas asignadas, graba notas de voz y coordina en el
+                  chat.
+                </p>
+              </button>
+            </div>
+
+            <div class="role-detail-card" id="role-detail-card">
+              <div>
+                <span class="eyebrow" id="role-badge">Rol · Administrador</span>
+                <h3 class="display-font" style="margin:8px 0 10px;font-size:24px;" id="role-heading">Visibilidad total,
+                  gobierno RBAC y marca propia</h3>
+                <p style="margin:0;font-size:15px;line-height:1.65;color:var(--text-secondary);" id="role-summary">
+                  Configura la identidad visual de tu empresa (tema Oscuro Medianoche, Grafito o Claro Nube + color
+                  corporativo), crea cuentas y asigna permisos granulares o extras a trabajadores.
+                </p>
+              </div>
+              <div>
+                <div
+                  style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:10px;">
+                  Qué gana en su día a día
+                </div>
+                <div class="perm-chips" id="role-perms"></div>
+              </div>
+              <div
+                style="padding:14px 16px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-size:13px;color:var(--text-secondary);"
+                id="role-workflow">
+                Acceso directo a Configuración de marca, Usuarios y permisos extra, Mapa de nodos, Calendario del
+                equipo, Carta Gantt, Historial y Exportación Excel/CSV/PDF.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           PLAN BASICO + ESCALABILIDAD TRANSPARENTE
+           ==================================================================== -->
+      <section id="plan" class="section-pad">
+        <div class="container">
+          <div class="section-head">
+            <p class="eyebrow">Plan Básico</p>
+            <h2 class="section-title">Empieza gratis, con todas las funciones</h2>
+            <p class="section-desc">
+              El Plan Básico incluye la aplicación completa para equipos pequeños, sin tarjeta de crédito ni bloqueos
+              artificiales de funciones.
+            </p>
+          </div>
+
+          <div class="pricing-grid">
+            <div class="glow-ring">
+              <article class="glow-ring-inner">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;">
+                    <div>
+                      <span
+                        style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--brand-ink);">Incluido
+                        desde el día 1</span>
+                      <h3 class="display-font" style="margin:4px 0 0;font-size:24px;">Plan Básico</h3>
+                    </div>
+                    <div class="display-font" style="font-size:40px;font-weight:800;line-height:1;">Gratis</div>
+                  </div>
+                  <p style="margin:12px 0 20px;font-size:14.5px;color:var(--text-secondary);">
+                    Todas las herramientas de TimeFlow para ordenar proyectos, tiempos y comunicación, sin tarjeta.
+                  </p>
+                  <ul class="plan-list">
+                    <li>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px;">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      Hasta 10 personas en tu empresa
+                    </li>
+                    <li>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px;">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      Hasta 5 proyectos activos
+                    </li>
+                    <li>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px;">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      Mapa de tareas, jornada y cronómetro
+                    </li>
+                    <li>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px;">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      Calendario y reportes exportables
+                    </li>
+                    <li>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px;">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      Chat del equipo y comentarios de voz
+                    </li>
+                    <li>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px;">
+                        <path d="M5 12l5 5L20 7" />
+                      </svg>
+                      Roles, permisos y zona horaria por persona
+                    </li>
+                  </ul>
+                </div>
+                <a href="/registro" class="btn btn-primary btn-lg" data-app-route="/registro" style="width:100%;">
+                  Crear cuenta con el plan Básico
+                </a>
+              </article>
+            </div>
+
+            <aside class="enterprise-card spot-card">
+              <div>
+                <span
+                  style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);">Escalabilidad
+                  transparente</span>
+                <h3 class="display-font" style="margin:6px 0 10px;font-size:23px;">Equipos en crecimiento · Pro /
+                  Empresa</h3>
+                <p style="margin:0 0 16px;font-size:14.5px;line-height:1.65;color:var(--text-secondary);">
+                  ¿Tu empresa supera las 10 personas o los 5 proyectos activos? Pasa a <strong>Pro</strong> o
+                  <strong>Empresa</strong> sin perder historial, tareas, marcajes ni reportes previos.
+                </p>
+                <div
+                  style="padding:14px;border-radius:14px;background:var(--surface-2);border:1px solid var(--border);font-size:13.5px;color:var(--text-secondary);">
+                  Conversa directamente con nosotros para habilitar más cupos de usuarios y proyectos según el tamaño
+                  real de tu operación.
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <a href="mailto:contacto@timeflows.site" class="btn btn-secondary btn-lg" style="width:100%;">
+                  Escribir a contacto@timeflows.site
+                </a>
+                <button type="button" class="mini-toggle" id="copy-email-btn"
+                  style="justify-content:center;min-height:38px;">
+                  Copiar correo: contacto@timeflows.site
+                </button>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           CTA FINAL DE CIERRE
+           ==================================================================== -->
+      <section class="section-pad" style="padding-top:24px;">
+        <div class="container">
+          <div class="final-cta">
+            <p class="eyebrow" style="justify-content:center;">Ideas en movimiento</p>
+            <h2 class="section-title" style="max-width:660px;margin:10px auto 14px;">
+              Pon tu primer proyecto en el mapa hoy mismo
+            </h2>
+            <p class="section-desc" style="max-width:560px;margin:0 auto 26px;">
+              Crea tu empresa gratis con el Plan Básico: hasta 10 personas, hasta 5 proyectos activos y todas las
+              funciones disponibles desde el primer minuto.
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;">
+              <a href="/registro" class="btn btn-primary btn-lg" data-app-route="/registro">Crear cuenta gratis</a>
+              <a href="/login" class="btn btn-secondary btn-lg" data-app-route="/login">Acceso clientes</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================================
+         FOOTER COMPLETO
+         ====================================================================== -->
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="24" height="24" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M22 18 L36 34 M36 34 L48 24 M36 34 L22 46" stroke="#5aa9ff" stroke-width="5" stroke-linecap="round"
+              fill="none" />
+            <circle cx="20" cy="16" r="9" fill="#34d399" />
+            <circle cx="49" cy="22" r="8" fill="#fbbf24" />
+            <circle cx="36" cy="35" r="11" fill="#38bdf8" />
+            <circle cx="21" cy="47" r="8" fill="#a78bfa" />
+            <circle cx="21" cy="47" r="4" fill="#ddd6fe" />
+          </svg>
+          <p style="margin:0;">
+            <strong class="display-font" style="color:var(--text);">Time<span
+                style="color:var(--brand-ink);">Flow</span></strong> · Ideas en movimiento
+          </p>
+        </div>
+        <div class="footer-links">
+          <a href="/login" data-app-route="/login">Acceso clientes</a>
+          <a href="/registro" data-app-route="/registro">Crear cuenta</a>
+          <a href="/terminos" data-app-route="/terminos">Términos de uso</a>
+          <a href="/privacidad" data-app-route="/privacidad">Privacidad</a>
+          <a href="mailto:contacto@timeflows.site">contacto@timeflows.site</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ========================================================================
+       STUDIO TOOLBAR FLOTANTE (BARRA DEL LABORATORIO)
+       ======================================================================== -->
+  <div class="studio-dock-wrap" aria-label="Laboratorio de diseño TimeFlow">
+    <button type="button" class="studio-pill-collapsed" id="studio-expand-btn">
+      <span>⚙</span>
+      <span id="studio-collapsed-label">Studio · Fondo A · H1</span>
+    </button>
+
+    <div class="studio-dock" id="studio-dock">
+      <div class="dock-group" role="group" aria-label="Fondo animado">
+        <span class="dock-label">Fondo</span>
+        <button type="button" class="seg-btn" data-set-bg="A" aria-pressed="true">A · Nodos</button>
+        <button type="button" class="seg-btn" data-set-bg="B" aria-pressed="false">B · Aurora</button>
+        <button type="button" class="seg-btn" data-set-bg="C" aria-pressed="false">C · Flujo</button>
+        <button type="button" class="seg-btn" data-set-bg="D" aria-pressed="false">D · Editorial</button>
+      </div>
+
+      <div class="dock-group" role="group" aria-label="Variante de Hero">
+        <span class="dock-label">Hero</span>
+        <button type="button" class="seg-btn" data-set-hero="1" aria-pressed="true">1 · Split</button>
+        <button type="button" class="seg-btn" data-set-hero="2" aria-pressed="false">2 · Panorámico</button>
+      </div>
+
+      <div class="dock-group" role="group" aria-label="Tema de color">
+        <span class="dock-label">Tema</span>
+        <button type="button" class="seg-btn" data-set-tema="oscuro-medianoche" aria-pressed="true">Medianoche</button>
+        <button type="button" class="seg-btn" data-set-tema="claro-nube" aria-pressed="false">Nube</button>
+      </div>
+
+      <div class="dock-group" role="group" aria-label="Color corporativo">
+        <span class="dock-label">Marca</span>
+        <button type="button" class="swatch-btn" data-set-color="#38bdf8" aria-label="Celeste TimeFlow"
+          aria-pressed="true" style="background:#38bdf8"></button>
+        <button type="button" class="swatch-btn" data-set-color="#10b981" aria-label="Esmeralda" aria-pressed="false"
+          style="background:#10b981"></button>
+        <button type="button" class="swatch-btn" data-set-color="#6366f1" aria-label="Índigo" aria-pressed="false"
+          style="background:#6366f1"></button>
+        <button type="button" class="swatch-btn" data-set-color="#f59e0b" aria-label="Ámbar" aria-pressed="false"
+          style="background:#f59e0b"></button>
+        <button type="button" class="swatch-btn" data-set-color="#f43f5e" aria-label="Coral" aria-pressed="false"
+          style="background:#f43f5e"></button>
+      </div>
+
+      <div style="display:inline-flex;align-items:center;gap:6px;">
+        <button type="button" class="btn btn-primary" id="open-summary-btn"
+          style="min-height:32px;padding:0 12px;font-size:12px;border-radius:9px;">
+          Ver resumen de mi combinación
+        </button>
+        <button type="button" class="seg-btn" id="studio-collapse-btn" title="Colapsar barra de estudio"
+          aria-label="Colapsar barra de estudio">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL RESUMEN DE COMBINACION -->
+  <div class="modal-backdrop" id="summary-modal" role="dialog" aria-modal="true" aria-labelledby="summary-title">
+    <div class="modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true">
+            <path d="M22 18 L36 34 M36 34 L48 24 M36 34 L22 46" stroke="#5aa9ff" stroke-width="5" stroke-linecap="round"
+              fill="none" />
+            <circle cx="20" cy="16" r="9" fill="#34d399" />
+            <circle cx="49" cy="22" r="8" fill="#fbbf24" />
+            <circle cx="36" cy="35" r="11" fill="#38bdf8" />
+            <circle cx="21" cy="47" r="8" fill="#a78bfa" />
+            <circle cx="21" cy="47" r="4" fill="#ddd6fe" />
+          </svg>
+          <h2 class="display-font" id="summary-title" style="margin:0;font-size:19px;">Tu combinación en TimeFlow Studio
+          </h2>
+        </div>
+        <button type="button" class="seg-btn" id="close-summary-btn" aria-label="Cerrar resumen">✕</button>
+      </div>
+
+      <p style="margin:0 0 12px;font-size:13.5px;color:var(--text-secondary);">
+        Copia este código exacto para llevar el ganador a Next.js:
+      </p>
+
+      <div class="combo-code-box">
+        <code class="mono" id="summary-code-text">Fondo: A · Hero: 1 · Tema: Oscuro · Color: #38bdf8</code>
+        <button type="button" class="btn btn-primary" id="copy-combo-btn"
+          style="min-height:34px;padding:0 12px;font-size:12px;border-radius:9px;">
+          Copiar
+        </button>
+      </div>
+
+      <div id="summary-details"
+        style="margin-top:14px;display:grid;gap:8px;font-size:13px;color:var(--text-secondary);"></div>
+    </div>
+  </div>
+
+  <!-- TOAST DE FEEDBACK -->
+  <div class="toast-msg" id="toast-msg" role="status" aria-live="polite"></div>
+  <script>
+    (function () {
+      'use strict';
+
+      /* ======================================================================
+         1. UTILIDADES DE COLOR Y CONTRASTE WCAG 2.1 (fiel a lib/color.ts)
+         ====================================================================== */
+      function parseHex(hex) {
+        const clean = String(hex || '').trim().replace('#', '');
+        if (/^[0-9a-fA-F]{3}$/.test(clean)) {
+          return [
+            parseInt(clean[0] + clean[0], 16),
+            parseInt(clean[1] + clean[1], 16),
+            parseInt(clean[2] + clean[2], 16),
+          ];
+        }
+        if (/^[0-9a-fA-F]{6}$/.test(clean)) {
+          const n = parseInt(clean, 16);
+          return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        }
+        return [56, 189, 248];
+      }
+
+      function rgbToHsl(r, g, b) {
+        const rn = r / 255, gn = g / 255, bn = b / 255;
+        const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+        const d = max - min;
+        let h = 0, s = 0;
+        const l = (max + min) / 2;
+        if (d !== 0) {
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          if (max === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
+          else if (max === gn) h = (bn - rn) / d + 2;
+          else h = (rn - gn) / d + 4;
+          h *= 60;
+        }
+        return [h, s, l];
+      }
+
+      function hslToHex(h, s, l) {
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r = 0, g = 0, b = 0;
+        if (h < 60) [r, g, b] = [c, x, 0];
+        else if (h < 120) [r, g, b] = [x, c, 0];
+        else if (h < 180) [r, g, b] = [0, c, x];
+        else if (h < 240) [r, g, b] = [0, x, c];
+        else if (h < 300) [r, g, b] = [x, 0, c];
+        else[r, g, b] = [c, 0, x];
+        const toHex = (n) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+        return '#' + toHex(r) + toHex(g) + toHex(b);
+      }
+
+      function luminanciaRelativa(hex) {
+        const canal = (v) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+        };
+        const [r, g, b] = parseHex(hex);
+        return 0.2126 * canal(r) + 0.7152 * canal(g) + 0.0722 * canal(b);
+      }
+
+      function contrastRatio(hexA, hexB) {
+        const la = luminanciaRelativa(hexA);
+        const lb = luminanciaRelativa(hexB);
+        const hi = Math.max(la, lb);
+        const lo = Math.min(la, lb);
+        return (hi + 0.05) / (lo + 0.05);
+      }
+
+      function colorSecundarioDeMarca(hex) {
+        const [r, g, b] = parseHex(hex);
+        const [h, s, l] = rgbToHsl(r, g, b);
+        const giro = h >= 32 && h <= 78 ? -20 : 24;
+        const h2 = (h + giro + 360) % 360;
+        const s2 = s < 0.08 ? s : Math.min(0.95, Math.max(s, 0.55));
+        const l2 = Math.min(0.72, Math.max(0.28, l > 0.56 ? l - 0.07 : l + 0.05));
+        return hslToHex(h2, s2, l2);
+      }
+
+      function computeAccessibleInk(hex, isLight) {
+        const [r, g, b] = parseHex(hex);
+        const [h, s] = rgbToHsl(r, g, b);
+        const surfaceRef = isLight ? '#ffffff' : '#0c1427';
+        let l = isLight ? 0.34 : 0.72;
+        for (let i = 0; i < 12; i++) {
+          const candidate = hslToHex(h, Math.min(0.92, Math.max(s, 0.65)), l);
+          if (contrastRatio(candidate, surfaceRef) >= 4.8) return candidate;
+          l = isLight ? Math.max(0.18, l - 0.03) : Math.min(0.88, l + 0.03);
+        }
+        return isLight ? '#0f172a' : '#f8fafc';
+      }
+
+      /* ======================================================================
+         2. ESTADO GLOBAL DEL LABORATORIO Y ELEMENTOS BASE
+         ====================================================================== */
+      const BG_META = {
+        A: 'Constelación de Nodos Viva (Canvas 2D)',
+        B: 'Aurora Fluida + Grilla de Tiempo',
+        C: 'Líneas de Flujo Topográfico (Canvas 2D)',
+        D: 'Editorial Minimalista Cinematográfico',
+      };
+      const HERO_META = {
+        '1': 'Split Asimétrico con Producto Vivo',
+        '2': 'Centrado Cinematográfico + Stage Panorámico',
+      };
+      const COLOR_NAMES = {
+        '#38bdf8': 'Celeste TimeFlow',
+        '#10b981': 'Esmeralda',
+        '#6366f1': 'Índigo',
+        '#f59e0b': 'Ámbar',
+        '#f43f5e': 'Coral',
+      };
+
+      const state = {
+        bg: 'A',
+        hero: '1',
+        tema: 'oscuro-medianoche',
+        color: '#38bdf8',
+      };
+
+      const rootEl = document.documentElement;
+      const toastEl = document.getElementById('toast-msg');
+      let toastTimer = null;
+
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add('visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove('visible'), 2800);
+      }
+
+      function applyThemeAndBrand() {
+        const isLight = state.tema === 'claro-nube';
+        rootEl.dataset.tema = state.tema;
+        rootEl.dataset.bg = state.bg;
+        rootEl.dataset.hero = state.hero;
+
+        const [r, g, b] = parseHex(state.color);
+        const brand2 = colorSecundarioDeMarca(state.color);
+        const [r2, g2, b2] = parseHex(brand2);
+        const onDark = contrastRatio(state.color, '#04101f');
+        const onLight = contrastRatio(state.color, '#ffffff');
+        const brandOn = onDark >= onLight ? '#04101f' : '#ffffff';
+        const btnContrast = Math.max(onDark, onLight).toFixed(1);
+        const brandInk = computeAccessibleInk(state.color, isLight);
+
+        rootEl.style.setProperty('--brand', state.color);
+        rootEl.style.setProperty('--brand-rgb', `${r}, ${g}, ${b}`);
+        rootEl.style.setProperty('--brand-2', brand2);
+        rootEl.style.setProperty('--brand-2-rgb', `${r2}, ${g2}, ${b2}`);
+        rootEl.style.setProperty('--brand-on', brandOn);
+        rootEl.style.setProperty('--brand-ink', brandInk);
+        rootEl.style.setProperty('--brand-soft', `rgba(${r}, ${g}, ${b}, ${isLight ? 0.12 : 0.14})`);
+        rootEl.style.setProperty('--brand-border', `rgba(${r}, ${g}, ${b}, ${isLight ? 0.36 : 0.42})`);
+
+        const badge = document.getElementById('bento-wcag-badge');
+        if (badge) {
+          badge.textContent = `${state.color} · Botón ${btnContrast}:1 WCAG`;
+        }
+
+        const collapsedLbl = document.getElementById('studio-collapsed-label');
+        if (collapsedLbl) {
+          collapsedLbl.textContent = `Studio · Fondo ${state.bg} · H${state.hero}`;
+        }
+
+        updateSummaryContent();
+        redrawBgOnce();
+        requestAnimationFrame(() => {
+          drawHeroEdges();
+          drawShowcaseEdges();
+          updateHeroStagePerspective();
+        });
+      }
+
+      function getSummaryCode() {
+        const temaLabel = state.tema === 'claro-nube' ? 'Claro' : 'Oscuro';
+        return `Fondo: ${state.bg} · Hero: ${state.hero} · Tema: ${temaLabel} · Color: ${state.color}`;
+      }
+
+      function updateSummaryContent() {
+        const codeEl = document.getElementById('summary-code-text');
+        const detailsEl = document.getElementById('summary-details');
+        if (!codeEl || !detailsEl) return;
+        codeEl.textContent = getSummaryCode();
+        const temaName = state.tema === 'claro-nube' ? 'Claro Nube' : 'Oscuro Medianoche';
+        const colorName = COLOR_NAMES[state.color] || state.color;
+        detailsEl.innerHTML = [
+          `<div><strong>Fondo animado (${state.bg}):</strong> ${BG_META[state.bg]}</div>`,
+          `<div><strong>Layout Hero (${state.hero}):</strong> ${HERO_META[state.hero]}</div>`,
+          `<div><strong>Tema visual:</strong> ${temaName}</div>`,
+          `<div><strong>Color de marca:</strong> ${colorName} (<span class="mono">${state.color}</span>)</div>`,
+        ].join('');
+      }
+
+      /* ======================================================================
+         3. STUDIO TOOLBAR, MODAL, NAVBAR Y RUTEADOR SEGURO EN FILE://
+         ====================================================================== */
+      document.querySelectorAll('[data-set-bg]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.bg = btn.dataset.setBg;
+          document.querySelectorAll('[data-set-bg]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          applyThemeAndBrand();
+        });
+      });
+
+      document.querySelectorAll('[data-set-hero]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.hero = btn.dataset.setHero;
+          document.querySelectorAll('[data-set-hero]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          applyThemeAndBrand();
+        });
+      });
+
+      document.querySelectorAll('[data-set-tema]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.tema = btn.dataset.setTema;
+          document.querySelectorAll('[data-set-tema]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          applyThemeAndBrand();
+        });
+      });
+
+      document.querySelectorAll('[data-set-color]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.color = btn.dataset.setColor;
+          document.querySelectorAll('[data-set-color]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          applyThemeAndBrand();
+        });
+      });
+
+      const studioDock = document.getElementById('studio-dock');
+      const studioExpandBtn = document.getElementById('studio-expand-btn');
+      const studioCollapseBtn = document.getElementById('studio-collapse-btn');
+
+      studioCollapseBtn.addEventListener('click', () => {
+        studioDock.classList.add('collapsed');
+        studioExpandBtn.classList.add('visible');
+      });
+      studioExpandBtn.addEventListener('click', () => {
+        studioDock.classList.remove('collapsed');
+        studioExpandBtn.classList.remove('visible');
+      });
+
+      const summaryModal = document.getElementById('summary-modal');
+      const openSummaryBtn = document.getElementById('open-summary-btn');
+      const closeSummaryBtn = document.getElementById('close-summary-btn');
+      const copyComboBtn = document.getElementById('copy-combo-btn');
+
+      function openSummaryModal() {
+        updateSummaryContent();
+        summaryModal.classList.add('open');
+        closeSummaryBtn.focus();
+      }
+      function closeSummaryModal() {
+        summaryModal.classList.remove('open');
+      }
+
+      openSummaryBtn.addEventListener('click', openSummaryModal);
+      closeSummaryBtn.addEventListener('click', closeSummaryModal);
+      summaryModal.addEventListener('click', (e) => {
+        if (e.target === summaryModal) closeSummaryModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && summaryModal.classList.contains('open')) closeSummaryModal();
+      });
+
+      async function copyText(text, successMsg) {
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          showToast(successMsg);
+        } catch {
+          showToast('Copia manual: ' + text);
+        }
+      }
+
+      copyComboBtn.addEventListener('click', () => {
+        copyText(getSummaryCode(), 'Combinación copiada al portapapeles');
+      });
+
+      document.getElementById('copy-email-btn').addEventListener('click', () => {
+        copyText('contacto@timeflows.site', 'Correo copiado: contacto@timeflows.site');
+      });
+
+      // Interceptar enlaces a rutas de Next.js cuando se abre en file://
+      document.querySelectorAll('[data-app-route]').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          if (window.location.protocol === 'file:') {
+            e.preventDefault();
+            showToast(`Ruta real de Next.js: ${link.dataset.appRoute} (vista previa local)`);
+          }
+        });
+      });
+
+      // Navbar sticky + drawer móvil
+      const navbar = document.getElementById('site-navbar');
+      const burgerBtn = document.getElementById('nav-burger-btn');
+      const mobileDrawer = document.getElementById('mobile-drawer');
+
+      burgerBtn.addEventListener('click', () => {
+        const isOpen = mobileDrawer.classList.toggle('open');
+        burgerBtn.setAttribute('aria-expanded', String(isOpen));
+      });
+      mobileDrawer.querySelectorAll('a').forEach((a) => {
+        a.addEventListener('click', () => {
+          mobileDrawer.classList.remove('open');
+          burgerBtn.setAttribute('aria-expanded', 'false');
+        });
+      });
+
+      // Spotlight en tarjetas
+      document.querySelectorAll('.spot-card').forEach((card) => {
+        card.addEventListener('pointermove', (e) => {
+          const rect = card.getBoundingClientRect();
+          card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+          card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+        });
+      });
+
+      // Perspectiva en scroll para Hero 2
+      const heroStage = document.getElementById('hero-stage');
+      const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      function updateHeroStagePerspective() {
+        if (!heroStage) return;
+        if (state.hero !== '2' || motionQuery.matches || window.innerWidth < 760) {
+          heroStage.style.transform = '';
+          return;
+        }
+        const rect = heroStage.getBoundingClientRect();
+        const progress = Math.min(1, Math.max(0, (window.innerHeight - rect.top) / (window.innerHeight * 0.72)));
+        const angle = (1 - progress) * 7.5;
+        const scale = 0.965 + progress * 0.035;
+        heroStage.style.transform = `rotateX(${angle.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
+      }
+
+      window.addEventListener('scroll', () => {
+        navbar.classList.toggle('scrolled', window.scrollY > 18);
+        updateHeroStagePerspective();
+      }, { passive: true });
+
+      /* ======================================================================
+         4. MOTOR DE FONDOS ANIMADOS (60 FPS, HiDPI, visibilitychange)
+         ====================================================================== */
+      const bgCanvas = document.getElementById('bg-canvas');
+      const ctx = bgCanvas.getContext('2d');
+      const pointer = { x: window.innerWidth * 0.5, y: window.innerHeight * 0.35, tx: window.innerWidth * 0.5, ty: window.innerHeight * 0.35 };
+
+      window.addEventListener('pointermove', (e) => {
+        pointer.tx = e.clientX;
+        pointer.ty = e.clientY;
+      }, { passive: true });
+
+      let vw = window.innerWidth;
+      let vh = window.innerHeight;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+      let nodes = [];
+      let pulses = [];
+      let rafId = 0;
+      let lastTime = 0;
+
+      const ISOTIPO_COLORS = ['#34d399', '#fbbf24', '#38bdf8', '#a78bfa'];
+
+      function initNodes() {
+        const count = vw < 680 ? 28 : 54;
+        nodes = [];
+        for (let i = 0; i < count; i++) {
+          const depth = 0.35 + (i % 3) * 0.32;
+          nodes.push({
+            x: Math.random() * vw,
+            y: Math.random() * vh,
+            vx: (Math.random() - 0.5) * 18 * depth,
+            vy: (Math.random() - 0.5) * 18 * depth,
+            r: 1.5 + depth * 1.9,
+            depth,
+            tint: i % 5 === 0 ? ISOTIPO_COLORS[i % 4] : null,
+          });
+        }
+        pulses = [];
+        for (let i = 0; i < 6; i++) {
+          pulses.push({ from: i * 3 % count, to: (i * 3 + 2) % count, t: Math.random(), speed: 0.28 + Math.random() * 0.22 });
+        }
+      }
+
+      function resizeBgCanvas() {
+        vw = window.innerWidth;
+        vh = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        bgCanvas.width = Math.floor(vw * dpr);
+        bgCanvas.height = Math.floor(vh * dpr);
+        bgCanvas.style.width = vw + 'px';
+        bgCanvas.style.height = vh + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        initNodes();
+        redrawBgOnce();
+      }
+
+      function drawModeA(dt, timeSec) {
+        const isLight = state.tema === 'claro-nube';
+        const [br, bg, bb] = parseHex(state.color);
+        const maxDist = vw < 680 ? 125 : 168;
+        const pxOffset = ((pointer.x / Math.max(vw, 1)) - 0.5) * 28;
+        const pyOffset = ((pointer.y / Math.max(vh, 1)) - 0.5) * 24;
+
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          n.x += n.vx * dt;
+          n.y += n.vy * dt;
+          if (n.x < -30) n.x = vw + 30;
+          if (n.x > vw + 30) n.x = -30;
+          if (n.y < -30) n.y = vh + 30;
+          if (n.y > vh + 30) n.y = -30;
+        }
+
+        const posX = (n) => n.x + pxOffset * n.depth;
+        const posY = (n) => n.y + pyOffset * n.depth;
+
+        ctx.lineWidth = 1;
+        const edges = [];
+        for (let i = 0; i < nodes.length; i++) {
+          const ax = posX(nodes[i]), ay = posY(nodes[i]);
+          for (let j = i + 1; j < nodes.length; j++) {
+            const bx = posX(nodes[j]), by = posY(nodes[j]);
+            const dx = ax - bx, dy = ay - by;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < maxDist * maxDist) {
+              const dist = Math.sqrt(d2);
+              const alpha = (1 - dist / maxDist) * (isLight ? 0.16 : 0.22);
+              ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${alpha.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.moveTo(ax, ay);
+              ctx.lineTo(bx, by);
+              ctx.stroke();
+              if (edges.length < 40) edges.push([i, j]);
+            }
+          }
+        }
+
+        // Pulsos de luz recorriendo aristas reales
+        if (edges.length > 0 && !motionQuery.matches) {
+          for (let p = 0; p < pulses.length; p++) {
+            const pulse = pulses[p];
+            pulse.t += pulse.speed * dt;
+            if (pulse.t >= 1) {
+              const pick = edges[(p * 7 + Math.floor(timeSec * 3)) % edges.length];
+              pulse.from = pick[0];
+              pulse.to = pick[1];
+              pulse.t = 0;
+            }
+            const n1 = nodes[pulse.from], n2 = nodes[pulse.to];
+            if (n1 && n2) {
+              const x = posX(n1) + (posX(n2) - posX(n1)) * pulse.t;
+              const y = posY(n1) + (posY(n2) - posY(n1)) * pulse.t;
+              ctx.fillStyle = `rgba(${br}, ${bg}, ${bb}, ${isLight ? 0.65 : 0.88})`;
+              ctx.beginPath();
+              ctx.arc(x, y, 2.3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        for (let i = 0; i < nodes.length; i++) {
+          const n = nodes[i];
+          const x = posX(n), y = posY(n);
+          const [nr, ng, nb] = n.tint ? parseHex(n.tint) : [br, bg, bb];
+          ctx.fillStyle = `rgba(${nr}, ${ng}, ${nb}, ${isLight ? 0.48 : 0.62})`;
+          ctx.beginPath();
+          ctx.arc(x, y, n.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawModeB(timeSec) {
+        const isLight = state.tema === 'claro-nube';
+        const [br, bg, bb] = parseHex(state.color);
+        const step = 44;
+        const offset = (timeSec * 8) % step;
+
+        ctx.lineWidth = 1;
+        for (let x = -step + offset; x < vw + step; x += step) {
+          ctx.strokeStyle = isLight ? 'rgba(15, 23, 42, 0.045)' : 'rgba(148, 163, 196, 0.06)';
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, vh);
+          ctx.stroke();
+        }
+        for (let y = 0; y < vh + step; y += step) {
+          ctx.strokeStyle = isLight ? 'rgba(15, 23, 42, 0.045)' : 'rgba(148, 163, 196, 0.06)';
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(vw, y);
+          ctx.stroke();
+        }
+
+        // Halo interactivo cerca del puntero sobre la grilla
+        for (let x = -step + offset; x < vw + step; x += step) {
+          for (let y = 0; y < vh + step; y += step) {
+            const dx = x - pointer.x, dy = y - pointer.y;
+            const d = Math.hypot(dx, dy);
+            if (d < 190) {
+              const glow = (1 - d / 190) * (isLight ? 0.32 : 0.48);
+              ctx.strokeStyle = `rgba(${br}, ${bg}, ${bb}, ${glow.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.moveTo(x - 4, y);
+              ctx.lineTo(x + 4, y);
+              ctx.moveTo(x, y - 4);
+              ctx.lineTo(x, y + 4);
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      function drawModeC(timeSec) {
+        const isLight = state.tema === 'claro-nube';
+        const [br, bg, bb] = parseHex(state.color);
+        const [r2, g2, b2] = parseHex(colorSecundarioDeMarca(state.color));
+        const lines = 16;
+
+        for (let i = 0; i < lines; i++) {
+          const baseY = (vh / (lines + 1)) * (i + 1);
+          const ratio = i / lines;
+          const cr = Math.round(br + (r2 - br) * ratio);
+          const cg = Math.round(bg + (g2 - bg) * ratio);
+          const cb = Math.round(bb + (b2 - bb) * ratio);
+          const alpha = isLight ? 0.14 : 0.20;
+
+          ctx.strokeStyle = `rgba(${cr}, ${cg}, ${cb}, ${alpha})`;
+          ctx.lineWidth = i % 4 === 0 ? 1.5 : 1;
+          ctx.beginPath();
+
+          for (let x = 0; x <= vw; x += 22) {
+            const wave =
+              Math.sin(x * 0.0042 + timeSec * 0.55 + i * 0.45) * 20 +
+              Math.cos(x * 0.0021 - timeSec * 0.35 + i * 0.22) * 12;
+            const distCursor = Math.hypot(x - pointer.x, baseY - pointer.y);
+            const push = distCursor < 180 ? (1 - distCursor / 180) * (baseY > pointer.y ? 18 : -18) : 0;
+            const y = baseY + wave + push;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+
+          if (i % 4 === 0) {
+            const mx = ((timeSec * (55 + i * 4) + i * 140) % (vw + 60)) - 30;
+            const mw =
+              Math.sin(mx * 0.0042 + timeSec * 0.55 + i * 0.45) * 20 +
+              Math.cos(mx * 0.0021 - timeSec * 0.35 + i * 0.22) * 12;
+            ctx.fillStyle = `rgba(${cr}, ${cg}, ${cb}, ${isLight ? 0.65 : 0.85})`;
+            ctx.beginPath();
+            ctx.arc(mx, baseY + mw, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      function renderBgFrame(dt, timeSec) {
+        ctx.clearRect(0, 0, vw, vh);
+        pointer.x += (pointer.tx - pointer.x) * 0.08;
+        pointer.y += (pointer.ty - pointer.y) * 0.08;
+
+        if (state.bg === 'A') drawModeA(dt, timeSec);
+        else if (state.bg === 'B') drawModeB(timeSec);
+        else if (state.bg === 'C') drawModeC(timeSec);
+      }
+
+      function stopBgLoop() {
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+      }
+
+      function tickBg(ts) {
+        if (document.hidden || state.bg === 'D' || motionQuery.matches) {
+          stopBgLoop();
+          return;
+        }
+        if (!lastTime) lastTime = ts;
+        const dt = Math.min(0.05, (ts - lastTime) / 1000);
+        lastTime = ts;
+        renderBgFrame(dt, ts / 1000);
+        rafId = requestAnimationFrame(tickBg);
+      }
+
+      function redrawBgOnce() {
+        stopBgLoop();
+        lastTime = 0;
+        if (state.bg === 'D') {
+          ctx.clearRect(0, 0, vw, vh);
+          return;
+        }
+        renderBgFrame(0.016, performance.now() / 1000);
+        if (!motionQuery.matches && !document.hidden) {
+          rafId = requestAnimationFrame(tickBg);
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopBgLoop();
+        else redrawBgOnce();
+      });
+      window.addEventListener('resize', resizeBgCanvas);
+      if (motionQuery.addEventListener) motionQuery.addEventListener('change', redrawBgOnce);
+
+      /* ======================================================================
+         5. HERO MAPA INTERACTIVO (CURVAS SVG, TIMER Y CANDADO SECUENCIAL)
+         ====================================================================== */
+      const heroState = {
+        timerRunning: true,
+        seconds: 1 * 3600 + 12 * 60 + 40,
+        lockEnabled: true,
+        t2Done: false,
+        selected: 't2',
+      };
+
+      function formatHMS(total) {
+        const h = String(Math.floor(total / 3600)).padStart(2, '0');
+        const m = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+        const s = String(total % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+      }
+
+      function drawBezierEdges(containerEl, svgEl, rootElNode, targetNodes) {
+        if (!containerEl || !svgEl || !rootElNode) return;
+        const cRect = containerEl.getBoundingClientRect();
+        if (cRect.width === 0 || cRect.height === 0) return;
+        svgEl.setAttribute('viewBox', `0 0 ${cRect.width} ${cRect.height}`);
+        const rRect = rootElNode.getBoundingClientRect();
+        const rx = rRect.left - cRect.left + rRect.width / 2;
+        const ry = rRect.top - cRect.top + rRect.height / 2;
+
+        const paths = [];
+        targetNodes.forEach((node) => {
+          const nRect = node.getBoundingClientRect();
+          const nx = nRect.left - cRect.left + nRect.width / 2;
+          const ny = nRect.top - cRect.top + nRect.height / 2;
+          const cx1 = rx + (nx - rx) * 0.45;
+          const cy1 = ry;
+          const cx2 = rx + (nx - rx) * 0.55;
+          const cy2 = ny;
+          const isLocked = node.classList.contains('is-locked');
+          const stroke = isLocked ? 'var(--border-strong)' : 'var(--brand)';
+          const dash = isLocked ? 'stroke-dasharray="5 5"' : '';
+          paths.push(
+            `<path d="M ${rx.toFixed(1)} ${ry.toFixed(1)} C ${cx1.toFixed(1)} ${cy1.toFixed(1)}, ${cx2.toFixed(1)} ${cy2.toFixed(1)}, ${nx.toFixed(1)} ${ny.toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${isLocked ? 0.55 : 0.48}" stroke-width="2" ${dash} />`
+          );
+        });
+        svgEl.innerHTML = paths.join('');
+      }
+
+      function drawHeroEdges() {
+        const container = document.getElementById('hero-map-canvas');
+        const svg = document.getElementById('hero-edges-svg');
+        const rootNode = document.getElementById('hero-root-node');
+        const nodesList = container ? Array.from(container.querySelectorAll('.hero-task-node')) : [];
+        drawBezierEdges(container, svg, rootNode, nodesList);
+      }
+
+      function syncHeroUI() {
+        const t4Node = document.getElementById('hero-node-t4');
+        const t4Status = document.getElementById('hero-t4-status');
+        const t2Status = document.getElementById('hero-t2-status');
+        const lockBtn = document.getElementById('hero-lock-btn');
+        const lockLabel = document.getElementById('hero-lock-label');
+        const completeBtn = document.getElementById('hero-complete-t2-btn');
+        const progLabel = document.getElementById('hero-progress-label');
+        const segBar = document.getElementById('hero-seg-bar');
+
+        const isT4Locked = heroState.lockEnabled && !heroState.t2Done;
+        t4Node.classList.toggle('is-locked', isT4Locked);
+        lockBtn.setAttribute('aria-pressed', String(heroState.lockEnabled));
+        lockLabel.textContent = heroState.lockEnabled ? 'Candado secuencial: ON' : 'Candado secuencial: OFF';
+
+        if (isT4Locked) {
+          t4Status.className = 'node-status st-lock';
+          t4Status.textContent = '🔒 Bloqueada hasta completar #2';
+        } else {
+          t4Status.className = 'node-status st-todo';
+          t4Status.textContent = '● Lista para iniciar';
+        }
+
+        if (heroState.t2Done) {
+          t2Status.className = 'node-status st-ok';
+          t2Status.textContent = '● Completada';
+          completeBtn.textContent = 'Reabrir tarea #2';
+          progLabel.textContent = '3 de 4 tareas';
+          segBar.innerHTML = '<span class="done"></span><span class="done"></span><span class="done"></span><span class="active"></span>';
+        } else {
+          t2Status.className = 'node-status st-run';
+          t2Status.textContent = heroState.timerRunning ? '● En progreso' : '⏸ Pausada';
+          completeBtn.textContent = 'Marcar #2 completada';
+          progLabel.textContent = '2 de 4 tareas';
+          segBar.innerHTML = '<span class="done"></span><span class="done"></span><span class="active"></span><span></span>';
+        }
+        drawHeroEdges();
+      }
+
+      document.getElementById('hero-timer-btn').addEventListener('click', () => {
+        heroState.timerRunning = !heroState.timerRunning;
+        document.getElementById('hero-timer-btn').setAttribute('aria-pressed', String(heroState.timerRunning));
+        syncHeroUI();
+      });
+
+      document.getElementById('hero-lock-btn').addEventListener('click', () => {
+        heroState.lockEnabled = !heroState.lockEnabled;
+        syncHeroUI();
+        showToast(heroState.lockEnabled ? 'Candado secuencial activado' : 'Candado secuencial desactivado');
+      });
+
+      document.getElementById('hero-complete-t2-btn').addEventListener('click', () => {
+        heroState.t2Done = !heroState.t2Done;
+        syncHeroUI();
+        showToast(heroState.t2Done ? 'Tarea #2 completada: #4 desbloqueada automáticamente' : 'Tarea #2 reabierta');
+      });
+
+      const HERO_DESCRIPTIONS = {
+        t1: '<strong>Tarea #1 seleccionada:</strong> Diseño de inicio completada por Camila Rojas (America/Santiago).',
+        t2: '<strong>Tarea #2 seleccionada:</strong> Cronómetro activo de Mateo Silva (America/Bogota).',
+        t3: '<strong>Tarea #3 seleccionada:</strong> Textos y fotos completada por Valentina Díaz (America/Mexico_City).',
+        t4: '<strong>Tarea #4 seleccionada:</strong> Revisión final lista para asignación.',
+      };
+
+      document.querySelectorAll('[data-hero-node]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const id = btn.dataset.heroNode;
+          if (id === 't4' && heroState.lockEnabled && !heroState.t2Done) {
+            btn.classList.remove('shake');
+            void btn.offsetWidth;
+            btn.classList.add('shake');
+            document.getElementById('hero-inspector-text').innerHTML =
+              '<strong style="color:var(--danger-ink);">Bloqueo secuencial activo:</strong> Completa la tarea #2 o desactiva el candado para abrir #4.';
+            return;
+          }
+          document.querySelectorAll('[data-hero-node]').forEach((n) => n.classList.remove('is-selected'));
+          btn.classList.add('is-selected');
+          heroState.selected = id;
+          document.getElementById('hero-inspector-text').innerHTML = HERO_DESCRIPTIONS[id];
+        });
+      });
+
+      /* ======================================================================
+         6. SHOWCASE POR PESTANAS (4 VISTAS INTERACTIVAS REALES)
+         ====================================================================== */
+      const tabButtons = Array.from(document.querySelectorAll('.showcase-tabs [role="tab"]'));
+      const tabPanels = Array.from(document.querySelectorAll('.showcase-panel'));
+
+      function activateShowcaseTab(tabName) {
+        tabButtons.forEach((btn) => {
+          const active = btn.dataset.tab === tabName;
+          btn.setAttribute('aria-selected', String(active));
+        });
+        tabPanels.forEach((panel) => {
+          panel.classList.toggle('active', panel.id === `panel-${tabName}`);
+        });
+        if (tabName === 'mapa') requestAnimationFrame(drawShowcaseEdges);
+      }
+
+      tabButtons.forEach((btn, idx) => {
+        btn.addEventListener('click', () => activateShowcaseTab(btn.dataset.tab));
+        btn.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowRight') {
+            const next = tabButtons[(idx + 1) % tabButtons.length];
+            next.focus();
+            activateShowcaseTab(next.dataset.tab);
+          } else if (e.key === 'ArrowLeft') {
+            const prev = tabButtons[(idx - 1 + tabButtons.length) % tabButtons.length];
+            prev.focus();
+            activateShowcaseTab(prev.dataset.tab);
+          }
+        });
+      });
+
+      // --- Tab 1: Mapa completo (Horizontal/Vertical, Undo/Redo, Buscador) ---
+      const scMapState = {
+        vertical: false,
+        lock: true,
+        m2Done: false,
+        m2Seconds: 46 * 60 + 18,
+      };
+      const undoStack = [];
+      const redoStack = [];
+
+      function pushHistory(snapshot) {
+        undoStack.push(snapshot);
+        redoStack.length = 0;
+        updateHistoryButtons();
+      }
+
+      function updateHistoryButtons() {
+        document.getElementById('sc-undo-btn').disabled = undoStack.length === 0;
+        document.getElementById('sc-redo-btn').disabled = redoStack.length === 0;
+      }
+
+      function drawShowcaseEdges() {
+        const container = document.getElementById('sc-map-board');
+        const svg = document.getElementById('sc-edges-svg');
+        const rootCard = document.getElementById('sc-root-card');
+        const nodesList = container ? Array.from(container.querySelectorAll('.sc-node')) : [];
+        drawBezierEdges(container, svg, rootCard, nodesList);
+      }
+
+      function syncShowcaseMap() {
+        const board = document.getElementById('sc-map-board');
+        const orientBtn = document.getElementById('sc-orient-btn');
+        const orientLabel = document.getElementById('sc-orient-label');
+        const lockBtn = document.getElementById('sc-lock-btn');
+        const m2Status = document.getElementById('sc-m2-status');
+        const m4Node = document.querySelector('[data-sc-id="m4"]');
+        const m4Status = document.getElementById('sc-m4-status');
+        const pctEl = document.getElementById('sc-root-pct');
+        const segsEl = document.getElementById('sc-root-segs');
+
+        board.classList.toggle('is-vertical', scMapState.vertical);
+        orientBtn.setAttribute('aria-pressed', String(scMapState.vertical));
+        orientLabel.textContent = scMapState.vertical ? 'Vista: Vertical' : 'Vista: Horizontal';
+        lockBtn.setAttribute('aria-pressed', String(scMapState.lock));
+
+        const m4Locked = scMapState.lock && !scMapState.m2Done;
+        m4Node.classList.toggle('is-locked', m4Locked);
+        if (m4Locked) {
+          m4Status.className = 'node-status st-lock';
+          m4Status.textContent = '🔒 Bloqueada hasta completar #2';
+        } else {
+          m4Status.className = 'node-status st-todo';
+          m4Status.textContent = '● Lista para revisión';
+        }
+
+        if (scMapState.m2Done) {
+          m2Status.className = 'node-status st-ok';
+          m2Status.textContent = '● Completada';
+          pctEl.textContent = '75%';
+          segsEl.innerHTML = '<span class="done"></span><span class="done"></span><span class="done"></span><span class="active"></span>';
+        } else {
+          m2Status.className = 'node-status st-run';
+          m2Status.textContent = '● En progreso';
+          pctEl.textContent = '50%';
+          segsEl.innerHTML = '<span class="done"></span><span class="done"></span><span class="active"></span><span></span>';
+        }
+
+        const autosave = document.getElementById('sc-autosave');
+        autosave.textContent = '● Guardado ahora';
+        requestAnimationFrame(drawShowcaseEdges);
+      }
+
+      document.getElementById('sc-orient-btn').addEventListener('click', () => {
+        pushHistory({ ...scMapState });
+        scMapState.vertical = !scMapState.vertical;
+        syncShowcaseMap();
+      });
+      document.getElementById('sc-lock-btn').addEventListener('click', () => {
+        pushHistory({ ...scMapState });
+        scMapState.lock = !scMapState.lock;
+        syncShowcaseMap();
+      });
+      document.getElementById('sc-toggle-m2-btn').addEventListener('click', () => {
+        pushHistory({ ...scMapState });
+        scMapState.m2Done = !scMapState.m2Done;
+        syncShowcaseMap();
+      });
+      document.getElementById('sc-undo-btn').addEventListener('click', () => {
+        if (undoStack.length === 0) return;
+        redoStack.push({ ...scMapState });
+        Object.assign(scMapState, undoStack.pop());
+        updateHistoryButtons();
+        syncShowcaseMap();
+      });
+      document.getElementById('sc-redo-btn').addEventListener('click', () => {
+        if (redoStack.length === 0) return;
+        undoStack.push({ ...scMapState });
+        Object.assign(scMapState, redoStack.pop());
+        updateHistoryButtons();
+        syncShowcaseMap();
+      });
+
+      document.getElementById('sc-search-input').addEventListener('input', (e) => {
+        const q = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('.sc-node').forEach((node) => {
+          if (!q) {
+            node.classList.remove('is-dimmed', 'is-match');
+            return;
+          }
+          const match = (node.dataset.label || '').includes(q) || node.textContent.toLowerCase().includes(q);
+          node.classList.toggle('is-match', match);
+          node.classList.toggle('is-dimmed', !match);
+        });
+      });
+
+      document.querySelectorAll('.sc-node').forEach((node) => {
+        node.addEventListener('click', () => {
+          document.querySelectorAll('.sc-node').forEach((n) => n.classList.remove('is-selected'));
+          node.classList.add('is-selected');
+          const title = node.querySelector('strong').textContent;
+          document.getElementById('sc-node-inspector').innerHTML =
+            `<strong style="color:var(--text);">${title}</strong> · Seleccionada en el mapa interactivo.`;
+        });
+      });
+
+      // --- Tab 2: Jornada y Calendario ---
+      const calState = {
+        enJornada: true,
+        heatmap: true,
+        person: 'all',
+        selectedDay: 18,
+      };
+      const CAL_DATA = {
+        4: [{ person: 'Camila', tz: 'Santiago', proj: 'Portal Clientes', hours: '7.5h', task: 'Arquitectura de datos' }],
+        5: [{ person: 'Mateo', tz: 'Bogotá', proj: 'Portal Clientes', hours: '6.8h', task: 'Panel de cronómetro' }],
+        11: [
+          { person: 'Camila', tz: 'Santiago', proj: 'Portal Clientes', hours: '8.0h', task: 'Mapa interactivo' },
+          { person: 'Valentina', tz: 'CDMX', proj: 'Sitio web', hours: '6.2h', task: 'Textos y fotos' },
+        ],
+        12: [{ person: 'Mateo', tz: 'Bogotá', proj: 'Portal Clientes', hours: '7.4h', task: 'Panel de cronómetro' }],
+        18: [
+          { person: 'Camila', tz: 'Santiago', proj: 'Portal Clientes', hours: '6.5h', task: 'Revisión de accesos' },
+          { person: 'Mateo', tz: 'Bogotá', proj: 'Portal Clientes', hours: '5.2h (abierta)', task: 'Panel de cronómetro' },
+          { person: 'Valentina', tz: 'CDMX', proj: 'Portal Clientes', hours: '7.1h', task: 'Exportación Excel / PDF' },
+        ],
+        19: [{ person: 'Valentina', tz: 'CDMX', proj: 'Portal Clientes', hours: '7.8h', task: 'Exportación Excel / PDF' }],
+        24: [{ person: 'Camila', tz: 'Santiago', proj: 'Sitio web', hours: '6.9h', task: 'Diseño de inicio' }],
+      };
+
+      function renderCalendar() {
+        const grid = document.getElementById('cal-grid');
+        const heads = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+        const cells = heads.map((h) => `<div class="cal-head">${h}</div>`);
+        for (let d = 1; d <= 28; d++) {
+          const entries = (CAL_DATA[d] || []).filter((e) => calState.person === 'all' || e.person === calState.person);
+          const count = entries.length;
+          let heatClass = '';
+          if (calState.heatmap && count > 0) {
+            heatClass = count >= 3 ? 'heat-3' : count === 2 ? 'heat-2' : 'heat-1';
+          }
+          const selClass = d === calState.selectedDay ? 'selected' : '';
+          cells.push(
+            `<button type="button" class="cal-day ${heatClass} ${selClass}" data-cal-day="${d}">
+              <span class="mono" style="font-size:11.5px;font-weight:700;">${d}</span>
+              <span style="font-size:10.5px;color:var(--text-muted);">${count > 0 ? count + ' reg.' : '—'}</span>
+            </button>`
+          );
+        }
+        grid.innerHTML = cells.join('');
+
+        grid.querySelectorAll('[data-cal-day]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            calState.selectedDay = Number(btn.dataset.calDay);
+            renderCalendar();
+          });
+        });
+
+        const detailDate = document.getElementById('cal-detail-date');
+        const detailList = document.getElementById('cal-detail-list');
+        detailDate.textContent = `Día ${calState.selectedDay} de noviembre`;
+        const dayItems = (CAL_DATA[calState.selectedDay] || []).filter((e) => calState.person === 'all' || e.person === calState.person);
+        if (dayItems.length === 0) {
+          detailList.innerHTML = '<div style="font-size:13px;color:var(--text-muted);">Sin sesiones registradas para este filtro en el día seleccionado.</div>';
+        } else {
+          detailList.innerHTML = dayItems.map((item) => (
+            `<div style="padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border);">
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;">
+                <span>${item.person}</span>
+                <span class="mono" style="color:var(--brand-ink);">${item.hours}</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${item.proj} · ${item.task} (${item.tz})</div>
+            </div>`
+          )).join('');
+        }
+      }
+
+      document.getElementById('cal-jornada-switch').addEventListener('click', function () {
+        calState.enJornada = !calState.enJornada;
+        this.setAttribute('aria-pressed', String(calState.enJornada));
+        document.getElementById('cal-jornada-title').textContent = calState.enJornada ? 'En jornada · 09:05 a. m.' : 'Jornada pausada / sin iniciar';
+        document.getElementById('cal-jornada-sub').textContent = calState.enJornada ? 'Sesión activa · America/Santiago' : 'Pulsa para marcar tu inicio de jornada';
+      });
+      document.getElementById('cal-mode-clean').addEventListener('click', () => {
+        calState.heatmap = false;
+        document.getElementById('cal-mode-clean').setAttribute('aria-pressed', 'true');
+        document.getElementById('cal-mode-heat').setAttribute('aria-pressed', 'false');
+        renderCalendar();
+      });
+      document.getElementById('cal-mode-heat').addEventListener('click', () => {
+        calState.heatmap = true;
+        document.getElementById('cal-mode-clean').setAttribute('aria-pressed', 'false');
+        document.getElementById('cal-mode-heat').setAttribute('aria-pressed', 'true');
+        renderCalendar();
+      });
+      document.getElementById('cal-person-filter').addEventListener('change', (e) => {
+        calState.person = e.target.value;
+        renderCalendar();
+      });
+
+      // --- Tab 3: Carta Gantt, Subtareas, Nota de Voz y Preview ---
+      const GANTT_TASKS = [
+        {
+          id: 'g1',
+          name: 'Arquitectura de datos',
+          owner: 'Camila Rojas',
+          left: '4%',
+          width: '32%',
+          color: '#059669',
+          subtasks: [
+            { text: 'Definir entidades de proyectos y nodos', done: true },
+            { text: 'Configurar bloqueos secuenciales', done: true },
+          ],
+        },
+        {
+          id: 'g2',
+          name: 'Panel de cronómetro',
+          owner: 'Mateo Silva',
+          left: '26%',
+          width: '40%',
+          color: '#d97706',
+          subtasks: [
+            { text: 'Interruptor de jornada con pausas', done: true },
+            { text: 'Sincronización por zona horaria', done: false },
+          ],
+        },
+        {
+          id: 'g3',
+          name: 'Exportación Excel / PDF',
+          owner: 'Valentina Díaz',
+          left: '42%',
+          width: '34%',
+          color: '#0284c7',
+          subtasks: [
+            { text: 'Plantilla tabular Excel y CSV', done: true },
+            { text: 'Resumen ejecutivo en PDF', done: true },
+          ],
+        },
+        {
+          id: 'g4',
+          name: 'Validación y cierre',
+          owner: 'Camila Rojas',
+          left: '70%',
+          width: '26%',
+          color: '#7c3aed',
+          subtasks: [
+            { text: 'Verificar permisos RBAC por rol', done: false },
+            { text: 'Aprobación final en el mapa', done: false },
+          ],
+        },
+      ];
+      let selectedGanttId = 'g2';
+
+      function renderGantt() {
+        const container = document.getElementById('gantt-rows');
+        const header = container.firstElementChild.outerHTML;
+        const rowsHtml = GANTT_TASKS.map((t) => {
+          const sel = t.id === selectedGanttId ? 'selected' : '';
+          return `
+            <div class="gantt-row">
+              <div>
+                <div style="font-size:12.5px;font-weight:700;">${t.name}</div>
+                <div style="font-size:11px;color:var(--text-muted);">${t.owner}</div>
+              </div>
+              <div class="gantt-track">
+                <button type="button" class="gantt-bar ${sel}" data-gantt-id="${t.id}" style="left:${t.left};width:${t.width};background:${t.color};">
+                  <span>${t.name}</span>
+                  <span>${t.subtasks.filter((s) => s.done).length}/${t.subtasks.length}</span>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+        container.innerHTML = header + rowsHtml;
+
+        container.querySelectorAll('[data-gantt-id]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            selectedGanttId = btn.dataset.ganttId;
+            renderGantt();
+          });
+        });
+
+        const active = GANTT_TASKS.find((t) => t.id === selectedGanttId) || GANTT_TASKS[0];
+        document.getElementById('gantt-task-meta').textContent = `Subtareas · ${active.owner}`;
+        document.getElementById('gantt-task-title').textContent = active.name;
+        const subWrap = document.getElementById('gantt-subtasks');
+        subWrap.innerHTML = active.subtasks.map((s, idx) => (
+          `<label style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);font-size:12.5px;cursor:pointer;">
+            <input type="checkbox" data-sub-idx="${idx}" ${s.done ? 'checked' : ''} />
+            <span style="${s.done ? 'text-decoration:line-through;color:var(--text-muted);' : ''}">${s.text}</span>
+          </label>`
+        )).join('');
+
+        subWrap.querySelectorAll('[data-sub-idx]').forEach((cb) => {
+          cb.addEventListener('change', () => {
+            active.subtasks[Number(cb.dataset.subIdx)].done = cb.checked;
+            renderGantt();
+          });
+        });
+      }
+
+      // Reproductor visual de nota de voz
+      const voiceBarsEl = document.getElementById('voice-bars');
+      const VOICE_HEIGHTS = [8, 16, 12, 22, 18, 10, 20, 14, 24, 15, 11, 19, 13, 21, 9, 16];
+      voiceBarsEl.innerHTML = VOICE_HEIGHTS.map((h) => `<span style="height:${h}px"></span>`).join('');
+      const voiceSpans = Array.from(voiceBarsEl.querySelectorAll('span'));
+      const voicePlayBtn = document.getElementById('voice-play-btn');
+      const voiceTimeEl = document.getElementById('voice-time');
+      let voicePlaying = false;
+      let voiceSec = 0;
+      let voiceInterval = null;
+
+      function updateVoiceUI() {
+        const litCount = Math.floor((voiceSec / 24) * voiceSpans.length);
+        voiceSpans.forEach((sp, i) => sp.classList.toggle('lit', i <= litCount && voiceSec > 0));
+        voiceTimeEl.textContent = `0:${String(voiceSec).padStart(2, '0')} / 0:24`;
+        voicePlayBtn.textContent = voicePlaying ? '⏸' : '▶';
+        voicePlayBtn.setAttribute('aria-pressed', String(voicePlaying));
+      }
+
+      voicePlayBtn.addEventListener('click', () => {
+        voicePlaying = !voicePlaying;
+        clearInterval(voiceInterval);
+        if (voicePlaying) {
+          if (voiceSec >= 24) voiceSec = 0;
+          voiceInterval = setInterval(() => {
+            voiceSec += 1;
+            if (voiceSec >= 24) {
+              voicePlaying = false;
+              clearInterval(voiceInterval);
+            }
+            updateVoiceUI();
+          }, 350);
+        }
+        updateVoiceUI();
+      });
+
+      const DOC_PREVIEWS = {
+        'Arquitectura_v2.pdf': 'Vista previa embebida: <strong>Arquitectura_v2.pdf</strong> — Esquema de nodos, permisos RBAC y estados secuenciales.',
+        'Flujo_nodos.png': 'Vista previa embebida: <strong>Flujo_nodos.png</strong> — Captura del mapa horizontal con 4 tareas conectadas y candado secuencial.',
+      };
+      document.querySelectorAll('[data-preview-doc]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.getElementById('attachment-preview').innerHTML = DOC_PREVIEWS[btn.dataset.previewDoc];
+        });
+      });
+
+      // --- Tab 4: Reportes y Roles ---
+      const REPORT_PEOPLE = [
+        { name: 'Camila Rojas', area: 'Producto', tz: 'America/Santiago', hours: 38.5, pct: 92 },
+        { name: 'Mateo Silva', area: 'Ingeniería', tz: 'America/Bogota', hours: 34.2, pct: 82 },
+        { name: 'Valentina Díaz', area: 'Producto', tz: 'America/Mexico_City', hours: 31.6, pct: 76 },
+      ];
+
+      function renderReports(filterArea) {
+        const rows = REPORT_PEOPLE.filter((p) => filterArea === 'all' || p.area === filterArea);
+        const total = rows.reduce((acc, p) => acc + p.hours, 0);
+        const hrs = Math.floor(total);
+        const mins = Math.round((total - hrs) * 60);
+        document.getElementById('rep-kpi-hours').textContent = `${hrs}h ${String(mins).padStart(2, '0')}m`;
+        document.getElementById('rep-kpi-shifts').textContent = filterArea === 'all' ? '14 / 15' : `${rows.length * 4} / ${rows.length * 4 + 1}`;
+        document.getElementById('rep-bars-list').innerHTML = rows.map((p) => (
+          `<div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;">
+              <span><strong>${p.name}</strong> <span style="color:var(--text-muted);font-size:11.5px;">· ${p.tz}</span></span>
+              <span class="mono" style="font-weight:700;">${p.hours.toFixed(1)}h</span>
+            </div>
+            <div style="height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;">
+              <div style="height:100%;width:${p.pct}%;border-radius:99px;background:linear-gradient(90deg,var(--brand),var(--brand-2));"></div>
+            </div>
+          </div>`
+        )).join('');
+      }
+
+      document.getElementById('rep-team-filter').addEventListener('change', (e) => renderReports(e.target.value));
+      document.querySelectorAll('[data-export-fmt]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          showToast(`Exportando vista previa en formato ${btn.dataset.exportFmt}...`);
+        });
+      });
+
+      /* ======================================================================
+         7. SELECTOR INTERACTIVO DE ROLES (Fiel a rbac.ts)
+         ====================================================================== */
+      const ROLES_DETAIL = {
+        ADMINISTRADOR: {
+          badge: 'Rol · Administrador',
+          heading: 'Visibilidad total, gobierno RBAC y marca propia',
+          summary: 'Configura la identidad visual de tu empresa (tema Oscuro Medianoche, Grafito o Claro Nube + color corporativo), crea cuentas y asigna permisos granulares o extras a trabajadores.',
+          perms: ['Gestión de usuarios y roles', 'Permisos extra a trabajadores', 'Tema y color corporativo', 'Mapa y edición de nodos', 'Calendario y reportes equipo', 'Exportación Excel / CSV / PDF', 'Chat y notas de voz'],
+          workflow: 'Acceso directo a Configuración de marca, Usuarios y permisos extra, Mapa de nodos, Calendario del equipo, Carta Gantt, Historial y Exportación Excel/CSV/PDF.',
+        },
+        SUPERVISOR: {
+          badge: 'Rol · Supervisor',
+          heading: 'Supervisión operativa y control de flujo en tiempo real',
+          summary: 'Coordina proyectos en el mapa de nodos con bloqueo secuencial, revisa alertas de jornadas abiertas en el calendario del equipo y descarga reportes operativos sin tocar configuración crítica.',
+          perms: ['Ver todas las tareas', 'Editar mapa de nodos', 'Calendario del equipo', 'Reportes operativos y Gantt', 'Historial de cambios', 'Exportación Excel / CSV / PDF', 'Chat y notas de voz'],
+          workflow: 'Enfocado en operación diaria: ajusta tareas y dependencias en el mapa, supervisa jornadas por zona horaria y comparte avances en Carta Gantt.',
+        },
+        TRABAJADOR: {
+          badge: 'Rol · Trabajador',
+          heading: 'Foco total en sus tareas, jornada y zona horaria',
+          summary: 'Inicia y cierra su jornada con un interruptor claro, cronometra sus tareas con pausas, deja notas de voz desde el micrófono y revisa su calendario personal.',
+          perms: ['Inicio y fin de jornada', 'Cronómetro con pausas', 'Ver mapa y tareas propias', 'Calendario personal', 'Zona horaria propia', 'Chat y notas de voz', 'Permiso extra opcional*'],
+          workflow: 'Sin distracciones administrativas: abre el mapa, registra sus sesiones de trabajo en su hora local y colabora con el equipo en segundos.',
+        },
+      };
+
+      function renderRoleDetail(roleKey) {
+        const d = ROLES_DETAIL[roleKey];
+        if (!d) return;
+        document.getElementById('role-badge').textContent = d.badge;
+        document.getElementById('role-heading').textContent = d.heading;
+        document.getElementById('role-summary').textContent = d.summary;
+        document.getElementById('role-perms').innerHTML = d.perms.map((p) => `<span class="perm-chip">✓ ${p}</span>`).join('');
+        document.getElementById('role-workflow').textContent = d.workflow;
+      }
+
+      document.querySelectorAll('[data-role]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-role]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+          renderRoleDetail(btn.dataset.role);
+        });
+      });
+
+      /* ======================================================================
+         8. TICK DE CRONOMETROS EN VIVO E INICIALIZACION
+         ====================================================================== */
+      setInterval(() => {
+        if (document.hidden) return;
+        if (heroState.timerRunning && !heroState.t2Done) {
+          heroState.seconds += 1;
+          const formatted = formatHMS(heroState.seconds);
+          document.getElementById('hero-timer-text').textContent = formatted;
+          document.getElementById('hero-node-timer').textContent = formatted;
+        }
+        if (!scMapState.m2Done) {
+          scMapState.m2Seconds += 1;
+          document.getElementById('sc-m2-timer').textContent = formatHMS(scMapState.m2Seconds);
+        }
+      }, 1000);
+
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => {
+          drawHeroEdges();
+          drawShowcaseEdges();
+        });
+        const heroCanvasEl = document.getElementById('hero-map-canvas');
+        const scBoardEl = document.getElementById('sc-map-board');
+        if (heroCanvasEl) ro.observe(heroCanvasEl);
+        if (scBoardEl) ro.observe(scBoardEl);
+      }
+
+      // Inicializar todo
+      resizeBgCanvas();
+      applyThemeAndBrand();
+      syncHeroUI();
+      syncShowcaseMap();
+      renderCalendar();
+      renderGantt();
+      renderReports('all');
+      renderRoleDetail('ADMINISTRADOR');
+      updateHistoryButtons();
+    })();
+  </script>
+</body>
+
+</html>

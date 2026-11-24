@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { createContext, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -130,6 +130,103 @@ const SECCIONES: SeccionNav[] = [
   },
 ];
 
+interface DatosControlesMarco {
+  usuario: Usuario | null;
+  jornada: Jornada | null;
+  jornadaPendiente: boolean | null;
+  avisoJornada: string | null;
+  tareaAbierta: Sesion['actividad'] | null;
+  colorPrimario: string;
+  textoSobreSuave: string;
+  alternarJornada: () => void;
+  irATareaAbierta: () => void;
+  descartarAvisoJornada: () => void;
+}
+
+const ContextoControlesMarco = createContext<DatosControlesMarco | null>(null);
+
+/**
+ * Controles globales de usuario (InterruptorJornada, CampanaNotificaciones y Avatar)
+ * para insertarlos en la fila unica superior de /panel y /nodos en escritorio.
+ */
+export function ControlesUsuarioBarra({ className = '' }: { className?: string }) {
+  const ctx = useContext(ContextoControlesMarco);
+  if (!ctx || !ctx.usuario) return null;
+
+  const {
+    usuario,
+    jornada,
+    jornadaPendiente,
+    avisoJornada,
+    tareaAbierta,
+    colorPrimario,
+    textoSobreSuave,
+    alternarJornada,
+    irATareaAbierta,
+    descartarAvisoJornada,
+  } = ctx;
+
+  return (
+    <div className={`hidden shrink-0 items-center gap-2 md:flex ${className}`}>
+      {usuario.rol !== 'SUPER_ADMIN' && (
+        <div className="relative shrink-0">
+          <InterruptorJornada
+            variante="cabecera"
+            compactarHora
+            encendido={Boolean(jornada)}
+            pendiente={jornadaPendiente}
+            desde={jornada?.inicioEn}
+            onAlternar={alternarJornada}
+          />
+          {avisoJornada && (
+            <div
+              role="alert"
+              className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-rose-500/35 bg-[var(--tf-superficie-solida)] p-3 text-xs font-medium text-[var(--tf-acento-rojo)] shadow-2xl backdrop-blur"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="leading-relaxed">{avisoJornada}</p>
+                <button
+                  type="button"
+                  onClick={descartarAvisoJornada}
+                  aria-label="Cerrar aviso de jornada"
+                  className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+                >
+                  <X size={13} aria-hidden />
+                </button>
+              </div>
+              {tareaAbierta && (
+                <button
+                  type="button"
+                  onClick={irATareaAbierta}
+                  title={`Ir a «${tareaAbierta.titulo}» para cerrar su cronómetro`}
+                  className="mt-2 inline-flex rounded-lg bg-rose-500/20 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-texto)] transition hover:bg-rose-500/35"
+                >
+                  Ir a la tarea →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      <CampanaNotificaciones posicion="cabecera" />
+      <Link
+        href="/cuenta"
+        className="shrink-0 rounded-full transition hover:brightness-110"
+        title={`${usuario.nombreCompleto ?? ''} · Mi cuenta`}
+        aria-label={`Mi cuenta (${usuario.nombreCompleto ?? ''})`}
+      >
+        <Avatar
+          id={usuario.id ?? ''}
+          nombre={usuario.nombreCompleto ?? ''}
+          foto={usuario.fotoPerfil}
+          style={{ backgroundColor: colorConAlfa(colorPrimario, 0.16), color: textoSobreSuave }}
+          className="h-9 w-9 text-xs font-bold"
+        />
+      </Link>
+    </div>
+  );
+}
+
 /**
  * Marco comun de la aplicacion: barra lateral adaptativa por RBAC,
  * cabecera y control de sesion.
@@ -152,7 +249,7 @@ export default function Marco({
   tituloOculto?: boolean;
   /** Permite replegar la cabecera superior para ampliar vistas de mapas. */
   permitirOcultarCabecera?: boolean;
-  /** En escritorio oculta la cabecera superior y ubica los controles al pie del sidebar. */
+  /** En escritorio oculta la cabecera superior para integrar los controles en la barra de la vista. */
   controlesEnSidebar?: boolean;
   /** Reduce el relleno del contenedor principal para aprovechar mas el alto/ancho. */
   compacto?: boolean;
@@ -379,6 +476,23 @@ export default function Marco({
 
   const contenido = (
     <ContextoSesion.Provider value={usuario}>
+      <ContextoControlesMarco.Provider
+        value={{
+          usuario,
+          jornada,
+          jornadaPendiente,
+          avisoJornada,
+          tareaAbierta,
+          colorPrimario,
+          textoSobreSuave,
+          alternarJornada,
+          irATareaAbierta,
+          descartarAvisoJornada: () => {
+            setAvisoJornada(null);
+            setTareaAbierta(null);
+          },
+        }}
+      >
       <AvisoVersion />
       {confirmandoSalida && (
         <ConfirmarSalida
@@ -498,58 +612,6 @@ export default function Marco({
           })}
 
           <div className="mt-auto">
-            {controlesEnSidebar && (
-              <div className="mb-3 flex flex-col gap-2.5 border-t border-[var(--tf-borde)] pt-3">
-                {avisoJornada && (
-                  <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-2.5 py-2 text-[11px] font-medium text-[var(--tf-acento-rojo)]">
-                    <p>{avisoJornada}</p>
-                    {tareaAbierta && (
-                      <button
-                        type="button"
-                        onClick={irATareaAbierta}
-                        title={`Ir a «${tareaAbierta.titulo}» para cerrar su cronómetro`}
-                        className="mt-1.5 inline-flex rounded-lg bg-rose-500/20 px-2 py-0.5 text-[11px] font-semibold text-[var(--tf-texto)] transition hover:bg-rose-500/35"
-                      >
-                        Ir a la tarea →
-                      </button>
-                    )}
-                  </div>
-                )}
-                {usuario?.rol !== 'SUPER_ADMIN' && (
-                  <InterruptorJornada
-                    variante="sidebar"
-                    encendido={Boolean(jornada)}
-                    pendiente={jornadaPendiente}
-                    desde={jornada?.inicioEn}
-                    onAlternar={alternarJornada}
-                  />
-                )}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {usuario && <CampanaNotificaciones posicion="sidebar" />}
-                    <Link
-                      href="/cuenta"
-                      className="rounded-full transition hover:brightness-110"
-                      title={`${usuario?.nombreCompleto ?? ''} · Mi cuenta`}
-                      aria-label={`Mi cuenta (${usuario?.nombreCompleto ?? ''})`}
-                    >
-                      <Avatar
-                        id={usuario?.id ?? ''}
-                        nombre={usuario?.nombreCompleto ?? ''}
-                        foto={usuario?.fotoPerfil}
-                        style={{
-                          backgroundColor: colorConAlfa(colorPrimario, 0.16),
-                          color: textoSobreSuave,
-                        }}
-                        className="h-9 w-9 text-xs font-bold"
-                      />
-                    </Link>
-                  </div>
-                  {acciones && <div className="min-w-0 max-w-full">{acciones}</div>}
-                </div>
-              </div>
-            )}
-
             <div className="border-t border-[var(--tf-borde)] pt-3">
               <Link
                 href="/cuenta"
@@ -818,6 +880,7 @@ export default function Marco({
       </div>
       {usuario && conChatFlotante && <ChatFlotante yoId={usuario.id} />}
       <AtajosTeclado activo={activo} />
+      </ContextoControlesMarco.Provider>
     </ContextoSesion.Provider>
   );
 

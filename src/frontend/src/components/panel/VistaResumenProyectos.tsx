@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { ArrowRight, CheckCircle2, FolderKanban, Plus, Sparkles } from 'lucide-react';
+import { ControlesUsuarioBarra } from '@/components/Marco';
 import BuscadorPanel from '@/components/panel/BuscadorPanel';
 import type { ProyectoItem } from '@/lib/api';
 import { colorConAlfa, colorTextoSobre, useColorPrimario } from '@/lib/color';
@@ -112,8 +113,8 @@ export default function VistaResumenProyectos({
   return (
     <div className="tf-enter space-y-5">
       {/* Barra superior alineada con Constelacion */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-2 transition-[padding] duration-200 md:flex-nowrap md:pl-[var(--tf-sangria-izq-barra,0px)]">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 md:flex-nowrap">
           <BuscadorPanel
             id="resumen-buscar-proyecto"
             valor={busqueda}
@@ -123,7 +124,7 @@ export default function VistaResumenProyectos({
             onElegirProyecto={onElegir}
           />
 
-          <div className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
+          <div className="inline-flex h-9 shrink-0 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
             {(
               [
                 { id: 'todos', label: 'Todos' },
@@ -135,7 +136,7 @@ export default function VistaResumenProyectos({
                 key={f.id}
                 type="button"
                 onClick={() => setFiltro(f.id)}
-                className={`rounded-full px-3.5 py-1.5 transition ${
+                className={`whitespace-nowrap rounded-full px-2.5 py-1.5 transition 2xl:px-3.5 ${
                   filtro === f.id
                     ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
                     : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -147,19 +148,24 @@ export default function VistaResumenProyectos({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 md:flex-nowrap">
           {selectorVista}
           {onCrear && (
             <button
               type="button"
               onClick={onCrear}
+              title="Nuevo proyecto"
               style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
-              className="tf-shimmer-cta inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold shadow-sm transition hover:brightness-110"
+              className="tf-shimmer-cta inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-xs font-semibold shadow-sm transition hover:brightness-110 xl:px-3.5"
             >
               <Plus size={14} aria-hidden />
-              <span>Nuevo proyecto</span>
+              <span>
+                Nuevo<span className="md:hidden xl:inline"> proyecto</span>
+              </span>
             </button>
           )}
+          <span aria-hidden className="hidden h-5 w-px bg-[var(--tf-borde)] md:block" />
+          <ControlesUsuarioBarra />
         </div>
       </div>
 

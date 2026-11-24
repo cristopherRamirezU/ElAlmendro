@@ -25,7 +25,9 @@
     "dev:web": "npm run dev -w @timeflow/web",
     "infra:tools": "docker compose -f docker/docker-compose.yml --env-file .env --profile tools up -d adminer",
     "usuario:crear": "npm run usuario:crear -w @timeflow/api --",
-    "test": "npm run test -w @timeflow/api",
+    "test": "npm run test -w @timeflow/api && npm run test -w @timeflow/web",
+    "test:api": "npm run test -w @timeflow/api",
+    "test:web": "npm run test -w @timeflow/web",
     "test:cov": "npm run test:cov -w @timeflow/api"
   }
 }

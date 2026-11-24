@@ -103,7 +103,7 @@ export default function CampanaNotificaciones({
   }
 
   return (
-    <div ref={contenedorRef} className="relative">
+    <div ref={contenedorRef} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
