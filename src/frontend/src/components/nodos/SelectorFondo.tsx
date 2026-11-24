@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Palette } from 'lucide-react';
 import {
   FONDOS_MAPA,
   FONDOS_MAPA_CLAROS,
@@ -91,38 +92,24 @@ export default function SelectorFondo({
   }
 
   return (
-    <div ref={caja} className="relative">
+    <div ref={caja} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setAbierto((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={abierto}
-        title="Elegir el fondo de tu mapa"
-        className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
+        aria-label={`Cambiar fondo del mapa (actual: ${actual.nombre})`}
+        title={`Fondo del mapa: ${actual.nombre}`}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
       >
-        <span
-          aria-hidden
-          className="h-3.5 w-3.5 rounded-[4px] ring-1 ring-[var(--tf-borde-fuerte)]"
-          style={{ background: actual.muestra }}
-        />
-        Fondo
-        <svg
-          aria-hidden
-          viewBox="0 0 24 24"
-          className={`h-3 w-3 transition-transform ${abierto ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-        </svg>
+        <Palette size={16} aria-hidden />
       </button>
 
       {abierto && (
         <div
           role="listbox"
           aria-label="Fondo del mapa"
-          className="absolute right-0 top-full z-40 mt-2 max-h-[min(26rem,65vh)] w-60 overflow-y-auto rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1.5 shadow-2xl backdrop-blur"
+          className="absolute right-0 top-full z-50 mt-2 max-h-[min(26rem,65vh)] w-60 overflow-y-auto rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1.5 shadow-2xl backdrop-blur"
         >
           {renderGrupo('Estilos claros', FONDOS_MAPA_CLAROS)}
           <div className="my-1 border-t border-[var(--tf-borde)]" />

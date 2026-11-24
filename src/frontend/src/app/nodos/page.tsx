@@ -9,7 +9,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { AlertCircle, Check, Loader2, Map as IconoMapa, Maximize2, Redo2, Trash2, Undo2 } from 'lucide-react';
-import Marco from '@/components/Marco';
+import Marco, { ControlesUsuarioBarra } from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
 import AristaMapa, { DatosAristaMapa } from '@/components/nodos/AristaMapa';
@@ -1236,18 +1236,29 @@ function Nodos() {
 
       <div className="flex flex-col gap-2.5">
         {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre y alinea con el botón flotante */}
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
-          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <div className="relative z-30 flex flex-wrap items-center justify-between gap-2 transition-[padding] duration-200 md:flex-nowrap md:pl-[var(--tf-sangria-izq-barra,0px)]">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <h2
               className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)]`}
               title={nombreProyecto ?? undefined}
             >
               {nombreProyecto}
             </h2>
+            <span
+              className={`hidden shrink-0 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-semibold 2xl:inline-flex ${
+                esTrabajador
+                  ? 'border-sky-500/30 bg-sky-500/12 text-[var(--tf-acento-azul)]'
+                  : esSupervisor
+                  ? 'border-purple-500/30 bg-purple-500/12 text-[var(--tf-acento-violeta)]'
+                  : 'border-amber-500/30 bg-amber-500/12 text-[var(--tf-acento-ambar)]'
+              }`}
+            >
+              {esTrabajador ? 'Vista Colaborativa' : esSupervisor ? 'Vista Supervisor' : 'Vista Administrador'}
+            </span>
             {estadoGuardado === 'guardando' && (
               <span
                 role="status"
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-2.5 py-1 text-[11px] font-medium text-[var(--tf-texto-tenue)]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-2.5 py-1 text-[11px] font-medium text-[var(--tf-texto-tenue)]"
               >
                 <Loader2 size={12} className="animate-spin text-[var(--tf-acento-azul)]" aria-hidden />
                 Guardando cambios…
@@ -1256,7 +1267,7 @@ function Nodos() {
             {estadoGuardado === 'guardado' && (
               <span
                 role="status"
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-verde)]"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-verde)]"
               >
                 <Check size={12} aria-hidden />
                 Guardado ✓
@@ -1265,7 +1276,7 @@ function Nodos() {
             {estadoGuardado === 'error' && (
               <span
                 role="alert"
-                className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/35 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-rojo)]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-rose-500/35 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-rojo)]"
               >
                 <AlertCircle size={12} aria-hidden />
                 Error al guardar
@@ -1281,15 +1292,16 @@ function Nodos() {
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 md:flex-nowrap xl:gap-2">
             {derivaciones.length > 0 && (
               <button
                 onClick={() => setVerDerivaciones(true)}
+                aria-label={`Derivaciones (${derivaciones.length})`}
                 title="Traspasos de responsable, con su motivo y su fecha"
-                className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
               >
                 <span aria-hidden>⇄</span>
-                Derivaciones
+                <span className="hidden xl:inline">Derivaciones</span>
                 <span className="rounded-full bg-sky-500/20 px-1.5 text-[10px] font-bold text-[var(--tf-acento-azul)]">
                   {derivaciones.length}
                 </span>
@@ -1300,32 +1312,33 @@ function Nodos() {
               type="button"
               onClick={alternarMinimapa}
               aria-pressed={mostrarMinimapa}
+              aria-label={mostrarMinimapa ? 'Ocultar minimapa' : 'Mostrar minimapa'}
               title="Mostrar u ocultar minimapa (M)"
-              className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
+              className={`flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border text-xs transition 2xl:w-auto 2xl:px-3 ${
                 mostrarMinimapa
                   ? 'border-sky-500/40 bg-sky-500/15 font-medium text-[var(--tf-acento-azul)]'
                   : 'border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]'
               }`}
             >
-              <IconoMapa size={13} aria-hidden />
-              <span className="hidden sm:inline">Minimapa</span>
+              <IconoMapa size={15} aria-hidden />
+              <span className="hidden 2xl:inline">Minimapa</span>
             </button>
             <button
               type="button"
               onClick={() => instanciaMapa.current?.fitView({ ...ENCUADRE, duration: 250 })}
               title="Encuadrar mapa en pantalla (F)"
               aria-label="Encuadrar mapa en pantalla"
-              className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto-tenue)] transition hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-xs text-[var(--tf-texto-tenue)] transition hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)] 2xl:w-auto 2xl:px-3"
             >
-              <Maximize2 size={13} aria-hidden />
-              <span className="hidden lg:inline">Encuadrar</span>
+              <Maximize2 size={15} aria-hidden />
+              <span className="hidden 2xl:inline">Encuadrar</span>
             </button>
             {puedeEditarMapa && (
               <button
                 aria-pressed={editando}
                 onClick={alternarEdicion}
                 title="Arrastra las tareas y déjalas donde quieras (E)"
-                className={`flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition ${
+                className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs transition ${
                   editando
                     ? 'border-amber-500/50 bg-amber-500/20 font-semibold text-[var(--tf-acento-ambar)]'
                     : 'border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]'
@@ -1341,52 +1354,57 @@ function Nodos() {
                   type="button"
                   onClick={deshacer}
                   disabled={historial.length === 0}
+                  aria-label="Deshacer"
                   title="Deshacer el último movimiento o borde (Ctrl+Z)"
-                  className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40 2xl:w-auto 2xl:px-3"
                 >
-                  <Undo2 size={13} aria-hidden />
-                  Deshacer
+                  <Undo2 size={14} aria-hidden />
+                  <span className="hidden 2xl:inline">Deshacer</span>
                 </button>
                 <button
                   type="button"
                   onClick={rehacer}
                   disabled={futuro.length === 0}
+                  aria-label="Rehacer"
                   title="Rehacer el cambio deshecho (Ctrl+Y / Ctrl+Shift+Z)"
-                  className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40 2xl:w-auto 2xl:px-3"
                 >
-                  <Redo2 size={13} aria-hidden />
-                  Rehacer
+                  <Redo2 size={14} aria-hidden />
+                  <span className="hidden 2xl:inline">Rehacer</span>
                 </button>
                 <button
                   type="button"
                   onClick={restablecer}
                   disabled={!hayMovidos}
                   title="Devolver todos los nodos al acomodo automático en esta orientación"
-                  className="h-9 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-9 shrink-0 whitespace-nowrap rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Restablecer
                 </button>
               </>
             )}
-            <div className="flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5" role="radiogroup">
+            <div className="flex h-9 shrink-0 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5" role="radiogroup">
               {ORIENTACIONES.map((o) => (
                 <button
                   key={o.valor}
                   role="radio"
                   aria-checked={orientacion === o.valor}
+                  aria-label={o.texto}
                   title={o.titulo}
                   onClick={() => cambiarOrientacion(o.valor)}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition ${
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs transition 2xl:px-3 ${
                     orientacion === o.valor
                       ? 'bg-sky-500/20 font-semibold text-[var(--tf-acento-azul)]'
                       : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
                   }`}
                 >
                   <span aria-hidden>{o.icono}</span>
-                  {o.texto}
+                  <span className="hidden xl:inline">{o.texto}</span>
                 </button>
               ))}
             </div>
+            <span aria-hidden className="hidden h-5 w-px bg-[var(--tf-borde)] md:block" />
+            <ControlesUsuarioBarra />
           </div>
         </div>
 

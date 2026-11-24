@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Palette } from 'lucide-react';
+import { Palette } from 'lucide-react';
+import { ControlesUsuarioBarra } from '@/components/Marco';
 import BuscadorPanel from '@/components/panel/BuscadorPanel';
 import type { ProyectoItem } from '@/lib/api';
 import { fuenteEscena } from '@/lib/fuentes';
@@ -288,8 +289,8 @@ export default function ConstelacionProyectos({
   return (
     <div className="flex flex-col gap-2.5">
       {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-2 transition-[padding] duration-200 md:flex-nowrap md:pl-[var(--tf-sangria-izq-barra,0px)]">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 md:flex-nowrap">
           <BuscadorPanel
             id="buscar-proyecto"
             valor={busqueda}
@@ -310,7 +311,7 @@ export default function ConstelacionProyectos({
             ref={filtros}
             role="group"
             aria-label="Filtrar proyectos"
-            className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs transition-opacity duration-300"
+            className="inline-flex h-9 shrink-0 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs transition-opacity duration-300"
           >
             {FILTROS.map((f) => {
               const activo = filtro === f.valor;
@@ -320,7 +321,7 @@ export default function ConstelacionProyectos({
                   type="button"
                   aria-pressed={activo}
                   onClick={() => setFiltro(f.valor)}
-                  className={`rounded-full px-3.5 py-1.5 transition ${
+                  className={`whitespace-nowrap rounded-full px-2.5 py-1.5 transition 2xl:px-3.5 ${
                     activo
                       ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
                       : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -333,7 +334,7 @@ export default function ConstelacionProyectos({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 md:flex-nowrap">
           {selectorVista}
 
           <div ref={selector} className="relative shrink-0">
@@ -341,22 +342,18 @@ export default function ConstelacionProyectos({
               type="button"
               aria-haspopup="menu"
               aria-expanded={eligiendoFondo}
+              aria-label={`Cambiar fondo del mapa (actual: ${DATOS_FONDO[fondo].nombre})`}
+              title={`Fondo: ${DATOS_FONDO[fondo].nombre}`}
               onClick={() => setEligiendoFondo((v) => !v)}
-              className="flex h-9 max-w-[12rem] items-center gap-2 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] pl-3.5 pr-3 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)] sm:max-w-none"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
-              <Palette size={14} aria-hidden className="shrink-0 text-[var(--tf-texto-tenue)]" />
-              <span className="truncate">{DATOS_FONDO[fondo].nombre}</span>
-              <ChevronDown
-                size={14}
-                aria-hidden
-                className={`shrink-0 text-[var(--tf-texto-tenue)] transition-transform duration-200 ${eligiendoFondo ? 'rotate-180' : ''}`}
-              />
+              <Palette size={16} aria-hidden />
             </button>
             {eligiendoFondo && (
               <div
                 role="menu"
                 aria-label="Estilo visual del mapa"
-                className="absolute right-0 top-full z-30 mt-2 max-h-[min(26rem,60vh)] w-60 overflow-y-auto rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1.5 shadow-2xl"
+                className="absolute right-0 top-full z-50 mt-2 max-h-[min(26rem,60vh)] w-60 overflow-y-auto rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-1.5 shadow-2xl"
               >
                 <p className="px-2 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--tf-texto-suave)]">
                   Estilos claros
@@ -409,6 +406,8 @@ export default function ConstelacionProyectos({
               </div>
             )}
           </div>
+          <span aria-hidden className="hidden h-5 w-px bg-[var(--tf-borde)] md:block" />
+          <ControlesUsuarioBarra />
         </div>
       </div>
 

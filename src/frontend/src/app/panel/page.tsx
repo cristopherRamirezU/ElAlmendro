@@ -135,7 +135,7 @@ export default function Panel() {
     <div
       role="group"
       aria-label="Modo de visualización de proyectos"
-      className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
+      className="inline-flex h-9 shrink-0 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
     >
       {(
         [
@@ -155,7 +155,7 @@ export default function Panel() {
                 ? { backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }
                 : undefined
             }
-            className={`rounded-full px-3.5 py-1.5 font-medium transition ${
+            className={`whitespace-nowrap rounded-full px-2.5 py-1.5 font-medium transition xl:px-3.5 ${
               activo
                 ? 'shadow-sm'
                 : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
