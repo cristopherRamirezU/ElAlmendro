@@ -18,6 +18,7 @@ import {
 import RejillaMes from '@/components/calendario/RejillaMes';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
 import InterruptorJornada from '@/components/ui/InterruptorJornada';
+import Selector from '@/components/ui/Selector';
 import { useToast } from '@/components/ui/Toast';
 import type { DiaResumen } from '@/lib/calendario';
 import { duracion, estadoDeActividad, ESTADOS } from '@/lib/formato';
@@ -374,17 +375,19 @@ export default function ShowcaseProducto() {
                 </button>
               </div>
 
-              <select
-                value={filtroPersona}
-                onChange={(e) => setFiltroPersona(e.target.value)}
-                aria-label="Filtrar calendario por persona"
-                className="h-9 rounded-xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] px-3 text-xs font-semibold text-[var(--tf-texto)] outline-none"
-              >
-                <option value="all">Todo el equipo</option>
-                <option value="Camila">Camila Rojas (Santiago)</option>
-                <option value="Mateo">Mateo Silva (Bogotá)</option>
-                <option value="Valentina">Valentina Díaz (CDMX)</option>
-              </select>
+              <Selector
+                ariaLabel="Filtrar calendario por persona"
+                forma="pildora"
+                minAnchoMenu={210}
+                valor={filtroPersona}
+                onChange={setFiltroPersona}
+                opciones={[
+                  { valor: 'all', etiqueta: 'Todo el equipo' },
+                  { valor: 'Camila', etiqueta: 'Camila Rojas (Santiago)', inicialesAvatar: 'CR' },
+                  { valor: 'Mateo', etiqueta: 'Mateo Silva (Bogotá)', inicialesAvatar: 'MS' },
+                  { valor: 'Valentina', etiqueta: 'Valentina Díaz (CDMX)', inicialesAvatar: 'VD' },
+                ]}
+              />
             </div>
           </div>
 
@@ -475,17 +478,19 @@ export default function ShowcaseProducto() {
               {/* Filtros exactos de CartaGantt.tsx */}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={ganttFiltroEstado}
-                    onChange={(e) => setGanttFiltroEstado(e.target.value)}
-                    aria-label="Filtrar Carta Gantt por estado"
-                    className="h-8 rounded-full border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] px-3 text-xs font-medium text-[var(--tf-texto)] outline-none"
-                  >
-                    <option value="TODAS">Todos los estados</option>
-                    <option value="EN_PROGRESO">{ESTADOS.EN_PROGRESO.texto}</option>
-                    <option value="COMPLETADA">Completadas</option>
-                    <option value="PENDIENTES">Por hacer / Bloqueadas</option>
-                  </select>
+                  <Selector
+                    ariaLabel="Filtrar Carta Gantt por estado"
+                    forma="pildora"
+                    minAnchoMenu={195}
+                    valor={ganttFiltroEstado}
+                    onChange={setGanttFiltroEstado}
+                    opciones={[
+                      { valor: 'TODAS', etiqueta: 'Todos los estados' },
+                      { valor: 'EN_PROGRESO', etiqueta: ESTADOS.EN_PROGRESO.texto },
+                      { valor: 'COMPLETADA', etiqueta: 'Completadas' },
+                      { valor: 'PENDIENTES', etiqueta: 'Por hacer / Bloqueadas' },
+                    ]}
+                  />
                   <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-hover)] px-3 py-1.5 text-xs text-[var(--tf-texto)]">
                     <input
                       type="checkbox"
@@ -769,16 +774,18 @@ export default function ShowcaseProducto() {
               <p className={`${fuenteTitulo.className} text-sm font-bold text-[var(--tf-texto)]`}>
                 Horas por actividad (muestra de ejemplo)
               </p>
-              <select
-                value={areaReporte}
-                onChange={(e) => setAreaReporte(e.target.value as 'all' | 'Producto' | 'Ingeniería')}
-                aria-label="Filtrar reporte por área"
-                className="h-8 rounded-full border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] px-3 text-xs font-medium text-[var(--tf-texto)] outline-none"
-              >
-                <option value="all">Todo el equipo</option>
-                <option value="Producto">Producto</option>
-                <option value="Ingeniería">Ingeniería</option>
-              </select>
+              <Selector
+                ariaLabel="Filtrar reporte por área"
+                forma="pildora"
+                minAnchoMenu={165}
+                valor={areaReporte}
+                onChange={(v) => setAreaReporte(v as 'all' | 'Producto' | 'Ingeniería')}
+                opciones={[
+                  { valor: 'all', etiqueta: 'Todo el equipo' },
+                  { valor: 'Producto', etiqueta: 'Producto' },
+                  { valor: 'Ingeniería', etiqueta: 'Ingeniería' },
+                ]}
+              />
             </div>
 
             <div className="relative">

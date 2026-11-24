@@ -755,6 +755,39 @@ describe('ActividadesService', () => {
         servicio.exigirDesbloqueadaPorSecuencia('hija-2', 'padre-1'),
       ).resolves.toBeUndefined();
     });
+
+    it('lanza NotFoundException en actualizarBloqueoHijas si no existe o es de otra organizacion', async () => {
+      prisma.actividad.findFirst.mockResolvedValueOnce(null as never);
+
+      await expect(
+        servicio.actualizarBloqueoHijas('padre-ajeno', GESTOR, {
+          bloquearOrdenHijas: true,
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('estadoBloqueoPorSecuencia responde no bloqueada sin padre o sin candado activo', async () => {
+      await expect(
+        servicio.estadoBloqueoPorSecuencia('hija-1', null),
+      ).resolves.toEqual({
+        bloqueada: false,
+        prerequisitoId: null,
+        prerequisitoTitulo: null,
+      });
+
+      prisma.actividad.findFirst.mockResolvedValueOnce({
+        id: 'padre-1',
+        bloquearOrdenHijas: false,
+      } as never);
+
+      await expect(
+        servicio.estadoBloqueoPorSecuencia('hija-1', 'padre-1'),
+      ).resolves.toEqual({
+        bloqueada: false,
+        prerequisitoId: null,
+        prerequisitoTitulo: null,
+      });
+    });
   });
 
   describe('buscar', () => {
@@ -802,6 +835,37 @@ describe('ActividadesService', () => {
           responsableNombre: 'Ana Perez',
         },
       ]);
+    });
+
+    it('para ADMINISTRADOR busca en toda su organizacion y para SUPER_ADMIN omite filtro de organizacion', async () => {
+      const admin = { ...ACTOR, id: 'adm-1', rol: 'ADMINISTRADOR' } as UsuarioActual;
+      prisma.actividad.findMany.mockResolvedValueOnce([] as never);
+      await servicio.buscar(admin, 'reporte');
+      expect(prisma.actividad.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            eliminadoEn: null,
+            proyecto: { eliminadoEn: null, organizacionId: 'org-1' },
+          }),
+        }),
+      );
+
+      const superAdmin = {
+        ...ACTOR,
+        id: 'sa-1',
+        rol: 'SUPER_ADMIN',
+        organizacionId: null,
+      } as UsuarioActual;
+      prisma.actividad.findMany.mockResolvedValueOnce([] as never);
+      await servicio.buscar(superAdmin, 'reporte');
+      expect(prisma.actividad.findMany).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            eliminadoEn: null,
+            proyecto: { eliminadoEn: null },
+          }),
+        }),
+      );
     });
 
     it('restringe la busqueda de un trabajador a sus tareas o proyectos donde participa', async () => {
