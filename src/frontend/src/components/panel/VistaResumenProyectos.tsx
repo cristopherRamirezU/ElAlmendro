@@ -1,9 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowRight, CheckCircle2, FolderKanban, Plus, Search, Sparkles, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, FolderKanban, Plus, Sparkles } from 'lucide-react';
+import BuscadorPanel from '@/components/panel/BuscadorPanel';
 import type { ProyectoItem } from '@/lib/api';
-import { colorConAlfa, useColorPrimario } from '@/lib/color';
+import { colorConAlfa, colorTextoSobre, useColorPrimario } from '@/lib/color';
+import { useTemaFondo } from '@/lib/tema';
 import { proyectoCompletado } from './ConstelacionProyectos';
 
 type FiltroResumen = 'todos' | 'proceso' | 'completados';
@@ -42,6 +44,9 @@ export default function VistaResumenProyectos({
   selectorVista?: React.ReactNode;
 }) {
   const colorPrimario = useColorPrimario();
+  const temaEsClaro = useTemaFondo() === 'claro-nube';
+  const colorSobreSuave = (tono: string) =>
+    temaEsClaro && colorTextoSobre(tono) === '#0f172a' ? '#0f172a' : tono;
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<FiltroResumen>('todos');
   const [focoId, setFocoId] = useState<string | null>(null);
@@ -107,35 +112,18 @@ export default function VistaResumenProyectos({
   return (
     <div className="tf-enter space-y-5">
       {/* Barra superior alineada con Constelacion */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
-            <Search
-              size={14}
-              aria-hidden
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tf-texto-suave)]"
-            />
-            <input
-              id="resumen-buscar-proyecto"
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar proyecto…"
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] py-2 pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
-            />
-            {busqueda && (
-              <button
-                type="button"
-                onClick={() => setBusqueda('')}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]"
-              >
-                <X size={13} aria-hidden />
-              </button>
-            )}
-          </div>
+          <BuscadorPanel
+            id="resumen-buscar-proyecto"
+            valor={busqueda}
+            onCambio={setBusqueda}
+            proyectos={proyectos}
+            onIrAlMapa={onIrAlMapa}
+            onElegirProyecto={onElegir}
+          />
 
-          <div className="inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
+          <div className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
             {(
               [
                 { id: 'todos', label: 'Todos' },
@@ -147,7 +135,7 @@ export default function VistaResumenProyectos({
                 key={f.id}
                 type="button"
                 onClick={() => setFiltro(f.id)}
-                className={`rounded-lg px-3 py-1.5 transition ${
+                className={`rounded-full px-3.5 py-1.5 transition ${
                   filtro === f.id
                     ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
                     : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -165,8 +153,8 @@ export default function VistaResumenProyectos({
             <button
               type="button"
               onClick={onCrear}
-              style={{ backgroundColor: colorPrimario }}
-              className="tf-shimmer-cta inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+              style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+              className="tf-shimmer-cta inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold shadow-sm transition hover:brightness-110"
             >
               <Plus size={14} aria-hidden />
               <span>Nuevo proyecto</span>
@@ -179,7 +167,10 @@ export default function VistaResumenProyectos({
         <div className="tf-card-pro flex flex-col items-center justify-center gap-3 rounded-2xl p-12 text-center">
           <span
             className="grid h-12 w-12 place-items-center rounded-2xl"
-            style={{ backgroundColor: colorConAlfa(colorPrimario, 0.14), color: colorPrimario }}
+            style={{
+              backgroundColor: colorConAlfa(colorPrimario, 0.14),
+              color: colorSobreSuave(colorPrimario),
+            }}
           >
             <FolderKanban size={22} aria-hidden />
           </span>
@@ -195,8 +186,8 @@ export default function VistaResumenProyectos({
             <button
               type="button"
               onClick={onCrear}
-              style={{ backgroundColor: colorPrimario }}
-              className="tf-shimmer-cta mt-1 rounded-xl px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110"
+              style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+              className="tf-shimmer-cta mt-1 rounded-xl px-4 py-2 text-xs font-semibold transition hover:brightness-110"
             >
               Crear primer proyecto
             </button>
@@ -219,9 +210,9 @@ export default function VistaResumenProyectos({
                         style={{
                           backgroundColor: colorConAlfa(
                             colorEstado(protagonista, colorPrimario),
-                            0.14,
+                            0.16,
                           ),
-                          color: colorEstado(protagonista, colorPrimario),
+                          color: colorSobreSuave(colorEstado(protagonista, colorPrimario)),
                         }}
                       >
                         <Sparkles size={11} aria-hidden />
@@ -302,8 +293,8 @@ export default function VistaResumenProyectos({
                     <button
                       type="button"
                       onClick={() => onIrAlMapa(protagonista)}
-                      style={{ backgroundColor: colorPrimario }}
-                      className="tf-shimmer-cta inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:brightness-110"
+                      style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+                      className="tf-shimmer-cta inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-semibold shadow-sm transition hover:brightness-110"
                     >
                       <span>{esTrabajador ? 'Registrar avance' : 'Ir al mapa de nodos'}</span>
                       <ArrowRight size={14} aria-hidden />
@@ -399,7 +390,10 @@ export default function VistaResumenProyectos({
                       <div className="flex items-center justify-between gap-2 text-[11px]">
                         <span
                           className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium"
-                          style={{ backgroundColor: colorConAlfa(tono, 0.14), color: tono }}
+                          style={{
+                            backgroundColor: colorConAlfa(tono, 0.16),
+                            color: colorSobreSuave(tono),
+                          }}
                         >
                           {done && <CheckCircle2 size={11} aria-hidden />}
                           {done ? 'Completado' : 'En proceso'}
@@ -438,7 +432,10 @@ export default function VistaResumenProyectos({
                             e.stopPropagation();
                             onIrAlMapa(p);
                           }}
-                          style={{ backgroundColor: colorConAlfa(tono, 0.14), color: tono }}
+                          style={{
+                            backgroundColor: colorConAlfa(tono, 0.16),
+                            color: colorSobreSuave(tono),
+                          }}
                           className="flex-1 rounded-xl py-2 text-xs font-semibold transition hover:brightness-110"
                         >
                           {esTrabajador ? 'Registrar avance' : 'Ir al mapa →'}

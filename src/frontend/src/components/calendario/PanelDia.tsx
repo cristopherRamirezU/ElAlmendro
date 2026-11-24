@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { DiaDetalle, MARGEN_PRESENCIA, SesionDetalle, TrabajadorDia } from '@/lib/calendario';
-import { duracion, hora, iniciales } from '@/lib/formato';
+import { duracion, ESTADOS, hora, iniciales } from '@/lib/formato';
 import { desfase, zonaActual } from '@/lib/zona';
 import {
   PREFERENCIAS_CALENDARIO_DEFECTO,
   PreferenciasCalendario,
 } from '@/lib/preferencias-calendario';
 import Insignia from '@/components/ui/Insignia';
+import { EsqueletoCalendario } from '@/components/ui/Esqueleto';
 
 /** Estados de una sesión de trabajo, con su lectura y su color. */
 const ESTADO_SESION: Record<string, { texto: string; clase: string }> = {
@@ -44,7 +45,7 @@ export default function PanelDia({
   prefs?: PreferenciasCalendario;
 }) {
   if (cargando && !dia) {
-    return <p className="text-sm text-[var(--tf-texto-tenue)]">Cargando el detalle…</p>;
+    return <EsqueletoCalendario tipo="detalle" />;
   }
   if (!dia) {
     return <p className="text-sm text-[var(--tf-texto-tenue)]">No hay información para este día.</p>;
@@ -337,12 +338,12 @@ function Tarjeta({
                 <Insignia clase={estado.clase}>{estado.texto}</Insignia>
               )}
               {sesion.desenlace === 'INCONCLUSA' && (
-                <Insignia clase="text-[var(--tf-acento-naranja)] bg-orange-500/12 border-orange-500/30">
+                <Insignia clase={ESTADOS.INCONCLUSA.clase}>
                   Inconclusa
                 </Insignia>
               )}
               {sesion.desenlace === 'COMPLETADA' && (
-                <Insignia clase="text-[var(--tf-acento-verde)] bg-emerald-500/12 border-emerald-500/30">
+                <Insignia clase={ESTADOS.COMPLETADA.clase}>
                   Completada
                 </Insignia>
               )}
@@ -369,12 +370,12 @@ function Tarjeta({
           <div className="flex flex-wrap items-center gap-1.5">
             <Insignia clase={estado.clase}>{estado.texto}</Insignia>
             {sesion.desenlace === 'COMPLETADA' && (
-              <Insignia clase="text-[var(--tf-acento-verde)] bg-emerald-500/12 border-emerald-500/30">
+              <Insignia clase={ESTADOS.COMPLETADA.clase}>
                 Completada
               </Insignia>
             )}
             {sesion.desenlace === 'INCONCLUSA' && (
-              <Insignia clase="text-[var(--tf-acento-naranja)] bg-orange-500/12 border-orange-500/30">
+              <Insignia clase={ESTADOS.INCONCLUSA.clase}>
                 Inconclusa
               </Insignia>
             )}

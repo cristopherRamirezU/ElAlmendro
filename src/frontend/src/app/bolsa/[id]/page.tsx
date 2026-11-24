@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { Actividad, api, ErrorApi } from '@/lib/api';
 import { avisarCambioDeTesoro } from '@/lib/tesoro';
+import { EsqueletoPanelTarea } from '@/components/ui/Esqueleto';
 import ContenidoBolsa from '@/components/tesoro/ContenidoBolsa';
 
 /**
@@ -52,8 +53,10 @@ export default function PaginaBolsa({ params }: { params: Promise<{ id: string }
 
   if (!titulo) {
     return (
-      <main className="tf-ventana-aparte grid min-h-screen place-items-center text-sm text-slate-500">
-        Cargando tarea…
+      <main className="tf-ventana-aparte grid min-h-screen place-items-center p-6">
+        <div className="w-full max-w-md">
+          <EsqueletoPanelTarea />
+        </div>
       </main>
     );
   }

@@ -4,19 +4,32 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api';
-import { diaRelativo, hora } from '@/lib/formato';
+import { diaRelativo, hora, tiempoRelativo } from '@/lib/formato';
 import {
   NotificacionItem,
   RespuestaNotificaciones,
   socketNotificaciones,
 } from '@/lib/notificaciones';
 
+function puntoPorTipo(tipo: string): string {
+  const t = tipo.toUpperCase();
+  if (t.includes('COMPLET') || t.includes('DESBLOQ')) return 'bg-emerald-500';
+  if (t.includes('BLOQUE') || t.includes('AUTOCIERR') || t.includes('ALERTA')) return 'bg-amber-500';
+  if (t.includes('ERROR') || t.includes('ELIMIN')) return 'bg-rose-500';
+  if (t.includes('DERIV') || t.includes('REASIG')) return 'bg-violet-500';
+  return 'bg-sky-500';
+}
+
 /**
  * Campana de notificaciones en tiempo real en la cabecera.
  * Recibe avisos sobre asignaciones, derivaciones, mensajes/audios en nodos
  * y autocierres mediante Socket.IO (`/notificaciones`).
  */
-export default function CampanaNotificaciones() {
+export default function CampanaNotificaciones({
+  posicion = 'cabecera',
+}: {
+  posicion?: 'cabecera' | 'sidebar';
+}) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [items, setItems] = useState<NotificacionItem[]>([]);
@@ -113,7 +126,9 @@ export default function CampanaNotificaciones() {
         <div
           role="dialog"
           aria-label="Centro de notificaciones"
-          className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-2xl backdrop-blur"
+          className={`absolute z-50 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-2xl backdrop-blur ${
+            posicion === 'sidebar' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-2'
+          }`}
         >
           <div className="flex items-center justify-between border-b border-[var(--tf-borde)] px-4 py-3">
             <span className="text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">
@@ -123,7 +138,7 @@ export default function CampanaNotificaciones() {
               <button
                 type="button"
                 onClick={marcarTodas}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400 transition hover:text-sky-300"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--tf-acento-azul)] transition hover:opacity-80"
               >
                 <CheckCheck size={13} aria-hidden />
                 Marcar leídas
@@ -150,11 +165,19 @@ export default function CampanaNotificaciones() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="flex items-center gap-1.5 text-xs font-semibold text-[var(--tf-texto)]">
-                          {sinLeer && <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />}
+                          {sinLeer && (
+                            <span
+                              aria-hidden
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${puntoPorTipo(n.tipo)}`}
+                            />
+                          )}
                           {n.titulo}
                         </span>
-                        <span className="shrink-0 text-[10px] text-[var(--tf-texto-suave)]">
-                          {diaRelativo(n.creadoEn)} · {hora(n.creadoEn)}
+                        <span
+                          title={`${diaRelativo(n.creadoEn)} · ${hora(n.creadoEn)}`}
+                          className="shrink-0 text-[10px] text-[var(--tf-texto-suave)]"
+                        >
+                          {tiempoRelativo(n.creadoEn)}
                         </span>
                       </div>
                       <p className="text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">{n.mensaje}</p>

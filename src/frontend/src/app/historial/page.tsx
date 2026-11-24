@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, History, Search, X } from 'lucide-react';
 import Marco from '@/components/Marco';
+import { EsqueletoLista } from '@/components/ui/Esqueleto';
 import { api, ErrorApi } from '@/lib/api';
-import { diaRelativo, hora } from '@/lib/formato';
+import { diaRelativo, etiquetaEntidad, hora, tiempoRelativo } from '@/lib/formato';
 import { PERMISOS } from '@/lib/rbac';
 import { useTienePermiso } from '@/lib/sesion';
 
@@ -158,14 +159,14 @@ function ContenidoHistorial() {
 
   if (!puedeVer) {
     return (
-      <div className="mx-auto mt-10 max-w-md rounded-2xl border border-rose-500/25 bg-slate-900/90 p-6 text-center">
-        <p className="text-base font-bold text-white">Acceso restringido</p>
-        <p className="mt-1 text-xs text-slate-400">
+      <div className="mx-auto mt-10 max-w-md rounded-2xl border border-rose-500/25 bg-[var(--tf-superficie)] p-6 text-center">
+        <p className="text-base font-bold text-[var(--tf-texto)]">Acceso restringido</p>
+        <p className="mt-1 text-xs text-[var(--tf-texto-tenue)]">
           Esta bitácora está reservada para supervisión y administración.
         </p>
         <Link
           href="/panel"
-          className="mt-4 inline-block rounded-xl border border-sky-400/35 bg-sky-500/15 px-4 py-2 text-xs font-semibold text-sky-200 hover:bg-sky-500/25"
+          className="mt-4 inline-block rounded-xl border border-sky-500/35 bg-sky-500/15 px-4 py-2 text-xs font-semibold text-[var(--tf-acento-azul)] hover:bg-sky-500/25"
         >
           Volver a Proyectos
         </Link>
@@ -242,14 +243,24 @@ function ContenidoHistorial() {
       </section>
 
       {error && (
-        <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
-          {error}
-        </p>
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]"
+        >
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={cargar}
+            className="rounded-lg border border-rose-500/30 bg-rose-500/15 px-2.5 py-1 font-semibold hover:bg-rose-500/25"
+          >
+            Reintentar
+          </button>
+        </div>
       )}
 
       <section className="tf-card-pro overflow-hidden rounded-2xl p-5">
         {cargando && !datos ? (
-          <p className="p-8 text-center text-sm text-[var(--tf-texto-tenue)]">Cargando bitácora…</p>
+          <EsqueletoLista filas={6} />
         ) : entradas.length === 0 ? (
           <div className="flex flex-col items-center gap-2 p-10 text-center text-[var(--tf-texto-suave)]">
             <History size={28} aria-hidden />
@@ -339,8 +350,8 @@ function ContenidoHistorial() {
                           <span className="text-[var(--tf-texto-tenue)]">
                             {describirAccion(item.accion)}
                           </span>
-                          <span className="rounded bg-[var(--tf-superficie-solida)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--tf-texto-suave)]">
-                            {item.tipoEntidad}
+                          <span className="rounded bg-[var(--tf-superficie-solida)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--tf-texto-tenue)]">
+                            {etiquetaEntidad(item.tipoEntidad)}
                           </span>
                           {colorNuevo && (
                             <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] px-2 py-0.5 font-mono text-[10px] text-[var(--tf-texto)]">
@@ -361,8 +372,11 @@ function ContenidoHistorial() {
                       </div>
 
                       <div className="flex shrink-0 items-center gap-2.5">
-                        <span className="font-mono text-[11px] text-[var(--tf-texto-suave)]">
-                          {diaRelativo(item.ocurridoEn)} · {hora(item.ocurridoEn)}
+                        <span
+                          title={`${diaRelativo(item.ocurridoEn)} · ${hora(item.ocurridoEn)}`}
+                          className="text-[11px] text-[var(--tf-texto-suave)]"
+                        >
+                          {tiempoRelativo(item.ocurridoEn)}
                         </span>
                         <ChevronDown
                           size={15}
@@ -376,8 +390,9 @@ function ContenidoHistorial() {
 
                     {abierta && (
                       <div className="border-t border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] px-4 py-3 text-xs">
-                        <p className="mb-2 font-mono text-[11px] text-[var(--tf-texto-suave)]">
-                          ID entidad: <span className="text-[var(--tf-texto)]">{item.entidadId}</span>
+                        <p className="mb-2 text-[11px] text-[var(--tf-texto-suave)]">
+                          Registro de <strong className="font-medium text-[var(--tf-texto)]">{etiquetaEntidad(item.tipoEntidad)}</strong>{' '}
+                          <span className="font-mono text-[10px] opacity-70">({item.entidadId.slice(0, 8)}…)</span>
                         </p>
                         {tieneDetalle ? (
                           <div className="grid gap-3 md:grid-cols-2">

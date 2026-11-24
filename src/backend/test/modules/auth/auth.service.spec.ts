@@ -1,7 +1,12 @@
 import { BadRequestException, HttpException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { validateSync } from 'class-validator';
 import { AuthService } from '../../../src/modules/auth/auth.service';
+import {
+  ActualizarPreferenciasDto,
+  FONDOS_MAPA_VALIDOS,
+} from '../../../src/modules/auth/dto/actualizar-preferencias.dto';
 import { montarServicio } from '../../utilidades/modulo';
 import { PrismaMock } from '../../utilidades/prisma-mock';
 import type { UsuarioActual } from '../../../src/common/usuario-actual.decorator';
@@ -332,6 +337,23 @@ describe('AuthService', () => {
       expect(prisma.registroAuditoria.create).toHaveBeenCalledWith({
         data: expect.objectContaining({ accion: 'CONTRASENA_CAMBIADA', direccionIp: IP }),
       });
+    });
+  });
+
+  describe('ActualizarPreferenciasDto', () => {
+    it.each(FONDOS_MAPA_VALIDOS)('acepta el fondo valido "%s"', (fondo) => {
+      const dto = Object.assign(new ActualizarPreferenciasDto(), { fondoMapa: fondo });
+      expect(validateSync(dto)).toHaveLength(0);
+    });
+
+    it('incluye vistas claras y oscuras y rechaza codigos desconocidos', () => {
+      expect(FONDOS_MAPA_VALIDOS).toEqual(
+        expect.arrayContaining(['claro-puntos', 'claro-cuadricula', 'claro-bruma']),
+      );
+      const invalido = Object.assign(new ActualizarPreferenciasDto(), { fondoMapa: 'tema-inventado' });
+      const errores = validateSync(invalido);
+      expect(errores).toHaveLength(1);
+      expect(errores[0].property).toBe('fondoMapa');
     });
   });
 });

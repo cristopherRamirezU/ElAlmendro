@@ -2,7 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { Mic, Square, Trash2 } from 'lucide-react';
+import ModalConfirmacion from '@/components/ui/ModalConfirmacion';
 import { Actividad, api, AudioComentario, ErrorApi } from '@/lib/api';
+import { diaRelativo, hora, tiempoRelativo } from '@/lib/formato';
 import { GRABACION_MAXIMA_SEGUNDOS, minutosSegundos, useGrabadora } from '@/lib/grabadora';
 import { ReproductorComentarioVoz, ReproductorLocal } from './AudioComentario';
 
@@ -165,6 +167,7 @@ function ComentariosDeVoz({
   const { estado, segundos, grabacion, error, iniciar, detener, limpiar } = grabadora;
   const [enviando, setEnviando] = useState(false);
   const [borrando, setBorrando] = useState<string | null>(null);
+  const [audioPorEliminar, setAudioPorEliminar] = useState<AudioComentario | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const audios = actividad.audios ?? [];
   const puedeGrabar = actividad.puedeGrabarAudio === true;
@@ -190,13 +193,15 @@ function ComentariosDeVoz({
     }
   }
 
-  async function quitar(a: AudioComentario) {
-    if (!window.confirm(`¿Quitar el comentario de voz de ${a.autor.nombreCompleto}?`)) return;
+  async function confirmarEliminarAudio() {
+    if (!audioPorEliminar) return;
+    const a = audioPorEliminar;
     setAviso(null);
     setBorrando(a.id);
     try {
       await api.delete(`/actividades/${actividad.id}/audios/${a.id}`);
       onCambio(audios.filter((x) => x.id !== a.id));
+      setAudioPorEliminar(null);
     } catch (err) {
       setAviso(err instanceof ErrorApi ? err.message : 'No se pudo quitar el audio.');
     } finally {
@@ -212,12 +217,13 @@ function ComentariosDeVoz({
             actividadId={actividad.id}
             audioId={a.id}
             segundos={a.segundos}
-            etiqueta={`${a.autor.nombreCompleto} · ${cuando(a.creadoEn)}`}
+            etiqueta={`${a.autor.nombreCompleto} · ${tiempoRelativo(a.creadoEn)}`}
           />
+          <span className="sr-only">{`${diaRelativo(a.creadoEn)} ${hora(a.creadoEn)}`}</span>
           {a.puedeEliminar && (
             <button
               type="button"
-              onClick={() => quitar(a)}
+              onClick={() => setAudioPorEliminar(a)}
               disabled={borrando === a.id}
               className="flex items-center gap-1 self-end text-[10px] font-semibold text-[var(--tf-texto-suave)] hover:text-[var(--tf-acento-rojo)] disabled:opacity-50"
             >
@@ -285,6 +291,20 @@ function ComentariosDeVoz({
           {error ?? aviso}
         </p>
       )}
+
+      <ModalConfirmacion
+        abierto={audioPorEliminar !== null}
+        titulo="Quitar comentario de voz"
+        descripcion={
+          audioPorEliminar
+            ? `¿Deseas eliminar el comentario de voz grabado por ${audioPorEliminar.autor.nombreCompleto}?`
+            : ''
+        }
+        etiquetaConfirmar="Sí, quitar audio"
+        ocupado={borrando !== null}
+        onConfirmar={confirmarEliminarAudio}
+        onCancelar={() => setAudioPorEliminar(null)}
+      />
     </div>
   );
 }

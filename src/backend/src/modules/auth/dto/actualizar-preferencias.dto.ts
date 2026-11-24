@@ -1,7 +1,15 @@
 import { IsIn } from 'class-validator';
 
 /** Debe calzar exactamente con los codigos de FONDOS_MAPA en el frontend (lib/fondosMapa.ts). */
-export const FONDOS_MAPA_VALIDOS = ['gris-puntos', 'azul-puntos', 'aurora', 'hexagonos'] as const;
+export const FONDOS_MAPA_VALIDOS = [
+  'gris-puntos',
+  'azul-puntos',
+  'aurora',
+  'hexagonos',
+  'claro-puntos',
+  'claro-cuadricula',
+  'claro-bruma',
+] as const;
 
 /** Preferencias visuales propias de cada usuario (no de la organizacion). */
 export class ActualizarPreferenciasDto {

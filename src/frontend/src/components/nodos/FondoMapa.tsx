@@ -1,9 +1,15 @@
-import { Background } from '@xyflow/react';
+import { Background, BackgroundVariant } from '@xyflow/react';
 import type { FondoMapa } from '@/lib/fondosMapa';
 
 /** Color base del lienzo segun el fondo elegido (va en el contenedor del mapa). */
 export function estiloFondoMapa(fondo: FondoMapa): React.CSSProperties {
   switch (fondo) {
+    case 'claro-puntos':
+      return { background: 'radial-gradient(820px 520px at 24% 25%, #e8f2fe 0%, transparent 70%), #f6f9fe' };
+    case 'claro-cuadricula':
+      return { background: 'radial-gradient(900px 600px at 50% 45%, #ffffff 0%, #f1f6fe 85%)' };
+    case 'claro-bruma':
+      return { background: '#f5f9ff' };
     case 'azul-puntos':
       return { background: 'radial-gradient(800px 500px at 30% 45%, #0c1f47 0%, transparent 70%), #060b18' };
     case 'aurora':
@@ -17,6 +23,31 @@ export function estiloFondoMapa(fondo: FondoMapa): React.CSSProperties {
 
 /** Capas fijas detras del mapa (no se mueven al desplazarlo): luces o panal. */
 export function DecoracionFondo({ fondo }: { fondo: FondoMapa }) {
+  if (fondo === 'claro-bruma') {
+    const manchas = [
+      { color: '#38bdf8', tamano: 440, left: '-8%', top: '48%', opacidad: 0.2 },
+      { color: '#34d399', tamano: 360, left: '36%', top: '-28%', opacidad: 0.16 },
+      { color: '#a78bfa', tamano: 340, left: '74%', top: '46%', opacidad: 0.13 },
+    ];
+    return (
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        {manchas.map((m) => (
+          <div
+            key={m.color}
+            className="absolute rounded-full blur-[100px]"
+            style={{
+              width: m.tamano,
+              height: m.tamano,
+              left: m.left,
+              top: m.top,
+              background: m.color,
+              opacity: m.opacidad,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
   if (fondo === 'aurora') {
     const manchas = [
       { color: '#7c3aed', tamano: 420, left: '-8%', top: '55%' },
@@ -64,11 +95,23 @@ export function DecoracionFondo({ fondo }: { fondo: FondoMapa }) {
 }
 
 /**
- * Trama de puntos de React Flow: se desplaza con el mapa. Solo en los fondos
- * con puntos. Sin `bgColor` transparente pintaria su propio gris encima del
- * color del contenedor.
+ * Trama de puntos o cuadricula de React Flow: se desplaza con el mapa.
+ * Sin `bgColor` transparente pintaria su propio color encima del contenedor.
  */
 export function PuntosFondo({ fondo }: { fondo: FondoMapa }) {
+  if (fondo === 'claro-puntos') {
+    return <Background bgColor="transparent" color="rgba(15,23,42,0.18)" gap={18} size={1.25} />;
+  }
+  if (fondo === 'claro-cuadricula') {
+    return (
+      <Background
+        variant={BackgroundVariant.Lines}
+        bgColor="transparent"
+        color="rgba(15,23,42,0.065)"
+        gap={24}
+      />
+    );
+  }
   if (fondo === 'gris-puntos') return <Background bgColor="transparent" color="rgba(255,255,255,0.08)" gap={18} />;
   if (fondo === 'azul-puntos') return <Background bgColor="transparent" color="rgba(148,163,184,0.16)" gap={18} />;
   return null;

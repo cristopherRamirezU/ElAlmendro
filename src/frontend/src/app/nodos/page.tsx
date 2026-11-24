@@ -4,10 +4,11 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ReactFlow, Controls, Connection, ConnectionMode, Edge, Node, NodeMouseHandler, OnEdgesChange, OnNodeDrag,
+  ReactFlow, Controls, MiniMap, Connection, ConnectionMode, Edge, Node, NodeMouseHandler, OnEdgesChange, OnNodeDrag,
   OnNodesChange, Position, ReactFlowInstance, useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { AlertCircle, Check, Loader2, Map as IconoMapa, Maximize2, Redo2, Trash2, Undo2 } from 'lucide-react';
 import Marco from '@/components/Marco';
 import NodoTarea, { DatosNodoTarea } from '@/components/nodos/NodoTarea';
 import NodoRaiz, { DatosNodoRaiz } from '@/components/nodos/NodoRaiz';
@@ -15,9 +16,14 @@ import AristaMapa, { DatosAristaMapa } from '@/components/nodos/AristaMapa';
 import { type Ancla, idManilla } from '@/components/nodos/orientacion';
 import PanelTarea from '@/components/nodos/PanelTarea';
 import Modal from '@/components/ui/Modal';
+import ModalConfirmacion from '@/components/ui/ModalConfirmacion';
+import Selector from '@/components/ui/Selector';
+import { EsqueletoMapa, EsqueletoPagina } from '@/components/ui/Esqueleto';
+import { useToast } from '@/components/ui/Toast';
 import { llenadoDeBolsa } from '@/components/tesoro/llenado';
-import { api, ErrorApi, ProyectoItem, Sesion } from '@/lib/api';
-import { Derivacion, NodoActividad } from '@/lib/tipos';
+import { api, ErrorApi, MiembroProyecto, ProyectoItem, Sesion } from '@/lib/api';
+import { estadoDeActividad, tiempoRelativo } from '@/lib/formato';
+import { ContextoEquipoUsuario, Derivacion, NodoActividad } from '@/lib/tipos';
 import {
   ALTO_NODO,
   ALTO_RAIZ,
@@ -35,25 +41,40 @@ import {
   posicionGuardada,
   posicionInsignia,
   Punto,
+  validarCambioPadre,
 } from '@/lib/mapaMental';
 import { Caja, ladosEnfrentados } from '@/lib/rutasAristas';
 import { useSesion, useTienePermiso } from '@/lib/sesion';
 import { PERMISOS } from '@/lib/rbac';
 import { useTesoro } from '@/lib/tesoro';
 import { useColorPrimario } from '@/lib/color';
+import { useTemaFondo } from '@/lib/tema';
 import { leerCacheSesion, guardarCacheSesion } from '@/lib/cacheSesion';
-import { FondoMapa, fondoMapaValido } from '@/lib/fondosMapa';
+import { esFondoMapaClaro, FondoMapa, fondoMapaValido } from '@/lib/fondosMapa';
 import { fuenteTitulo } from '@/lib/fuentes';
 import SelectorFondo from '@/components/nodos/SelectorFondo';
 import { DecoracionFondo, estiloFondoMapa, PuntosFondo } from '@/components/nodos/FondoMapa';
 
 const RAIZ = 'raiz-proyecto';
+const CLAVE_MINIMAPA = 'tf_nodos_minimap';
 
 /** Un movimiento del mapa: que posicion queda en cada nodo (`null` = automatica). */
 interface CambioPosiciones {
   orientacion: Orientacion;
   cambios: { id: string; posicion: Punto | null }[];
 }
+
+type EntradaHistorial =
+  | { tipo: 'posiciones'; antes: CambioPosiciones; despues: CambioPosiciones }
+  | {
+      tipo: 'lados';
+      orientacion: Orientacion;
+      destinoId: string;
+      antes: LadosFijados | null;
+      despues: LadosFijados | null;
+    };
+
+type EstadoGuardadoMapa = 'inactivo' | 'guardando' | 'guardado' | 'error';
 
 /**
  * Reencuadra el mapa cuando cambia su forma (expandir, colapsar, recargar,
@@ -187,13 +208,7 @@ const ORIENTACIONES: { valor: Orientacion; texto: string; icono: string; titulo:
 /** US-05 y US-06 — mapa mental de tareas del proyecto y sus derivaciones. */
 export default function Pagina() {
   return (
-    <Suspense
-      fallback={
-        <main className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-400">
-          Cargando…
-        </main>
-      }
-    >
+    <Suspense fallback={<EsqueletoPagina />}>
       <Nodos />
     </Suspense>
   );
@@ -201,12 +216,15 @@ export default function Pagina() {
 
 function Nodos() {
   const router = useRouter();
+  const { toast } = useToast();
   const sesionActual = useSesion();
 
+  const temaEsClaro = useTemaFondo() === 'claro-nube';
   // Fondo del mapa: preferencia de cada usuario, guardada en su cuenta. Mientras
   // se guarda se muestra ya el elegido; si el servidor lo rechaza, vuelve atras.
   const [fondoElegido, setFondoElegido] = useState<FondoMapa | null>(null);
-  const fondo = fondoElegido ?? fondoMapaValido(sesionActual?.fondoMapa);
+  const fondo = fondoElegido ?? fondoMapaValido(sesionActual?.fondoMapa, temaEsClaro);
+  const esClaro = esFondoMapaClaro(fondo);
   async function cambiarFondo(nuevo: FondoMapa) {
     const anterior = fondo;
     setFondoElegido(nuevo);
@@ -230,6 +248,8 @@ function Nodos() {
   // Editar el mapa lo da el rol (administrador, supervisor) o un permiso extra
   // que el administrador le dio a un trabajador.
   const puedeEditarMapa = useTienePermiso(PERMISOS.NODOS_EDITAR);
+  const tienePermisoEliminar = useTienePermiso(PERMISOS.ACTIVIDADES_ELIMINAR);
+  const puedeEliminarNodo = tienePermisoEliminar || sesionActual?.rol === 'SUPER_ADMIN';
 
   const parametros = useSearchParams();
   const proyectoId = parametros.get('proyectoId');
@@ -239,9 +259,36 @@ function Nodos() {
 
   const [actividades, setActividades] = useState<NodoActividad[]>([]);
   const [derivaciones, setDerivaciones] = useState<Derivacion[]>([]);
+  const [miembros, setMiembros] = useState<MiembroProyecto[]>([]);
   const [aviso, setAviso] = useState<string | null>(null);
   const [cargas, setCargas] = useState(0);
   const [buscandoProyecto, setBuscandoProyecto] = useState(!proyectoId);
+
+  // Indicador discreto en tiempo real del autoguardado en el editor.
+  const [estadoGuardado, setEstadoGuardado] = useState<EstadoGuardadoMapa>('inactivo');
+  const timerGuardadoRef = useRef<number | null>(null);
+  const reintentoGuardadoRef = useRef<(() => void) | null>(null);
+  const notificarGuardado = useCallback(
+    (estado: 'guardando' | 'guardado' | 'error', reintentar?: () => void) => {
+      if (timerGuardadoRef.current) {
+        window.clearTimeout(timerGuardadoRef.current);
+        timerGuardadoRef.current = null;
+      }
+      setEstadoGuardado(estado);
+      reintentoGuardadoRef.current = estado === 'error' ? reintentar ?? null : null;
+      if (estado === 'guardado') {
+        timerGuardadoRef.current = window.setTimeout(() => {
+          setEstadoGuardado('inactivo');
+        }, 3200);
+      }
+    },
+    [],
+  );
+  useEffect(() => {
+    return () => {
+      if (timerGuardadoRef.current) window.clearTimeout(timerGuardadoRef.current);
+    };
+  }, []);
 
   // Al abrir el proyecto se despliegan solas las tareas de primer nivel (las
   // subtareas no: cada rama parte colapsada).
@@ -253,8 +300,34 @@ function Nodos() {
 
   // Modo edicion: cada burbuja se deja donde se suelta y queda asi para todo
   // el equipo. Mientras se arrastra, `arrastre` lleva su posicion provisional;
-  // `historial` guarda como deshacer cada movimiento (boton o Ctrl+Z).
+  // `historial` y `futuro` permiten Deshacer (Ctrl+Z) y Rehacer (Ctrl+Y / Ctrl+Shift+Z).
   const [editando, setEditando] = useState(false);
+  const [nodoSeleccionadoId, setNodoSeleccionadoId] = useState<string | null>(null);
+  const [nodoPorEliminar, setNodoPorEliminar] = useState<NodoActividad | null>(null);
+  const [eliminandoNodo, setEliminandoNodo] = useState(false);
+  const [mostrarMinimapa, setMostrarMinimapa] = useState(true);
+  useEffect(() => {
+    try {
+      const guardado = window.localStorage.getItem(CLAVE_MINIMAPA);
+      if (guardado === 'si') setMostrarMinimapa(true);
+      else if (guardado === 'no') setMostrarMinimapa(false);
+      else setMostrarMinimapa(window.innerWidth >= 1024);
+    } catch {
+      /* almacenamiento bloqueado */
+    }
+  }, []);
+  const alternarMinimapa = useCallback(() => {
+    setMostrarMinimapa((v) => {
+      const siguiente = !v;
+      try {
+        window.localStorage.setItem(CLAVE_MINIMAPA, siguiente ? 'si' : 'no');
+      } catch {
+        /* ignorar */
+      }
+      return siguiente;
+    });
+  }, []);
+
   // Linea seleccionada en modo edicion: su panel deja elegir sus bordes.
   const [aristaSeleccionada, setAristaSeleccionada] = useState<string | null>(null);
   // Linea cuyo extremo se esta arrastrando: solo puede soltarse en sus mismos
@@ -265,7 +338,8 @@ function Nodos() {
   const ultimoPuntero = useRef<{ x: number; y: number } | null>(null);
   const instanciaMapa = useRef<ReactFlowInstance | null>(null);
   const [arrastre, setArrastre] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [historial, setHistorial] = useState<CambioPosiciones[]>([]);
+  const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
+  const [futuro, setFuturo] = useState<EntradaHistorial[]>([]);
 
   // Si entra a /nodos sin proyectoId, redirigir automáticamente a la tarea activa o su primer proyecto
   useEffect(() => {
@@ -321,7 +395,22 @@ function Nodos() {
     }
   }
 
-  const alHacerClicEnNodo: NodeMouseHandler = useCallback((_evento, nodo) => {
+  const alHacerClicEnNodo: NodeMouseHandler = useCallback(
+    (_evento, nodo) => {
+      if (nodo.id === RAIZ) {
+        if (editando) setNodoSeleccionadoId(null);
+        return;
+      }
+      if (editando) {
+        setNodoSeleccionadoId(nodo.id);
+        return;
+      }
+      setTareaSeleccionada(nodo.id);
+    },
+    [editando],
+  );
+
+  const alHacerDobleClicEnNodo: NodeMouseHandler = useCallback((_evento, nodo) => {
     if (nodo.id === RAIZ) return;
     setTareaSeleccionada(nodo.id);
   }, []);
@@ -338,12 +427,17 @@ function Nodos() {
 
   const cargar = useCallback(async () => {
     if (!proyectoId) return;
-    const d = await api.get<{ actividades: NodoActividad[]; derivaciones: Derivacion[] }>(
-      `/nodos?proyectoId=${proyectoId}`,
-    );
+    const [d, listaMiembros] = await Promise.all([
+      api.get<{ actividades: NodoActividad[]; derivaciones: Derivacion[] }>(
+        `/nodos?proyectoId=${proyectoId}`,
+      ),
+      api.get<MiembroProyecto[]>(`/proyectos/${proyectoId}/miembros`).catch(() => [] as MiembroProyecto[]),
+    ]);
     setActividades(d.actividades);
     setDerivaciones(d.derivaciones);
+    setMiembros(listaMiembros);
     setCargas((c) => c + 1);
+    setAviso(null);
 
     // Si hay una tarea en el parametro de la URL, seleccionarla y expandir su linaje
     if (tareaParam && tareaEnfocada.current !== tareaParam) {
@@ -369,9 +463,27 @@ function Nodos() {
   useEffect(() => {
     cargar().catch((err) => {
       if (err instanceof ErrorApi && err.estado === 401) router.replace('/login');
-      else setAviso('No se pudo conectar con el servidor.');
+      else setAviso(err instanceof ErrorApi ? err.message : 'No se pudo conectar con el servidor.');
     });
   }, [cargar, router]);
+
+  const contextoEquipo = useMemo(() => {
+    const mapa: Record<string, ContextoEquipoUsuario> = {};
+    for (const m of miembros) {
+      mapa[m.id] = { rol: m.rol, rolEnProyecto: m.rolEnProyecto, activas: 0, pendientes: 0, total: 0 };
+    }
+    for (const a of actividades) {
+      const uid = a.responsableId ?? a.responsable?.id;
+      if (!uid) continue;
+      if (!mapa[uid]) mapa[uid] = { activas: 0, pendientes: 0, total: 0 };
+      mapa[uid].total += 1;
+      if (a.estado === 'EN_PROGRESO') mapa[uid].activas += 1;
+      else if (a.estado === 'PENDIENTE' || a.estado === 'BLOQUEADA' || a.estado === 'INCONCLUSA') {
+        mapa[uid].pendientes += 1;
+      }
+    }
+    return mapa;
+  }, [miembros, actividades]);
 
   // Las monedas se marcan en la bolsa flotante (u otra ventana), que no pasa
   // por el panel: sin esto el porcentaje del nodo quedaba desfasado hasta
@@ -483,6 +595,8 @@ function Nodos() {
         expandido: expandidoRaiz,
         orientacion,
         editando,
+        esMapaClaro: esClaro,
+        contextoEquipo,
         onAlternar: alternarRaiz,
         onAgregarHija: (titulo: string) => agregarTarea(titulo),
         onAgregarParaAlguien: puedeAsignar ? agregarTareaPara : undefined,
@@ -518,6 +632,8 @@ function Nodos() {
         bloqueadaPorOrden: a.bloqueadaPorOrden,
         prerequisitoTitulo: a.prerequisitoTitulo,
         ordenEnRama: a.ordenEnRama,
+        esMapaClaro: esClaro,
+        seleccionadoEdicion: editando && nodoSeleccionadoId === a.id,
         retrasoEntrada: turnoEntrada(a.id, RETRASO_TAREA),
         onAlternar: () => alternarNodo(a.id),
         onAgregarHija: (titulo: string) => agregarTarea(titulo, a.id),
@@ -556,7 +672,8 @@ function Nodos() {
     return { nodos, aristas };
   }, [
     actividades, arbol, finales, nombreProyecto, expandidoRaiz, expandido, orientacion,
-    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando, entrada,
+    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando, entrada, esClaro,
+    contextoEquipo, nodoSeleccionadoId,
   ]);
 
   /** Ramas de cada tarea: al arrastrar un padre lo acompanan sus descendientes. */
@@ -649,28 +766,58 @@ function Nodos() {
   }, [aristas, nodosVisibles, orientacion, actividades, aristaSeleccionada]);
 
   /**
-   * Fija los bordes de la linea que llega a `destinoId` (o la vuelve
-   * automatica con `null`). Se ve al instante y se guarda para todo el
-   * equipo; si el servidor lo rechaza, el mapa vuelve a lo guardado.
+   * Persiste los bordes fijados de la linea que llega a `destinoId` con indicador
+   * de autoguardado en tiempo real.
    */
-  const guardarLados = useCallback(
-    (destinoId: string, lados: LadosFijados | null) => {
+  const persistirLados = useCallback(
+    (destinoId: string, orientacionObjetivo: Orientacion, lados: LadosFijados | null) => {
       const limpios = lados && (lados.salida || lados.entrada) ? lados : null;
       const anterior = actividades.find((a) => a.id === destinoId)?.ladosLinea ?? null;
       const conLadosLinea = (ladosLinea: NodoActividad['ladosLinea']) =>
         setActividades((prev) => prev.map((a) => (a.id === destinoId ? { ...a, ladosLinea } : a)));
       const actual = actividades.find((a) => a.id === destinoId);
-      if (actual) conLadosLinea(conLados(actual, orientacion, limpios));
-      api
-        .patch('/actividades/lados', { orientacion, cambios: [{ id: destinoId, lados: limpios }] })
+      if (actual) conLadosLinea(conLados(actual, orientacionObjetivo, limpios));
+      notificarGuardado('guardando');
+      return api
+        .patch('/actividades/lados', {
+          orientacion: orientacionObjetivo,
+          cambios: [{ id: destinoId, lados: limpios }],
+        })
+        .then(() => {
+          notificarGuardado('guardado');
+        })
         .catch((err) => {
-          // La linea vuelve a como estaba, y el mapa intenta ponerse al dia.
           conLadosLinea(anterior);
+          notificarGuardado('error', () => {
+            persistirLados(destinoId, orientacionObjetivo, limpios).catch(() => undefined);
+          });
           setAviso(err instanceof ErrorApi ? err.message : 'No se pudo guardar el borde de la línea.');
           cargar().catch(() => undefined);
+          throw err;
         });
     },
-    [actividades, orientacion, cargar],
+    [actividades, cargar, notificarGuardado],
+  );
+
+  const guardarLados = useCallback(
+    (destinoId: string, lados: LadosFijados | null) => {
+      const actuales = ladosGuardados(actividades.find((a) => a.id === destinoId), orientacion);
+      const antes: LadosFijados | null = actuales.salida || actuales.entrada ? actuales : null;
+      const despues = lados && (lados.salida || lados.entrada) ? lados : null;
+      const entradaHist: EntradaHistorial = {
+        tipo: 'lados',
+        orientacion,
+        destinoId,
+        antes,
+        despues,
+      };
+      setHistorial((h) => [...h.slice(-49), entradaHist]);
+      setFuturo([]);
+      persistirLados(destinoId, orientacion, despues).catch(() =>
+        setHistorial((h) => h.filter((x) => x !== entradaHist)),
+      );
+    },
+    [actividades, orientacion, persistirLados],
   );
 
   /**
@@ -731,9 +878,12 @@ function Nodos() {
     }
   }, []);
 
-  // Fuera del modo edicion, o al girar el arbol, no queda ninguna linea elegida.
+  // Fuera del modo edicion, o al girar el arbol, no queda ninguna linea ni nodo elegido.
   useEffect(() => {
-    if (!editando) setAristaSeleccionada(null);
+    if (!editando) {
+      setAristaSeleccionada(null);
+      setNodoSeleccionadoId(null);
+    }
   }, [editando]);
   useEffect(() => setAristaSeleccionada(null), [orientacion]);
 
@@ -756,65 +906,187 @@ function Nodos() {
             : a,
         ),
       );
-      return api.patch('/actividades/posiciones', cambio).catch((err) => {
-        setAviso(err instanceof ErrorApi ? err.message : 'No se pudo guardar la posición.');
-        cargar().catch(() => undefined);
-        throw err;
-      });
+      notificarGuardado('guardando');
+      return api
+        .patch('/actividades/posiciones', cambio)
+        .then(() => {
+          notificarGuardado('guardado');
+        })
+        .catch((err) => {
+          notificarGuardado('error', () => {
+            aplicarCambios(cambio).catch(() => undefined);
+          });
+          setAviso(err instanceof ErrorApi ? err.message : 'No se pudo guardar la posición.');
+          cargar().catch(() => undefined);
+          throw err;
+        });
     },
-    [cargar],
+    [cargar, notificarGuardado],
   );
 
-  /** Mueve nodos dejando anotado como volver atras. */
+  /** Mueve nodos dejando anotado como deshacer y rehacer. */
   const mover = useCallback(
     (cambios: CambioPosiciones['cambios']) => {
       const porId = new Map(actividades.map((a) => [a.id, a]));
-      const inverso: CambioPosiciones = {
+      const antes: CambioPosiciones = {
         orientacion,
         cambios: cambios.map((c) => ({
           id: c.id,
           posicion: posicionGuardada(porId.get(c.id)!, orientacion),
         })),
       };
-      setHistorial((h) => [...h.slice(-49), inverso]);
-      aplicarCambios({ orientacion, cambios }).catch(() =>
-        setHistorial((h) => h.filter((x) => x !== inverso)),
+      const despues: CambioPosiciones = { orientacion, cambios };
+      const entradaHist: EntradaHistorial = { tipo: 'posiciones', antes, despues };
+      setHistorial((h) => [...h.slice(-49), entradaHist]);
+      setFuturo([]);
+      return aplicarCambios(despues).catch(() =>
+        setHistorial((h) => h.filter((x) => x !== entradaHist)),
       );
     },
     [actividades, orientacion, aplicarCambios],
+  );
+
+  const ejecutarEntrada = useCallback(
+    (entradaHist: EntradaHistorial, direccion: 'deshacer' | 'rehacer') => {
+      if (entradaHist.tipo === 'posiciones') {
+        const cambio = direccion === 'deshacer' ? entradaHist.antes : entradaHist.despues;
+        return aplicarCambios(cambio);
+      }
+      const lados = direccion === 'deshacer' ? entradaHist.antes : entradaHist.despues;
+      return persistirLados(entradaHist.destinoId, entradaHist.orientacion, lados);
+    },
+    [aplicarCambios, persistirLados],
   );
 
   const deshacer = useCallback(() => {
     const ultimo = historial[historial.length - 1];
     if (!ultimo) return;
     setHistorial((h) => h.slice(0, -1));
-    aplicarCambios(ultimo).catch(() => undefined);
-  }, [historial, aplicarCambios]);
+    setFuturo((f) => [...f.slice(-49), ultimo]);
+    ejecutarEntrada(ultimo, 'deshacer').catch(() => undefined);
+  }, [historial, ejecutarEntrada]);
+
+  const rehacer = useCallback(() => {
+    const siguiente = futuro[futuro.length - 1];
+    if (!siguiente) return;
+    setFuturo((f) => f.slice(0, -1));
+    setHistorial((h) => [...h.slice(-49), siguiente]);
+    ejecutarEntrada(siguiente, 'rehacer').catch(() => undefined);
+  }, [futuro, ejecutarEntrada]);
+
+  const deshacerRef = useRef(deshacer);
+  deshacerRef.current = deshacer;
 
   /** Devuelve todos los nodos de esta orientacion al acomodo automatico. */
   const hayMovidos = actividades.some((a) => posicionGuardada(a, orientacion));
   function restablecer() {
     const movidos = actividades.filter((a) => posicionGuardada(a, orientacion));
-    if (movidos.length) mover(movidos.map((a) => ({ id: a.id, posicion: null })));
+    if (!movidos.length) return;
+    mover(movidos.map((a) => ({ id: a.id, posicion: null }))).then(() => {
+      toast({
+        tipo: 'info',
+        titulo: 'Posiciones restablecidas',
+        descripcion: 'Todos los nodos volvieron al acomodo automático.',
+        duracionMs: 7000,
+        accion: {
+          etiqueta: 'Deshacer',
+          alHacer: () => deshacerRef.current(),
+        },
+      });
+    });
   }
 
-  // Ctrl+Z (o Cmd+Z) deshace el ultimo movimiento mientras se edita, salvo que
-  // se este escribiendo en un campo.
+  const confirmarEliminarSeleccionado = useCallback(async () => {
+    if (!nodoPorEliminar || !puedeEliminarNodo) return;
+    setEliminandoNodo(true);
+    try {
+      await api.delete(`/actividades/${nodoPorEliminar.id}`);
+      const eliminado = nodoPorEliminar;
+      setNodoPorEliminar(null);
+      setNodoSeleccionadoId(null);
+      toast({
+        tipo: 'info',
+        titulo: 'Nodo eliminado',
+        descripcion: `Se eliminó «${eliminado.titulo}» y sus subtareas.`,
+      });
+      await cargar();
+    } catch (err) {
+      setAviso(err instanceof ErrorApi ? err.message : 'No se pudo eliminar el nodo.');
+      setNodoPorEliminar(null);
+    } finally {
+      setEliminandoNodo(false);
+    }
+  }, [nodoPorEliminar, puedeEliminarNodo, toast, cargar]);
+
+  // Atajos de teclado del mapa:
+  // Ctrl+Z / Ctrl+Y (o Ctrl+Shift+Z) en edicion; E (editar), F (encuadrar),
+  // M (minimapa), Supr/Delete (eliminar nodo seleccionado en edicion).
   useEffect(() => {
-    if (!editando) return;
     function alTeclear(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
       const objetivo = e.target as HTMLElement | null;
-      if (objetivo?.closest('input, textarea, [contenteditable="true"]')) return;
-      e.preventDefault();
-      deshacer();
+      if (objetivo?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (tareaSeleccionada || verDerivaciones || nodoPorEliminar) return;
+
+      const mod = e.ctrlKey || e.metaKey;
+      const keyLower = e.key.toLowerCase();
+
+      if (editando && mod && keyLower === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        deshacer();
+        return;
+      }
+      if (editando && ((mod && keyLower === 'y') || (mod && e.shiftKey && keyLower === 'z'))) {
+        e.preventDefault();
+        rehacer();
+        return;
+      }
+      if (mod || e.altKey) return;
+
+      if (keyLower === 'e' && puedeEditarMapa) {
+        e.preventDefault();
+        setEditando((v) => !v);
+        setArrastre(null);
+      } else if (keyLower === 'f') {
+        e.preventDefault();
+        instanciaMapa.current?.fitView({ ...ENCUADRE, duration: 250 });
+      } else if (keyLower === 'm') {
+        e.preventDefault();
+        alternarMinimapa();
+      } else if (
+        editando &&
+        puedeEliminarNodo &&
+        nodoSeleccionadoId &&
+        nodoSeleccionadoId !== RAIZ &&
+        (e.key === 'Delete' || e.key === 'Backspace')
+      ) {
+        const encontrado = actividades.find((a) => a.id === nodoSeleccionadoId);
+        if (encontrado) {
+          e.preventDefault();
+          setNodoPorEliminar(encontrado);
+        }
+      }
     }
     window.addEventListener('keydown', alTeclear);
     return () => window.removeEventListener('keydown', alTeclear);
-  }, [editando, deshacer]);
+  }, [
+    editando,
+    deshacer,
+    rehacer,
+    puedeEditarMapa,
+    puedeEliminarNodo,
+    nodoSeleccionadoId,
+    actividades,
+    alternarMinimapa,
+    tareaSeleccionada,
+    verDerivaciones,
+    nodoPorEliminar,
+  ]);
 
   // El historial es de este proyecto: no se arrastra a otro.
-  useEffect(() => setHistorial([]), [proyectoId]);
+  useEffect(() => {
+    setHistorial([]);
+    setFuturo([]);
+  }, [proyectoId]);
 
   /*
    * Medidas de cada burbuja segun React Flow. Como los nodos se rearman en cada
@@ -896,8 +1168,8 @@ function Nodos() {
           </p>
           <Link
             href="/panel"
-            style={{ backgroundColor: colorPrimario }}
-            className="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+            style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+            className="rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:brightness-110"
           >
             Ir a Proyectos
           </Link>
@@ -911,20 +1183,20 @@ function Nodos() {
       activo="/nodos"
       titulo="Mapa de nodos"
       subtitulo={`Tareas de "${nombreProyecto}"`}
-      permitirOcultarCabecera
+      controlesEnSidebar
       compacto
       acciones={
         <div className="flex items-center gap-2">
           {esTrabajador ? (
-            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-azul)]">
+            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-azul)]">
               Vista Colaborativa
             </span>
           ) : esSupervisor ? (
-            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-violeta)]">
+            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-violeta)]">
               Vista Supervisor
             </span>
           ) : (
-            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-ambar)]">
+            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-ambar)]">
               Vista Administrador
             </span>
           )}
@@ -932,29 +1204,89 @@ function Nodos() {
       }
     >
       {aviso && (
-        <p
+        <div
           role="alert"
-          className="mb-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-rojo)]"
+          className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-rojo)]"
         >
-          {aviso}
-        </p>
+          <span>{aviso}</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setAviso(null);
+                cargar().catch((err) =>
+                  setAviso(err instanceof ErrorApi ? err.message : 'No se pudo conectar con el servidor.'),
+                );
+              }}
+              className="rounded-lg border border-rose-500/30 bg-rose-500/15 px-2.5 py-1 text-xs font-semibold hover:bg-rose-500/25"
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => setAviso(null)}
+              aria-label="Descartar aviso"
+              className="text-xs font-bold opacity-70 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] backdrop-blur">
-        {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--tf-borde)] px-4 py-2">
-          <h2
-            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)]`}
-            title={nombreProyecto ?? undefined}
-          >
-            {nombreProyecto}
-          </h2>
+      <div className="flex flex-col gap-2.5">
+        {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre y alinea con el botón flotante */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
+          <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+            <h2
+              className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)]`}
+              title={nombreProyecto ?? undefined}
+            >
+              {nombreProyecto}
+            </h2>
+            {estadoGuardado === 'guardando' && (
+              <span
+                role="status"
+                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-2.5 py-1 text-[11px] font-medium text-[var(--tf-texto-tenue)]"
+              >
+                <Loader2 size={12} className="animate-spin text-[var(--tf-acento-azul)]" aria-hidden />
+                Guardando cambios…
+              </span>
+            )}
+            {estadoGuardado === 'guardado' && (
+              <span
+                role="status"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-verde)]"
+              >
+                <Check size={12} aria-hidden />
+                Guardado ✓
+              </span>
+            )}
+            {estadoGuardado === 'error' && (
+              <span
+                role="alert"
+                className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/35 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-rojo)]"
+              >
+                <AlertCircle size={12} aria-hidden />
+                Error al guardar
+                {reintentoGuardadoRef.current && (
+                  <button
+                    type="button"
+                    onClick={() => reintentoGuardadoRef.current?.()}
+                    className="ml-1 underline underline-offset-2 hover:opacity-80"
+                  >
+                    Reintentar
+                  </button>
+                )}
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {derivaciones.length > 0 && (
               <button
                 onClick={() => setVerDerivaciones(true)}
                 title="Traspasos de responsable, con su motivo y su fecha"
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)]"
+                className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
               >
                 <span aria-hidden>⇄</span>
                 Derivaciones
@@ -964,15 +1296,39 @@ function Nodos() {
               </button>
             )}
             <SelectorFondo valor={fondo} onCambiar={cambiarFondo} />
+            <button
+              type="button"
+              onClick={alternarMinimapa}
+              aria-pressed={mostrarMinimapa}
+              title="Mostrar u ocultar minimapa (M)"
+              className={`flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs transition ${
+                mostrarMinimapa
+                  ? 'border-sky-500/40 bg-sky-500/15 font-medium text-[var(--tf-acento-azul)]'
+                  : 'border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]'
+              }`}
+            >
+              <IconoMapa size={13} aria-hidden />
+              <span className="hidden sm:inline">Minimapa</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => instanciaMapa.current?.fitView({ ...ENCUADRE, duration: 250 })}
+              title="Encuadrar mapa en pantalla (F)"
+              aria-label="Encuadrar mapa en pantalla"
+              className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto-tenue)] transition hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]"
+            >
+              <Maximize2 size={13} aria-hidden />
+              <span className="hidden lg:inline">Encuadrar</span>
+            </button>
             {puedeEditarMapa && (
               <button
                 aria-pressed={editando}
                 onClick={alternarEdicion}
-                title="Arrastra las tareas y déjalas donde quieras"
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+                title="Arrastra las tareas y déjalas donde quieras (E)"
+                className={`flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition ${
                   editando
                     ? 'border-amber-500/50 bg-amber-500/20 font-semibold text-[var(--tf-acento-ambar)]'
-                    : 'border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
+                    : 'border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]'
                 }`}
               >
                 <span aria-hidden>✥</span>
@@ -982,25 +1338,37 @@ function Nodos() {
             {editando && (
               <>
                 <button
+                  type="button"
                   onClick={deshacer}
                   disabled={historial.length === 0}
-                  title="Deshacer el último movimiento (Ctrl+Z)"
-                  className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  title="Deshacer el último movimiento o borde (Ctrl+Z)"
+                  className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <span aria-hidden>↶</span>
+                  <Undo2 size={13} aria-hidden />
                   Deshacer
                 </button>
                 <button
+                  type="button"
+                  onClick={rehacer}
+                  disabled={futuro.length === 0}
+                  title="Rehacer el cambio deshecho (Ctrl+Y / Ctrl+Shift+Z)"
+                  className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Redo2 size={13} aria-hidden />
+                  Rehacer
+                </button>
+                <button
+                  type="button"
                   onClick={restablecer}
                   disabled={!hayMovidos}
                   title="Devolver todos los nodos al acomodo automático en esta orientación"
-                  className="rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-9 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Restablecer
                 </button>
               </>
             )}
-            <div className="flex rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-0.5" role="radiogroup">
+            <div className="flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5" role="radiogroup">
               {ORIENTACIONES.map((o) => (
                 <button
                   key={o.valor}
@@ -1008,7 +1376,7 @@ function Nodos() {
                   aria-checked={orientacion === o.valor}
                   title={o.titulo}
                   onClick={() => cambiarOrientacion(o.valor)}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition ${
                     orientacion === o.valor
                       ? 'bg-sky-500/20 font-semibold text-[var(--tf-acento-azul)]'
                       : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -1021,7 +1389,47 @@ function Nodos() {
             </div>
           </div>
         </div>
-        {lineaSeleccionada && (
+
+        {editando && nodoSeleccionadoId && (() => {
+          const sel = actividades.find((a) => a.id === nodoSeleccionadoId);
+          if (!sel) return null;
+          return (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs">
+              <span className="min-w-0 truncate text-[var(--tf-texto)]">
+                Nodo seleccionado: <strong className="text-[var(--tf-acento-ambar)]">«{sel.titulo}»</strong>
+                <span className="ml-2 hidden text-[11px] text-[var(--tf-texto-tenue)] sm:inline">
+                  Doble clic para abrir detalle
+                </span>
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTareaSeleccionada(sel.id)}
+                  className="rounded-lg border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] px-2.5 py-1 text-[11px] font-medium text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
+                >
+                  Abrir detalle
+                </button>
+                {puedeEliminarNodo && (
+                  <button
+                    type="button"
+                    onClick={() => setNodoPorEliminar(sel)}
+                    title="Eliminar nodo seleccionado (Supr)"
+                    className="inline-flex items-center gap-1 rounded-lg border border-rose-500/35 bg-rose-500/15 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/25"
+                  >
+                    <Trash2 size={12} aria-hidden />
+                    Eliminar (Supr)
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {cargas === 0 && !aviso ? (
+          <EsqueletoMapa />
+        ) : (
+        <section className="overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] backdrop-blur">
+          {lineaSeleccionada && (
           <div
             role="group"
             aria-label="Bordes de la línea seleccionada"
@@ -1030,44 +1438,38 @@ function Nodos() {
             <span className="min-w-0 truncate font-semibold text-[var(--tf-acento-ambar)]">
               Línea hacia «{actividades.find((a) => a.id === lineaSeleccionada.target)?.titulo}»
             </span>
-            <label className="flex items-center gap-1.5">
-              Sale por
-              <select
-                value={ladosLineaSeleccionada.salida ?? ''}
-                onChange={(e) =>
+            <span className="flex items-center gap-1.5">
+              <span>Sale por</span>
+              <Selector
+                ariaLabel="Sale por"
+                forma="compacto"
+                minAnchoMenu={145}
+                valor={ladosLineaSeleccionada.salida ?? ''}
+                onChange={(v) =>
                   guardarLados(lineaSeleccionada.target, {
                     ...ladosLineaSeleccionada,
-                    salida: (e.target.value || undefined) as LadoLinea | undefined,
+                    salida: (v || undefined) as LadoLinea | undefined,
                   })
                 }
-                className="rounded-md border border-[var(--tf-borde)] bg-[var(--tf-input)] px-1.5 py-1 text-xs text-[var(--tf-texto)] outline-none focus:border-amber-400"
-              >
-                {OPCIONES_LADO.map((o) => (
-                  <option key={o.valor} value={o.valor}>
-                    {o.texto}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-1.5">
-              Llega por
-              <select
-                value={ladosLineaSeleccionada.entrada ?? ''}
-                onChange={(e) =>
+                opciones={OPCIONES_LADO.map((o) => ({ valor: o.valor, etiqueta: o.texto }))}
+              />
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span>Llega por</span>
+              <Selector
+                ariaLabel="Llega por"
+                forma="compacto"
+                minAnchoMenu={145}
+                valor={ladosLineaSeleccionada.entrada ?? ''}
+                onChange={(v) =>
                   guardarLados(lineaSeleccionada.target, {
                     ...ladosLineaSeleccionada,
-                    entrada: (e.target.value || undefined) as LadoLinea | undefined,
+                    entrada: (v || undefined) as LadoLinea | undefined,
                   })
                 }
-                className="rounded-md border border-[var(--tf-borde)] bg-[var(--tf-input)] px-1.5 py-1 text-xs text-[var(--tf-texto)] outline-none focus:border-amber-400"
-              >
-                {OPCIONES_LADO.map((o) => (
-                  <option key={o.valor} value={o.valor}>
-                    {o.texto}
-                  </option>
-                ))}
-              </select>
-            </label>
+                opciones={OPCIONES_LADO.map((o) => ({ valor: o.valor, etiqueta: o.texto }))}
+              />
+            </span>
             <button
               onClick={() => guardarLados(lineaSeleccionada.target, null)}
               disabled={!ladosLineaSeleccionada.salida && !ladosLineaSeleccionada.entrada}
@@ -1082,7 +1484,7 @@ function Nodos() {
           </div>
         )}
         <CajaMapa
-          className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
+          className={`tf-mapa relative ${esClaro ? 'tf-mapa-claro' : ''} ${raizEnfocada ? 'raiz-enfocada' : ''}`}
           style={estiloFondoMapa(fondo)}
         >
           <DecoracionFondo fondo={fondo} />
@@ -1122,14 +1524,23 @@ function Nodos() {
               reconectando.current = null;
               setRecibiendoExtremo(false);
             }}
-            // Mientras se arrastra el extremo de una linea, solo valen sus mismos nodos.
+            // Mientras se arrastra el extremo de una linea, solo valen sus mismos nodos,
+            // rechazando autoconexiones y dependencias circulares.
             isValidConnection={(c) => {
               const r = reconectando.current;
-              return !r || (c.source === r.source && c.target === r.target);
+              if (r) return c.source === r.source && c.target === r.target;
+              if (!c.source || !c.target || c.source === c.target) return false;
+              if (c.source === RAIZ) return true;
+              return validarCambioPadre(c.target, c.source, actividades).valido;
             }}
             nodeTypes={TIPOS_NODO}
             edgeTypes={TIPOS_ARISTA}
             onNodeClick={alHacerClicEnNodo}
+            onNodeDoubleClick={alHacerDobleClicEnNodo}
+            onPaneClick={() => {
+              setNodoSeleccionadoId(null);
+              setAristaSeleccionada(null);
+            }}
             nodesDraggable={editando}
             onNodeDrag={alArrastrar}
             onNodeDragStop={alSoltar}
@@ -1137,26 +1548,64 @@ function Nodos() {
             fitViewOptions={ENCUADRE}
             proOptions={{ hideAttribution: true }}
             ariaLabelConfig={TEXTOS_ACCESIBLES}
-            colorMode="dark"
+            colorMode={esClaro ? 'light' : 'dark'}
           >
             <AjustarVista
               clave={`${proyectoId}-${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}
             />
             <PuntosFondo fondo={fondo} />
             <Controls showInteractive={false} />
+            {mostrarMinimapa && (
+              <MiniMap
+                pannable
+                zoomable
+                nodeBorderRadius={6}
+                maskColor={esClaro ? 'rgba(241, 245, 249, 0.7)' : 'rgba(4, 8, 20, 0.72)'}
+                nodeColor={(n) => {
+                  if (n.id === RAIZ) return colorPrimario;
+                  const act = actividades.find((a) => a.id === n.id);
+                  const est = estadoDeActividad(act?.bloqueadaPorOrden ? 'BLOQUEADA' : (act?.estado ?? 'PENDIENTE'));
+                  return esClaro ? est.colorClaro : est.color;
+                }}
+              />
+            )}
           </ReactFlow>
         </CajaMapa>
-      </section>
+        </section>
+        )}
+      </div>
 
       {/* Detalle de la tarea elegida, en una ventana emergente sobre el mapa. */}
       {tareaSeleccionada && (
         <PanelTarea
           key={tareaSeleccionada}
           actividadId={tareaSeleccionada}
+          actividadesProyecto={actividades}
+          contextoEquipo={contextoEquipo}
+          onEstadoGuardado={notificarGuardado}
           onCerrar={() => setTareaSeleccionada(null)}
           onCambio={cargar}
         />
       )}
+
+      <ModalConfirmacion
+        abierto={nodoPorEliminar !== null}
+        titulo="Eliminar nodo y subtareas"
+        descripcion={
+          nodoPorEliminar
+            ? `¿Seguro que deseas eliminar «${nodoPorEliminar.titulo}»?`
+            : ''
+        }
+        detalles={[
+          'Se eliminará este nodo junto con todas sus subtareas dependientes.',
+          'Cualquier cronómetro activo en estas tareas se cerrará.',
+          'Esta acción no se puede deshacer.',
+        ]}
+        etiquetaConfirmar="Sí, eliminar nodo"
+        ocupado={eliminandoNodo}
+        onConfirmar={confirmarEliminarSeleccionado}
+        onCancelar={() => setNodoPorEliminar(null)}
+      />
 
       {verDerivaciones && (
         <Modal titulo="Derivaciones" onCerrar={() => setVerDerivaciones(false)}>
@@ -1174,8 +1623,11 @@ function Nodos() {
                     {d.deUsuario.nombreCompleto} → {d.aUsuario.nombreCompleto}
                   </p>
                   <p className="mt-1.5 rounded-lg bg-[var(--tf-hover)] px-2 py-1 text-[11px] text-[var(--tf-texto)]">{d.motivo}</p>
-                  <p className="mt-1 text-[10px] text-[var(--tf-texto-suave)]">
-                    {new Date(d.ocurridoEn).toLocaleDateString('es-CL')}
+                  <p
+                    title={new Date(d.ocurridoEn).toLocaleString('es-CL')}
+                    className="mt-1 text-[10px] text-[var(--tf-texto-suave)]"
+                  >
+                    {tiempoRelativo(d.ocurridoEn)}
                   </p>
                 </div>
               ))}

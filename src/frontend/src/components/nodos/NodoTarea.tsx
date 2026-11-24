@@ -2,30 +2,28 @@
 
 import { useState } from 'react';
 import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
-import { Lock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Circle, Lock, PlayCircle, XCircle } from 'lucide-react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
+import { estadoDeActividad } from '@/lib/formato';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 
-/**
- * Fase de la tarea, con colores tipo semaforo: gris sin empezar, naranjo en
- * progreso, verde completada. Los estados especiales muestran su nombre:
- * inconclusa en naranjo (hubo trabajo), bloqueada en rojo y cancelada en gris.
- * `rgb` tine el degradado, el borde, la sombra y el texto de la fase; `color`,
- * el punto, el porcentaje y la barra.
- */
-const FASES: Record<string, { texto: string; rgb: string; color: string }> = {
-  PENDIENTE: { texto: 'Sin empezar', rgb: '148,163,184', color: '#64748b' },
-  EN_PROGRESO: { texto: 'En progreso', rgb: '245,158,11', color: '#f59e0b' },
-  INCONCLUSA: { texto: 'Inconclusa', rgb: '245,158,11', color: '#f59e0b' },
-  COMPLETADA: { texto: 'Completada', rgb: '16,185,129', color: '#10b981' },
-  BLOQUEADA: { texto: 'Bloqueada', rgb: '244,63,94', color: '#f43f5e' },
-  CANCELADA: { texto: 'Cancelada', rgb: '148,163,184', color: '#64748b' },
-};
-
-export function faseDeTarea(estado: string) {
-  return FASES[estado] ?? FASES.PENDIENTE;
+function IconoEstado({ estado }: { estado: string }) {
+  switch (estado) {
+    case 'COMPLETADA':
+      return <CheckCircle2 size={10} aria-hidden className="shrink-0" />;
+    case 'EN_PROGRESO':
+      return <PlayCircle size={10} aria-hidden className="shrink-0" />;
+    case 'BLOQUEADA':
+      return <Lock size={10} aria-hidden className="shrink-0" />;
+    case 'INCONCLUSA':
+      return <AlertCircle size={10} aria-hidden className="shrink-0" />;
+    case 'CANCELADA':
+      return <XCircle size={10} aria-hidden className="shrink-0" />;
+    default:
+      return <Circle size={10} aria-hidden className="shrink-0" />;
+  }
 }
 
 export interface DatosNodoTarea {
@@ -51,6 +49,8 @@ export interface DatosNodoTarea {
   bloqueadaPorOrden?: boolean;
   prerequisitoTitulo?: string | null;
   ordenEnRama?: number | null;
+  esMapaClaro?: boolean;
+  seleccionadoEdicion?: boolean;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -69,7 +69,8 @@ export default function NodoTarea({ id, data }: NodeProps) {
   // terminar, React Flow vuelve a medir sus manillas.
   const actualizarManillas = useUpdateNodeInternals();
   const disposicion = disposicionNodo(d.orientacion);
-  const fase = d.bloqueadaPorOrden ? FASES.BLOQUEADA : faseDeTarea(d.estado);
+  const estadoEfectivo = d.bloqueadaPorOrden ? 'BLOQUEADA' : d.estado;
+  const fase = estadoDeActividad(estadoEfectivo);
   const porcentaje = porcentajeLlenado(d.llenado ?? 0);
   const entrando = d.retrasoEntrada !== undefined;
   const [agregando, setAgregando] = useState(false);
@@ -101,7 +102,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
       <div
         className={`tf-tarea relative flex h-full w-full items-center gap-2 overflow-hidden rounded-xl pb-[3px] pl-2 pr-3 ${
           d.bloqueadaPorOrden ? 'opacity-80' : ''
-        }`}
+        } ${d.seleccionadoEdicion ? 'ring-2 ring-amber-400/85 ring-offset-1 ring-offset-transparent' : ''}`}
         style={{ '--c': fase.rgb } as React.CSSProperties}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
@@ -114,7 +115,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
             }
           >
             {d.ordenEnRama && (
-              <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[9px] font-bold text-slate-300">
+              <span className="tf-nodo-orden shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[9px] font-bold text-slate-300">
                 #{d.ordenEnRama}
               </span>
             )}
@@ -122,10 +123,18 @@ export default function NodoTarea({ id, data }: NodeProps) {
               <Lock
                 size={12}
                 aria-hidden
-                className={`shrink-0 ${d.bloqueadaPorOrden ? 'text-rose-400' : 'text-amber-400'}`}
+                className={`shrink-0 ${
+                  d.bloqueadaPorOrden
+                    ? d.esMapaClaro
+                      ? 'text-rose-600'
+                      : 'text-rose-400'
+                    : d.esMapaClaro
+                      ? 'text-amber-600'
+                      : 'text-amber-400'
+                }`}
               />
             )}
-            <span className="truncate text-xs font-bold text-white">{d.titulo}</span>
+            <span className="tf-nodo-titulo truncate text-xs font-bold text-white">{d.titulo}</span>
           </div>
 
           <div className="flex min-w-0 items-center justify-between gap-1.5 text-[10px]">
@@ -133,8 +142,8 @@ export default function NodoTarea({ id, data }: NodeProps) {
               <span
                 className={`min-w-0 truncate rounded-[5px] border px-[7px] py-0.5 font-bold ${
                   d.esMiTarea
-                    ? 'border-sky-300/40 bg-sky-400/30 text-sky-200'
-                    : 'border-white/10 bg-slate-800/80 text-slate-300'
+                    ? 'tf-nodo-resp-mio border-sky-300/40 bg-sky-400/30 text-sky-200'
+                    : 'tf-nodo-resp border-white/10 bg-slate-800/80 text-slate-300'
                 }`}
                 title={d.responsableNombre}
               >
@@ -143,12 +152,16 @@ export default function NodoTarea({ id, data }: NodeProps) {
             ) : (
               <span />
             )}
-            <span className="shrink-0 font-semibold" style={{ color: `rgb(${fase.rgb})` }}>
+            <span
+              className="inline-flex shrink-0 items-center gap-1 font-semibold"
+              style={{ color: d.esMapaClaro ? fase.colorClaro : `rgb(${fase.rgb})` }}
+            >
+              <IconoEstado estado={estadoEfectivo} />
               {fase.texto}
             </span>
             <span
               className="shrink-0 font-extrabold tabular-nums"
-              style={{ color: fase.color }}
+              style={{ color: d.esMapaClaro ? fase.colorClaro : fase.color }}
               title={`Avance ${porcentaje}%`}
             >
               {porcentaje}%
@@ -157,10 +170,10 @@ export default function NodoTarea({ id, data }: NodeProps) {
         </div>
 
         {/* Barra de avance pegada al borde inferior: no ocupa fila propia. */}
-        <span className="absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-white/[.08]">
+        <span className="tf-nodo-barra-base absolute inset-x-0 bottom-0 h-[3px] overflow-hidden bg-white/[.08]">
           <span
             className="block h-full transition-[width] duration-300 motion-reduce:transition-none"
-            style={{ width: `${porcentaje}%`, background: fase.color }}
+            style={{ width: `${porcentaje}%`, background: d.esMapaClaro ? fase.colorClaro : fase.color }}
           />
         </span>
       </div>
@@ -172,7 +185,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
             d.onAlternar();
           }}
           title={d.expandido ? 'Contraer' : 'Desplegar'}
-          className={`absolute ${disposicion.claseBoton} grid h-5 w-5 place-items-center rounded-full bg-slate-800 text-white ring-1 ring-white/25 hover:bg-slate-700`}
+          className={`tf-nodo-btn absolute ${disposicion.claseBoton} grid h-5 w-5 place-items-center rounded-full bg-slate-800 text-white ring-1 ring-white/25 hover:bg-slate-700`}
         >
           <svg
             viewBox="0 0 24 24"
@@ -201,7 +214,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
           }}
           onBlur={confirmar}
           placeholder="Nueva tarea…"
-          className="nodrag absolute left-1/2 top-full z-10 mt-2 w-44 -translate-x-1/2 rounded-lg border border-white/20 bg-slate-900 px-2.5 py-1.5 text-[11px] text-white shadow-xl outline-none"
+          className="tf-nodo-input nodrag absolute left-1/2 top-full z-10 mt-2 w-44 -translate-x-1/2 rounded-lg border border-white/20 bg-slate-900 px-2.5 py-1.5 text-[11px] text-white shadow-xl outline-none"
         />
       ) : (
         d.onAgregarHija &&
@@ -212,7 +225,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
               setAgregando(true);
             }}
             title="Agregar tarea hija"
-            className="absolute -right-1.5 -top-1.5 hidden h-5 w-5 place-items-center rounded-full bg-slate-800 text-[11px] leading-none text-white ring-1 ring-white/20 hover:bg-slate-700 group-hover:grid"
+            className="tf-nodo-btn absolute -right-1.5 -top-1.5 hidden h-5 w-5 place-items-center rounded-full bg-slate-800 text-[11px] leading-none text-white ring-1 ring-white/20 hover:bg-slate-700 group-hover:grid"
           >
             +
           </button>

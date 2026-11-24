@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="oscuro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeFlow · Explorador 3D de Proyectos y Sidebar Colapsable</title>
+  <style>
+    :root {
+      --primario: #0ea5e9;
+      --primario-2: #06b6d4;
+      --primario-rgb: 14, 165, 233;
+      --texto-primario: #ffffff;
+      --fondo: #040814;
+      --sidebar: rgba(8, 13, 28, 0.90);
+      --superficie: rgba(15, 23, 42, 0.72);
+      --superficie-solida: #0f172a;
+      --superficie-2: rgba(24, 36, 62, 0.85);
+      --texto: #f8fafc;
+      --texto-tenue: #94a3b8;
+      --texto-suave: #64748b;
+      --borde: rgba(255, 255, 255, 0.09);
+      --borde-fuerte: rgba(255, 255, 255, 0.17);
+      --hover: rgba(255, 255, 255, 0.06);
+      --sombra: 0 24px 60px -24px rgba(0, 0, 0, 0.78);
+      --acento-verde: #6ee7b7;
+      --espacio-bg: radial-gradient(circle at 28% 35%, rgba(var(--primario-rgb), 0.16), transparent 52%),
+                    radial-gradient(circle at 76% 72%, rgba(56, 189, 248, 0.10), transparent 55%),
+                    #050914;
+    }
+
+    html[data-tema="claro"] {
+      --fondo: #eef5fc;
+      --sidebar: rgba(255, 255, 255, 0.92);
+      --superficie: rgba(255, 255, 255, 0.86);
+      --superficie-solida: #ffffff;
+      --superficie-2: rgba(241, 246, 254, 0.96);
+      --texto: #0f172a;
+      --texto-tenue: #475569;
+      --texto-suave: #64748b;
+      --borde: rgba(15, 23, 42, 0.09);
+      --borde-fuerte: rgba(15, 23, 42, 0.16);
+      --hover: rgba(15, 23, 42, 0.05);
+      --sombra: 0 20px 50px -22px rgba(15, 23, 42, 0.16);
+      --acento-verde: #047857;
+      --espacio-bg: radial-gradient(circle at 26% 32%, rgba(var(--primario-rgb), 0.13), transparent 55%),
+                    radial-gradient(circle at 78% 72%, rgba(16, 185, 129, 0.09), transparent 55%),
+                    #f2f7fd;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--fondo);
+      color: var(--texto);
+      height: 100vh;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+      transition: background-color 240ms ease;
+    }
+
+    /* ---------------- Sidebar izquierdo (Preview exacto de /panel y /nodos) ---------------- */
+    .sidebar {
+      width: 248px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 16px;
+      background: var(--sidebar);
+      border-right: 1px solid var(--borde);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      z-index: 30;
+      transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+                  padding 260ms cubic-bezier(0.22, 1, 0.36, 1),
+                  opacity 200ms ease,
+                  border-color 200ms ease;
+      overflow: visible;
+    }
+
+    .sidebar.colapsado {
+      width: 0;
+      padding: 0;
+      opacity: 0;
+      border-right-color: transparent;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .sb-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 6px 16px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--borde);
+    }
+
+    .sb-brand-title { font-size: 15px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; }
+    .sb-brand-sub { font-size: 11px; color: var(--texto-tenue); }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--texto-tenue);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: background-color 160ms, color 160ms;
+    }
+    .btn-icon:hover { background: var(--hover); color: var(--texto); }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      font-size: 13.5px;
+      color: var(--texto-tenue);
+      cursor: pointer;
+      transition: all 180ms ease;
+      background: transparent;
+      text-align: left;
+      width: 100%;
+    }
+    .nav-item:hover { background: var(--hover); color: var(--texto); transform: translateX(2px); }
+    .nav-item.activo {
+      color: var(--texto);
+      font-weight: 600;
+      background: linear-gradient(90deg, rgba(var(--primario-rgb), 0.16), rgba(var(--primario-rgb), 0.03));
+      border-color: rgba(var(--primario-rgb), 0.28);
+    }
+    .nav-item.activo::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 8px;
+      bottom: 8px;
+      width: 3px;
+      border-radius: 99px;
+      background: var(--primario);
+      box-shadow: 0 0 10px var(--primario);
+    }
+    .nav-item.activo svg { color: var(--primario); }
+
+    /* Pie del sidebar: controles compactos */
+    .sb-footer {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sb-controls-box {
+      border-top: 1px solid var(--borde);
+      padding-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .jornada-card {
+      width: 100%;
+      border: 1.5px solid var(--borde-fuerte);
+      background: var(--superficie-solida);
+      border-radius: 16px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 220ms, background-color 220ms, box-shadow 220ms;
+    }
+    .jornada-card[data-on="true"] {
+      border-color: rgba(16, 185, 129, 0.52);
+      background: rgba(16, 185, 129, 0.12);
+      box-shadow: 0 6px 18px -6px rgba(16, 185, 129, 0.30);
+    }
+    html[data-tema="claro"] .jornada-card[data-on="true"] {
+      background: #ecfdf5;
+    }
+
+    .jornada-top { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+    .jornada-bottom { display: flex; align-items: center; justify-content: space-between; }
+    .jornada-sub { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--texto-suave); }
+
+    .dot-vivo {
+      width: 9px;
+      height: 9px;
+      border-radius: 99px;
+      background: #94a3b8;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .dot-vivo.on { background: #10b981; }
+    .dot-vivo.on::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 99px;
+      background: rgba(16, 185, 129, 0.45);
+      animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    @keyframes ping { 75%, 100% { transform: scale(1.9); opacity: 0; } }
+
+    .switch-pista {
+      position: relative;
+      width: 64px;
+      height: 28px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, #475569, #334155);
+      transition: background 260ms ease;
+    }
+    .jornada-card[data-on="true"] .switch-pista {
+      background: linear-gradient(135deg, #059669, #10b981);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.45);
+    }
+    .switch-txt {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #fff;
+      transition: opacity 180ms;
+    }
+    .switch-txt.on { left: 9px; opacity: 0; }
+    .switch-txt.off { right: 8px; opacity: 1; }
+    .jornada-card[data-on="true"] .switch-txt.on { opacity: 1; }
+    .jornada-card[data-on="true"] .switch-txt.off { opacity: 0; }
+    .switch-perilla {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 99px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+      transition: transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .jornada-card[data-on="true"] .switch-perilla { transform: translateX(36px); }
+
+    .sb-user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      position: relative;
+    }
+    .sb-user-left { display: flex; align-items: center; gap: 8px; }
+
+    .bell-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 99px;
+      border: 1px solid var(--borde);
+      background: transparent;
+      color: var(--texto-tenue);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      position: relative;
+      transition: background 150ms, color 150ms;
+    }
+    .bell-btn:hover { background: var(--hover); color: var(--texto); }
+    .bell-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 99px;
+      background: #f43f5e;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      padding: 0 4px;
+    }
+
+    .notif-popover {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 0;
+      width: 292px;
+      border-radius: 16px;
+      border: 1px solid var(--borde-fuerte);
+      background: var(--superficie-solida);
+      box-shadow: var(--sombra);
+      z-index: 60;
+      overflow: hidden;
+      display: none;
+    }
+    .notif-popover.abierto { display: block; animation: popIn 180ms ease-out; }
+    @keyframes popIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .avatar-pill {
+      width: 36px;
+      height: 36px;
+      border-radius: 99px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(var(--primario-rgb), 0.18);
+      color: var(--primario);
+      border: 1px solid rgba(var(--primario-rgb), 0.35);
+    }
+
+    .role-badge {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 99px;
+      background: rgba(245, 158, 11, 0.14);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #f59e0b;
+      white-space: nowrap;
+    }
+    html[data-tema="claro"] .role-badge { color: #b45309; }
+
+    .sb-account-links {
+      border-top: 1px solid var(--borde);
+      padding-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* ---------------- Botón flotante al colapsar sidebar ---------------- */
+    .floating-expand {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 50;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 11px;
+      border-radius: 99px;
+      border: 1px solid var(--borde-fuerte);
+      background: var(--superficie-solida);
+      color: var(--texto-tenue);
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(12px);
+      cursor: pointer;
+      transition: transform 160ms, border-color 160ms, color 160ms;
+    }
+    .floating-expand.visible { display: inline-flex; }
+    .floating-expand:hover { border-color: var(--primario); color: var(--texto); transform: translateY(-1px); }
+
+    /* ---------------- Área principal: Toolbar + Escenario 3D ---------------- */
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 16px;
+      gap: 12px;
+      position: relative;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      transition: padding-left 240ms cubic-bezier(0.22, 1, 0.36, 1);
+      z-index: 20;
+    }
+    .toolbar.con-sangria { padding-left: 106px; }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-box {
+      position: relative;
+      width: 210px;
+    }
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px 8px 32px;
+      border-radius: 12px;
+      border: 1px solid var(--borde);
+      background: var(--superficie);
+      color: var(--texto);
+      font-size: 12px;
+      outline: none;
+      transition: border-color 160ms;
+    }
+    .search-box input:focus { border-color: var(--primario); }
+    .search-box svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--texto-suave);
+      pointer-events: none;
+    }
+
+    .segmented {
+      display: inline-flex;
+      padding: 3px;
+      border-radius: 12px;
+      border: 1px solid var(--borde);
+      background: var(--superficie);
+      gap: 2px;
+    }
+    .segmented button {
+      border: 0;
+      background: transparent;
+      color: var(--texto-tenue);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 11px;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 150ms ease;
+      white-space: nowrap;
+    }
+    .segmented button:hover { color: var(--texto); }
+    .segmented button.activo {
+      background: var(--hover);
+      color: var(--texto);
+      font-weight: 600;
+    }
+    .segmented.marca button.activo {
+      background: var(--primario);
+      color: var(--texto-primario);
+      font-weight: 600;
+      box-shadow: 0 4px 12px -4px rgba(var(--primario-rgb), 0.55);
+    }
+
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid var(--borde);
+      background: var(--superficie);
+      font-size: 11px;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 99px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 150ms, border-color 150ms;
+    }
+    .swatch:hover { transform: scale(1.14); }
+    .swatch.activo { border-color: var(--texto); transform: scale(1.12); }
+
+    .wcag-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: var(--primario);
+      color: var(--texto-primario);
+      letter-spacing: 0.02em;
+    }
+
+    /* ---------------- Escenario 3D ---------------- */
+    .stage {
+      position: relative;
+      flex: 1;
+      min-height: 440px;
+      border-radius: 22px;
+      border: 1px solid var(--borde-fuerte);
+      background: var(--espacio-bg);
+      overflow: hidden;
+      box-shadow: var(--sombra);
+      user-select: none;
+    }
+
+    #canvas3d {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .cards-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Núcleo central 3D HTML interactivo */
+    .core-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      z-index: 40;
+    }
+    .core-orb {
+      width: 78px;
+      height: 78px;
+      border-radius: 99px;
+      display: grid;
+      place-items: center;
+      position: relative;
+      background: radial-gradient(circle at 32% 28%, rgba(255,255,255,0.65), var(--primario) 42%, var(--primario-2) 100%);
+      box-shadow: 0 0 42px rgba(var(--primario-rgb), 0.55), inset 0 -10px 18px rgba(0,0,0,0.32);
+      color: var(--texto-primario);
+      transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms;
+    }
+    .core-orb::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border-radius: 99px;
+      border: 1.5px dashed rgba(var(--primario-rgb), 0.45);
+      animation: spin 18s linear infinite;
+    }
+    .core-node:hover .core-orb { transform: scale(1.09); box-shadow: 0 0 56px rgba(var(--primario-rgb), 0.78); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .core-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: var(--superficie-solida);
+      border: 1px solid var(--borde-fuerte);
+      color: var(--texto);
+      box-shadow: 0 8px 20px -8px rgba(0,0,0,0.4);
+    }
+
+    /* Contenedor común de cada proyecto proyectado en 3D */
+    .node-3d {
+      position: absolute;
+      left: 0;
+      top: 0;
+      pointer-events: auto;
+      cursor: pointer;
+      will-change: transform, opacity, filter;
+      transition: filter 160ms ease;
+    }
+    .node-3d.atenuado { opacity: 0.22 !important; filter: saturate(0.2) blur(1px) !important; }
+
+    /* Cajón de acciones al enfocar cualquier estilo de tarjeta */
+    .node-actions {
+      margin-top: 6px;
+      display: flex;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(var(--primario-rgb), 0.45);
+      background: var(--superficie-solida);
+      box-shadow: 0 14px 30px -10px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      transform: translateY(-4px) scale(0.96);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .node-3d:hover .node-actions,
+    .node-3d.fijado .node-actions {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .node-actions button {
+      flex: 1;
+      border: 0;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .act-primary {
+      background: linear-gradient(90deg, var(--primario), var(--primario-2));
+      color: var(--texto-primario);
+    }
+    .act-secondary {
+      background: transparent;
+      color: var(--texto);
+    }
+    .act-secondary:hover { background: var(--hover); }
+
+    /* -------- ESTILO 1: Cápsula Glass Suave -------- */
+    .card-capsula {
+      width: 224px;
+      padding: 12px 14px;
+      border-radius: 22px;
+      background: var(--superficie);
+      border: 1px solid var(--borde-fuerte);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: var(--sombra), inset 0 1px 0 rgba(255,255,255,0.14);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 180ms, transform 180ms;
+    }
+    .node-3d:hover .card-capsula { border-color: rgba(var(--primario-rgb), 0.65); }
+
+    /* -------- ESTILO 2: Orbe / Planeta Interactivo -------- */
+    .card-orbe {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 170px;
+    }
+    .orbe-esfera {
+      width: 76px;
+      height: 76px;
+      border-radius: 99px;
+      position: relative;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 30% 28%, rgba(255,255,255,0.75), rgba(var(--orb-rgb), 0.92) 48%, rgba(15,23,42,0.75) 100%);
+      box-shadow: 0 16px 32px -12px rgba(var(--orb-rgb), 0.65), inset 0 2px 6px rgba(255,255,255,0.45);
+      transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .node-3d:hover .orbe-esfera { transform: scale(1.1); }
+    .orbe-etiqueta {
+      padding: 6px 12px;
+      border-radius: 14px;
+      background: var(--superficie-solida);
+      border: 1px solid var(--borde-fuerte);
+      text-align: center;
+      box-shadow: var(--sombra);
+      max-width: 170px;
+    }
+
+    /* -------- ESTILO 3: Tarjeta Editorial Minimal -------- */
+    .card-editorial {
+      width: 220px;
+      padding: 13px 15px;
+      border-radius: 16px;
+      background: var(--superficie-solida);
+      border: 1px solid var(--borde-fuerte);
+      box-shadow: var(--sombra);
+      transition: border-color 180ms, box-shadow 180ms;
+    }
+    .node-3d:hover .card-editorial {
+      border-color: var(--primario);
+      box-shadow: 0 20px 44px -18px rgba(var(--primario-rgb), 0.45);
+    }
+    .mini-segs { display: flex; gap: 3px; margin-top: 8px; }
+    .mini-seg { flex: 1; height: 5px; border-radius: 99px; background: var(--borde); }
+    .mini-seg.ok { background: linear-gradient(90deg, var(--primario), var(--primario-2)); }
+
+    /* -------- ESTILO 4: Nodo Prisma Flotante -------- */
+    .card-prisma-wrap {
+      width: 222px;
+      padding: 1.5px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(var(--primario-rgb), 0.72), rgba(255,255,255,0.12) 48%, rgba(var(--primario-rgb), 0.45));
+      box-shadow: 0 20px 45px -20px rgba(var(--primario-rgb), 0.55);
+    }
+    .card-prisma {
+      border-radius: 18.5px;
+      padding: 12px 14px;
+      background: linear-gradient(155deg, var(--superficie-2), var(--superficie-solida));
+      backdrop-filter: blur(18px);
+    }
+
+    .av-stack { display: flex; }
+    .av-mini {
+      width: 20px;
+      height: 20px;
+      border-radius: 99px;
+      border: 2px solid var(--superficie-solida);
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #fff;
+      display: grid;
+      place-items: center;
+      margin-left: -6px;
+    }
+    .av-mini:first-child { margin-left: 0; }
+
+    .stage-hud {
+      position: absolute;
+      bottom: 14px;
+      right: 16px;
+      z-index: 35;
+      padding: 7px 12px;
+      border-radius: 99px;
+      border: 1px solid var(--borde);
+      background: var(--superficie);
+      backdrop-filter: blur(12px);
+      font-size: 11px;
+      color: var(--texto-tenue);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      background: var(--superficie-solida);
+      border: 1px solid var(--primario);
+      color: var(--texto);
+      padding: 9px 16px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: var(--sombra);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 220ms ease;
+      z-index: 90;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Botón flotante discreto cuando el sidebar está replegado -->
+    <button id="btnExpandir" class="floating-expand" title="Mostrar barra lateral · En jornada activa" aria-label="Mostrar barra lateral">
+      <svg width="20" height="20" viewBox="31 28 145 145" fill="none" aria-hidden="true">
+        <path d="M108 112 L66 62" stroke="#34d399" stroke-width="13" stroke-linecap="round" opacity="0.9"/>
+        <path d="M108 112 L146 74" stroke="#fb923c" stroke-width="13" stroke-linecap="round" opacity="0.9"/>
+        <path d="M108 112 L62 146" stroke="#a855f7" stroke-width="13" stroke-linecap="round" opacity="0.9"/>
+        <circle cx="66" cy="62" r="27" fill="#34d399"/>
+        <circle cx="146" cy="74" r="22" fill="#fb923c"/>
+        <circle cx="62" cy="146" r="22" fill="#a855f7"/>
+        <circle cx="108" cy="112" r="32" fill="#38bdf8"/>
+      </svg>
+      <span id="dotFlotante" class="dot-vivo on"></span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 17 5-5-5-5M13 17l5-5-5-5"/></svg>
+    </button>
+
+    <!-- Sidebar izquierdo con controles integrados al pie -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sb-head">
+        <svg width="36" height="36" viewBox="31 28 145 145" fill="none" aria-hidden="true">
+          <path d="M108 112 L66 62" stroke="#34d399" stroke-width="13" stroke-linecap="round" opacity="0.9"/>
+          <path d="M108 112 L146 74" stroke="#fb923c" stroke-width="13" stroke-linecap="round" opacity="0.9"/>
+          <path d="M108 112 L62 146" stroke="#a855f7" stroke-width="13" stroke-linecap="round" opacity="0.9"/>
+          <circle cx="66" cy="62" r="27" fill="#34d399"/>
+          <circle cx="57.36" cy="52.82" r="8.1" fill="#fff" opacity="0.28"/>
+          <circle cx="146" cy="74" r="22" fill="#fb923c"/>
+          <circle cx="138.96" cy="66.52" r="6.6" fill="#fff" opacity="0.28"/>
+          <circle cx="62" cy="146" r="22" fill="#a855f7"/>
+          <circle cx="54.96" cy="138.52" r="6.6" fill="#fff" opacity="0.28"/>
+          <circle cx="108" cy="112" r="32" fill="#38bdf8"/>
+          <circle cx="97.76" cy="101.12" r="9.6" fill="#fff" opacity="0.28"/>
+        </svg>
+        <div style="flex:1;min-width:0;">
+          <div class="sb-brand-title">TimeFlow</div>
+          <div class="sb-brand-sub">Jornada · Actividades</div>
+        </div>
+        <button id="btnColapsar" class="btn-icon" title="Esconder la barra lateral («)" aria-label="Esconder la barra lateral">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m11 17-5-5 5-5M18 17l-5-5 5-5"/></svg>
+        </button>
+      </div>
+
+      <button class="nav-item activo" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Proyectos</span>
+      </button>
+      <button class="nav-item" type="button" onclick="avisar('Navegación al Calendario')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span>Calendario</span>
+      </button>
+      <button class="nav-item" type="button" onclick="avisar('Navegación a Reportes')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
+        <span>Reportes</span>
+      </button>
+      <button class="nav-item" type="button" onclick="avisar('Navegación a Usuarios')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        <span>Usuarios y Roles</span>
+      </button>
+      <button class="nav-item" type="button" onclick="avisar('Navegación a Historial')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        <span>Historial</span>
+      </button>
+      <button class="nav-item" type="button" onclick="avisar('Navegación a Configuración')">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+        <span>Configuración</span>
+      </button>
+
+      <!-- Controles movidos desde la cabecera al pie del sidebar -->
+      <div class="sb-footer">
+        <div class="sb-controls-box">
+          <button id="btnJornada" class="jornada-card" data-on="true" type="button">
+            <span class="jornada-top">
+              <span id="dotSidebar" class="dot-vivo on"></span>
+              <span id="txtJornada" style="color:var(--acento-verde)">En jornada</span>
+              <span id="horaJornada" style="font-family:monospace;font-size:11px;color:var(--texto-tenue)">· 08:42</span>
+            </span>
+            <span class="jornada-bottom">
+              <span id="subJornada" class="jornada-sub">Activa</span>
+              <span class="switch-pista" aria-hidden="true">
+                <span class="switch-txt on">ON</span>
+                <span class="switch-txt off">OFF</span>
+                <span class="switch-perilla"></span>
+              </span>
+            </span>
+          </button>
+
+          <div class="sb-user-row">
+            <div class="sb-user-left">
+              <button id="btnCampana" class="bell-btn" type="button" title="Notificaciones">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span id="bellBadge" class="bell-badge">3</span>
+              </button>
+              <div class="avatar-pill" title="Cristopher Ramírez · Mi cuenta">CR</div>
+            </div>
+            <span class="role-badge">Vista Admin</span>
+
+            <div id="notifPopover" class="notif-popover">
+              <div style="padding:10px 14px;border-bottom:1px solid var(--borde);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--texto-tenue)">Notificaciones</span>
+                <button onclick="leerNotifs()" style="border:0;background:none;color:var(--primario);font-size:11px;font-weight:600;cursor:pointer">Marcar leídas</button>
+              </div>
+              <div style="padding:10px 14px;border-bottom:1px solid var(--borde);font-size:11.5px;">
+                <div style="font-weight:600;">Tarea desbloqueada</div>
+                <div style="color:var(--texto-tenue);margin-top:2px;">Camila completó «Diseño DB» en App Móvil.</div>
+              </div>
+              <div style="padding:10px 14px;border-bottom:1px solid var(--borde);font-size:11.5px;">
+                <div style="font-weight:600;">Audio adjunto en nodo</div>
+                <div style="color:var(--texto-tenue);margin-top:2px;">Diego dejó un comentario de voz en QA.</div>
+              </div>
+              <div style="padding:10px 14px;font-size:11.5px;">
+                <div style="font-weight:600;">Jornada iniciada</div>
+                <div style="color:var(--texto-tenue);margin-top:2px;">Registro sincronizado en UTC.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-account-links">
+          <button class="nav-item" type="button" style="padding:7px 10px;" onclick="avisar('Ir a Mi cuenta')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+            <span>Mi cuenta</span>
+          </button>
+          <button class="nav-item" type="button" style="padding:7px 10px;" onclick="avisar('Cerrar sesión')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Lienzo principal -->
+    <main class="main">
+      <div id="toolbar" class="toolbar">
+        <div class="toolbar-group">
+          <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="inputBuscar" type="search" placeholder="Buscar proyecto…" />
+          </div>
+
+          <div class="segmented" id="filtrosGroup">
+            <button data-filtro="todos" class="activo">Todos</button>
+            <button data-filtro="proceso">En proceso</button>
+            <button data-filtro="completados">Completados</button>
+          </div>
+        </div>
+
+        <div class="toolbar-group">
+          <!-- Selector de 4 estilos de tarjeta -->
+          <div class="segmented marca" id="estilosGroup" title="Cambiar diseño de tarjetas">
+            <button data-estilo="capsula" class="activo">1 · Cápsula Glass</button>
+            <button data-estilo="orbe">2 · Orbe 3D</button>
+            <button data-estilo="editorial">3 · Editorial</button>
+            <button data-estilo="prisma">4 · Prisma</button>
+          </div>
+
+          <!-- Toggle Oscuro / Claro -->
+          <div class="segmented" id="temaGroup">
+            <button data-tema="oscuro" class="activo">Oscuro</button>
+            <button data-tema="claro">Claro</button>
+          </div>
+
+          <!-- Selector de color de marca + indicador WCAG en vivo -->
+          <div class="brand-bar">
+            <span style="color:var(--texto-tenue);font-weight:600;">Marca</span>
+            <button class="swatch activo" data-color="#0ea5e9" style="background:#0ea5e9" title="Celeste"></button>
+            <button class="swatch" data-color="#10b981" style="background:#10b981" title="Esmeralda"></button>
+            <button class="swatch" data-color="#f59e0b" style="background:#f59e0b" title="Ámbar (WCAG oscuro)"></button>
+            <button class="swatch" data-color="#f97316" style="background:#f97316" title="Naranja"></button>
+            <button class="swatch" data-color="#ec4899" style="background:#ec4899" title="Fucsia"></button>
+            <button class="swatch" data-color="#84cc16" style="background:#84cc16" title="Lima (WCAG oscuro)"></button>
+            <input id="colorPicker" type="color" value="#0ea5e9" title="Elegir cualquier color hex" style="width:22px;height:22px;border:0;background:none;cursor:pointer;" />
+            <span id="wcagBadge" class="wcag-pill">AA · #ffffff</span>
+          </div>
+        </div>
+      </div>
+
+      <section id="stage" class="stage">
+        <canvas id="canvas3d"></canvas>
+        <div id="cardsLayer" class="cards-layer">
+          <div id="coreNode" class="core-node" title="Crear nuevo proyecto">
+            <div class="core-orb">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+            <span class="core-label">Nuevo proyecto</span>
+          </div>
+        </div>
+        <div class="stage-hud">
+          <span>Mueve el mouse para paralaje 3D</span>
+          <span>·</span>
+          <span id="hudEstilo">Estilo: Cápsula Glass Suave</span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const PROYECTOS = [
+      { id: '1', nombre: 'Portal Multi-SaaS', total: 14, hechas: 11, anillo: 0, angulo: 0.4, eq: ['CR', 'VM', 'CS'], cols: ['#0ea5e9', '#10b981', '#f59e0b'] },
+      { id: '2', nombre: 'App Terreno Offline', total: 10, hechas: 6, anillo: 0, angulo: 2.1, eq: ['DF', 'AZ'], cols: ['#ec4899', '#0ea5e9'] },
+      { id: '3', nombre: 'Auditoría & Alertas', total: 8, hechas: 8, anillo: 1, angulo: 0.9, eq: ['RR', 'CS'], cols: ['#10b981', '#6366f1'] },
+      { id: '4', nombre: 'Carta Gantt Diario', total: 12, hechas: 9, anillo: 0, angulo: 3.7, eq: ['VM', 'RR', 'DF'], cols: ['#f97316', '#0ea5e9', '#10b981'] },
+      { id: '5', nombre: 'Manual Interactivo', total: 6, hechas: 6, anillo: 1, angulo: 3.1, eq: ['CS', 'AZ'], cols: ['#38bdf8', '#f59e0b'] },
+      { id: '6', nombre: 'Rediseño Modo Claro', total: 9, hechas: 4, anillo: 0, angulo: 5.1, eq: ['RR', 'CR'], cols: ['#06b6d4', '#10b981'] },
+      { id: '7', nombre: 'Migración Storage S3', total: 7, hechas: 7, anillo: 1, angulo: 5.0, eq: ['AZ', 'DF', 'VM'], cols: ['#10b981', '#f59e0b', '#0ea5e9'] },
+    ];
+
+    const NOMBRES_ESTILO = {
+      capsula: 'Cápsula Glass Suave',
+      orbe: 'Orbe / Planeta Interactivo',
+      editorial: 'Tarjeta Editorial Minimal',
+      prisma: 'Nodo Prisma Flotante',
+    };
+
+    const estado = {
+      estilo: 'capsula',
+      tema: 'oscuro',
+      filtro: 'todos',
+      busqueda: '',
+      jornada: true,
+      colapsado: false,
+      primario: '#0ea5e9',
+      mouseX: 0,
+      mouseY: 0,
+      tiltX: 0,
+      tiltY: 0,
+      tiempo: 0,
+      hoverId: null,
+      fijadoId: null,
+    };
+
+    /* ----------- Utilidades de Color y Contraste WCAG (espejo de color.ts) ----------- */
+    function parseHex(hex) {
+      const clean = (hex || '').replace('#', '').trim();
+      if (/^[0-9a-f]{6}$/i.test(clean)) {
+        const n = parseInt(clean, 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+      }
+      return [14, 165, 233];
+    }
+
+    function luminancia(rgb) {
+      const c = (v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+      };
+      return 0.2126 * c(rgb[0]) + 0.7152 * c(rgb[1]) + 0.0722 * c(rgb[2]);
+    }
+
+    function secundarioDe(hex) {
+      const [r0, g0, b0] = parseHex(hex);
+      const r = r0 / 255, g = g0 / 255, b = b0 / 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+      let h = 0, s = 0;
+      const l = (max + min) / 2;
+      if (d !== 0) {
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        h *= 60;
+      }
+      const giro = h >= 32 && h <= 78 ? -20 : 24;
+      const h2 = (h + giro + 360) % 360;
+      const s2 = s < 0.08 ? s : Math.min(0.95, Math.max(s, 0.55));
+      const l2 = Math.min(0.72, Math.max(0.28, l > 0.56 ? l - 0.07 : l + 0.05));
+      const c = (1 - Math.abs(2 * l2 - 1)) * s2;
+      const x = c * (1 - Math.abs(((h2 / 60) % 2) - 1));
+      const m = l2 - c / 2;
+      let [rr, gg, bb] = h2 < 60 ? [c, x, 0] : h2 < 120 ? [x, c, 0] : h2 < 180 ? [0, c, x] : h2 < 240 ? [0, x, c] : h2 < 300 ? [x, 0, c] : [c, 0, x];
+      const hx = (v) => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+      return `#${hx(rr)}${hx(gg)}${hx(bb)}`;
+    }
+
+    function aplicarMarca(hex) {
+      estado.primario = hex;
+      const rgb = parseHex(hex);
+      const lum = luminancia(rgb);
+      const texto = lum > 0.39 ? '#0f172a' : '#ffffff';
+      const lumTexto = texto === '#ffffff' ? 1 : 0.00877;
+      const ratio = ((Math.max(lum, lumTexto) + 0.05) / (Math.min(lum, lumTexto) + 0.05)).toFixed(1);
+      const sec = secundarioDe(hex);
+
+      const root = document.documentElement.style;
+      root.setProperty('--primario', hex);
+      root.setProperty('--primario-2', sec);
+      root.setProperty('--primario-rgb', rgb.join(', '));
+      root.setProperty('--texto-primario', texto);
+
+      document.getElementById('wcagBadge').textContent = `${ratio}:1 · ${texto}`;
+      document.getElementById('colorPicker').value = hex;
+      document.querySelectorAll('.swatch').forEach((el) => {
+        el.classList.toggle('activo', el.dataset.color.toLowerCase() === hex.toLowerCase());
+      });
+      renderTarjetasDOM();
+    }
+
+    /* ----------- Sidebar, Jornada, Campana y Filtros ----------- */
+    const sidebar = document.getElementById('sidebar');
+    const toolbar = document.getElementById('toolbar');
+    const btnExpandir = document.getElementById('btnExpandir');
+
+    function alternarSidebar(colapsar) {
+      estado.colapsado = colapsar;
+      sidebar.classList.toggle('colapsado', colapsar);
+      toolbar.classList.toggle('con-sangria', colapsar);
+      btnExpandir.classList.toggle('visible', colapsar);
+      setTimeout(redimensionarCanvas, 280);
+    }
+    document.getElementById('btnColapsar').onclick = () => alternarSidebar(true);
+    btnExpandir.onclick = () => alternarSidebar(false);
+
+    document.getElementById('btnJornada').onclick = () => {
+      estado.jornada = !estado.jornada;
+      const card = document.getElementById('btnJornada');
+      card.dataset.on = String(estado.jornada);
+      document.getElementById('dotSidebar').classList.toggle('on', estado.jornada);
+      document.getElementById('dotFlotante').classList.toggle('on', estado.jornada);
+      const txt = document.getElementById('txtJornada');
+      txt.textContent = estado.jornada ? 'En jornada' : 'Fuera de jornada';
+      txt.style.color = estado.jornada ? 'var(--acento-verde)' : 'var(--texto)';
+      document.getElementById('horaJornada').style.display = estado.jornada ? 'inline' : 'none';
+      document.getElementById('subJornada').textContent = estado.jornada ? 'Activa' : 'Marcar entrada';
+      btnExpandir.title = estado.jornada
+        ? 'Mostrar barra lateral · En jornada activa'
+        : 'Mostrar barra lateral · Fuera de jornada';
+      avisar(estado.jornada ? 'Entrada de jornada marcada' : 'Salida de jornada marcada');
+    };
+
+    const pop = document.getElementById('notifPopover');
+    document.getElementById('btnCampana').onclick = (e) => {
+      e.stopPropagation();
+      pop.classList.toggle('abierto');
+    };
+    document.addEventListener('click', (e) => {
+      if (!pop.contains(e.target)) pop.classList.remove('abierto');
+    });
+    window.leerNotifs = () => {
+      document.getElementById('bellBadge').style.display = 'none';
+      pop.classList.remove('abierto');
+      avisar('Notificaciones marcadas como leídas');
+    };
+
+    document.getElementById('inputBuscar').oninput = (e) => {
+      estado.busqueda = e.target.value.trim().toLowerCase();
+      actualizarCoincidencias();
+    };
+
+    document.querySelectorAll('#filtrosGroup button').forEach((btn) => {
+      btn.onclick = () => {
+        estado.filtro = btn.dataset.filtro;
+        document.querySelectorAll('#filtrosGroup button').forEach((b) => b.classList.toggle('activo', b === btn));
+        actualizarCoincidencias();
+      };
+    });
+
+    document.querySelectorAll('#estilosGroup button').forEach((btn) => {
+      btn.onclick = () => {
+        estado.estilo = btn.dataset.estilo;
+        document.querySelectorAll('#estilosGroup button').forEach((b) => b.classList.toggle('activo', b === btn));
+        document.getElementById('hudEstilo').textContent = `Estilo: ${NOMBRES_ESTILO[estado.estilo]}`;
+        renderTarjetasDOM();
+      };
+    });
+
+    document.querySelectorAll('#temaGroup button').forEach((btn) => {
+      btn.onclick = () => {
+        estado.tema = btn.dataset.tema;
+        document.documentElement.setAttribute('data-tema', estado.tema);
+        document.querySelectorAll('#temaGroup button').forEach((b) => b.classList.toggle('activo', b === btn));
+      };
+    });
+
+    document.querySelectorAll('.swatch').forEach((sw) => {
+      sw.onclick = () => aplicarMarca(sw.dataset.color);
+    });
+    document.getElementById('colorPicker').oninput = (e) => aplicarMarca(e.target.value);
+    document.getElementById('coreNode').onclick = () => avisar('Abriría el modal: Crear nuevo proyecto');
+
+    function avisar(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(window._toastT);
+      window._toastT = setTimeout(() => t.classList.remove('show'), 2100);
+    }
+
+    /* ----------- Tarjetas DOM proyectadas sobre el Canvas 3D ----------- */
+    const cardsLayer = document.getElementById('cardsLayer');
+    const nodosDOM = new Map();
+
+    function plantillaTarjeta(p) {
+      const pct = Math.round((p.hechas / p.total) * 100);
+      const done = p.hechas >= p.total;
+      const colorEstado = done ? '#10b981' : estado.primario;
+      const rgbEstado = parseHex(colorEstado).join(', ');
+      const avs = p.eq.map((ini, idx) => `<span class="av-mini" style="background:${p.cols[idx]}">${ini}</span>`).join('');
+
+      let cuerpo = '';
+      if (estado.estilo === 'capsula') {
+        const r = 16, circ = 2 * Math.PI * r, dash = (circ * pct) / 100;
+        cuerpo = `
+          <div class="card-capsula">
+            <svg width="44" height="44" viewBox="0 0 44 44" style="flex-shrink:0">
+              <circle cx="22" cy="22" r="${r}" fill="none" stroke="var(--borde-fuerte)" stroke-width="4"/>
+              <circle cx="22" cy="22" r="${r}" fill="none" stroke="${colorEstado}" stroke-width="4" stroke-linecap="round"
+                stroke-dasharray="${dash} ${circ}" transform="rotate(-90 22 22)"/>
+              <text x="22" y="25.5" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--texto)">${pct}%</text>
+            </svg>
+            <div style="min-width:0;flex:1">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+                <span class="dot-vivo ${done ? '' : 'on'}" style="width:7px;height:7px;background:${colorEstado}"></span>
+                <span style="font-size:10px;font-weight:700;color:var(--texto-tenue)">${done ? 'Completado' : 'En proceso'}</span>
+              </div>
+              <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+                <div class="av-stack">${avs}</div>
+                <span style="font-family:monospace;font-size:10.5px;color:var(--texto-tenue)">${p.hechas}/${p.total}</span>
+              </div>
+            </div>
+          </div>`;
+      } else if (estado.estilo === 'orbe') {
+        const r = 34, circ = 2 * Math.PI * r, dash = (circ * pct) / 100;
+        cuerpo = `
+          <div class="card-orbe" style="--orb-rgb:${rgbEstado}">
+            <div class="orbe-esfera">
+              <svg width="86" height="86" viewBox="0 0 86 86" style="position:absolute;inset:-5px;pointer-events:none">
+                <circle cx="43" cy="43" r="${r}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="3"/>
+                <circle cx="43" cy="43" r="${r}" fill="none" stroke="${colorEstado}" stroke-width="3.5" stroke-linecap="round"
+                  stroke-dasharray="${dash} ${circ}" transform="rotate(-90 43 43)"/>
+              </svg>
+              <span style="font-size:15px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.45)">${pct}%</span>
+            </div>
+            <div class="orbe-etiqueta">
+              <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+              <div style="font-size:10px;color:var(--texto-tenue);margin-top:2px">${p.hechas}/${p.total} tareas</div>
+            </div>
+          </div>`;
+      } else if (estado.estilo === 'editorial') {
+        const segs = Array.from({ length: 6 }, (_, i) => {
+          const ok = pct > 0 && ((i + 1) / 6) * 100 <= pct + 10;
+          return `<span class="mini-seg ${ok ? 'ok' : ''}"></span>`;
+        }).join('');
+        cuerpo = `
+          <div class="card-editorial">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--texto-tenue)">
+              <span style="font-weight:700;color:${done ? 'var(--acento-verde)' : 'var(--primario)'}">${done ? 'COMPLETADO' : 'ACTIVO'}</span>
+              <span style="font-family:monospace;font-weight:700">${pct}%</span>
+            </div>
+            <div style="font-size:13.5px;font-weight:700;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+            <div class="mini-segs">${segs}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px">
+              <div class="av-stack">${avs}</div>
+              <span style="font-size:10.5px;color:var(--texto-suave)">${p.hechas} de ${p.total} nodos</span>
+            </div>
+          </div>`;
+      } else {
+        cuerpo = `
+          <div class="card-prisma-wrap">
+            <div class="card-prisma">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(${rgbEstado},0.16);color:${colorEstado}">${done ? 'Listo' : 'En curso'}</span>
+                <span style="font-family:monospace;font-size:11px;font-weight:700">${pct}%</span>
+              </div>
+              <div style="font-size:13.5px;font-weight:700;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nombre}</div>
+              <div style="height:5px;border-radius:99px;background:var(--borde);overflow:hidden;margin-top:9px">
+                <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--primario),var(--primario-2));border-radius:99px"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+                <div class="av-stack">${avs}</div>
+                <span style="font-size:10px;color:var(--texto-tenue)">${p.hechas}/${p.total}</span>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      return `${cuerpo}
+        <div class="node-actions">
+          <button class="act-primary" type="button" onclick="event.stopPropagation();avisar('Abriendo mapa de nodos: ${p.nombre}')">Ir al mapa</button>
+          <button class="act-secondary" type="button" onclick="event.stopPropagation();avisar('Detalle del proyecto: ${p.nombre}')">Ver</button>
+        </div>`;
+    }
+
+    function renderTarjetasDOM() {
+      PROYECTOS.forEach((p) => {
+        let el = nodosDOM.get(p.id);
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'node-3d';
+          el.onmouseenter = () => { estado.hoverId = p.id; };
+          el.onmouseleave = () => { if (estado.hoverId === p.id) estado.hoverId = null; };
+          el.onclick = () => {
+            estado.fijadoId = estado.fijadoId === p.id ? null : p.id;
+            nodosDOM.forEach((node, id) => node.classList.toggle('fijado', id === estado.fijadoId));
+          };
+          cardsLayer.appendChild(el);
+          nodosDOM.set(p.id, el);
+        }
+        el.innerHTML = plantillaTarjeta(p);
+      });
+      actualizarCoincidencias();
+    }
+
+    function actualizarCoincidencias() {
+      PROYECTOS.forEach((p) => {
+        const done = p.hechas >= p.total;
+        const okFiltro = estado.filtro === 'todos' || (estado.filtro === 'completados' ? done : !done);
+        const okBusq = !estado.busqueda || p.nombre.toLowerCase().includes(estado.busqueda);
+        const el = nodosDOM.get(p.id);
+        if (el) el.classList.toggle('atenuado', !(okFiltro && okBusq));
+      });
+    }
+
+    /* ----------- Motor Canvas 3D: Órbitas inclinadas + Paralaje + Z-Order ----------- */
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('canvas3d');
+    const ctx = canvas.getContext('2d');
+    const coreNode = document.getElementById('coreNode');
+
+    const ESTRELLAS = Array.from({ length: 85 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: 0.6 + Math.random() * 1.5,
+      a: 0.25 + Math.random() * 0.6,
+      fase: Math.random() * Math.PI * 2,
+    }));
+
+    let W = 1, H = 1, DPR = 1;
+    function redimensionarCanvas() {
+      const rect = stage.getBoundingClientRect();
+      W = Math.max(300, rect.width);
+      H = Math.max(300, rect.height);
+      DPR = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = W * DPR;
+      canvas.height = H * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    new ResizeObserver(redimensionarCanvas).observe(stage);
+
+    stage.addEventListener('pointermove', (e) => {
+      const rect = stage.getBoundingClientRect();
+      estado.mouseX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+      estado.mouseY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    });
+    stage.addEventListener('pointerleave', () => {
+      estado.mouseX = 0;
+      estado.mouseY = 0;
+    });
+
+    function proyectar3D(x, y, z, cx, cy, fov) {
+      const esc = fov / (fov + z);
+      return { x: cx + x * esc, y: cy + y * esc, esc, z };
+    }
+
+    function rotarPunto(x, y, z, rx, ry) {
+      // Rotación Y
+      const cy = Math.cos(ry), sy = Math.sin(ry);
+      const x1 = x * cy - z * sy;
+      const z1 = x * sy + z * cy;
+      // Rotación X (inclinación orbital)
+      const cx = Math.cos(rx), sx = Math.sin(rx);
+      const y2 = y * cx - z1 * sx;
+      const z2 = y * sx + z1 * cx;
+      return { x: x1, y: y2, z: z2 };
+    }
+
+    let ultimoT = performance.now();
+    function frame(ahora) {
+      const dt = Math.min(0.05, (ahora - ultimoT) / 1000);
+      ultimoT = ahora;
+      if (!estado.hoverId) estado.tiempo += dt;
+
+      estado.tiltX += (estado.mouseY * 0.16 - estado.tiltX) * 0.08;
+      estado.tiltY += (estado.mouseX * 0.24 - estado.tiltY) * 0.08;
+
+      ctx.clearRect(0, 0, W, H);
+
+      const claro = estado.tema === 'claro';
+      const rgbMarca = parseHex(estado.primario).join(', ');
+      const cx = W * 0.5 + estado.tiltY * -18;
+      const cy = H * 0.51 + estado.tiltX * -14;
+      const baseRadio = Math.min(W, H);
+      const fov = 760;
+
+      // Partículas / estrellas suaves
+      ESTRELLAS.forEach((s) => {
+        const alfa = s.a * (0.65 + 0.35 * Math.sin(ahora * 0.0015 + s.fase));
+        ctx.fillStyle = claro
+          ? `rgba(${rgbMarca}, ${alfa * 0.28})`
+          : `rgba(219, 234, 254, ${alfa * 0.65})`;
+        ctx.beginPath();
+        ctx.arc(s.x * W + estado.tiltY * -12 * s.r, s.y * H + estado.tiltX * -12 * s.r, s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Dos anillos orbitales inclinados en 3D
+      const anillos = [
+        { rx: baseRadio * 0.31, ry: baseRadio * 0.27, incX: 0.92 + estado.tiltX, incY: -0.14 + estado.tiltY, op: 0.34 },
+        { rx: baseRadio * 0.45, ry: baseRadio * 0.40, incX: 0.88 + estado.tiltX, incY: 0.16 + estado.tiltY, op: 0.22 },
+      ];
+
+      anillos.forEach((an, idx) => {
+        ctx.beginPath();
+        for (let i = 0; i <= 96; i++) {
+          const a = (i / 96) * Math.PI * 2;
+          const p3 = rotarPunto(Math.cos(a) * an.rx, Math.sin(a) * an.ry * 0.55, Math.sin(a) * an.rx * 0.55, an.incX, an.incY);
+          const pr = proyectar3D(p3.x, p3.y, p3.z, cx, cy, fov);
+          if (i === 0) ctx.moveTo(pr.x, pr.y);
+          else ctx.lineTo(pr.x, pr.y);
+        }
+        ctx.strokeStyle = claro
+          ? `rgba(${rgbMarca}, ${an.op + 0.08})`
+          : `rgba(${rgbMarca}, ${an.op})`;
+        ctx.lineWidth = idx === 0 ? 1.5 : 1.1;
+        ctx.stroke();
+      });
+
+      // Posicionar núcleo central
+      coreNode.style.left = `${cx}px`;
+      coreNode.style.top = `${cy}px`;
+
+      // Proyectar cada proyecto en 3D y ordenar por Z
+      PROYECTOS.forEach((p, idx) => {
+        const an = anillos[p.anillo];
+        const vel = p.anillo === 0 ? 0.16 : -0.10;
+        const a = p.angulo + estado.tiempo * vel;
+        const p3 = rotarPunto(Math.cos(a) * an.rx, Math.sin(a) * an.ry * 0.55, Math.sin(a) * an.rx * 0.55, an.incX, an.incY);
+        const pr = proyectar3D(p3.x, p3.y, p3.z, cx, cy, fov);
+
+        // Estela orbital corta detrás del proyecto
+        ctx.beginPath();
+        for (let t = 0; t <= 12; t++) {
+          const at = a - (t / 12) * 0.32 * Math.sign(vel);
+          const q3 = rotarPunto(Math.cos(at) * an.rx, Math.sin(at) * an.ry * 0.55, Math.sin(at) * an.rx * 0.55, an.incX, an.incY);
+          const qr = proyectar3D(q3.x, q3.y, q3.z, cx, cy, fov);
+          if (t === 0) ctx.moveTo(qr.x, qr.y);
+          else ctx.lineTo(qr.x, qr.y);
+        }
+        ctx.strokeStyle = `rgba(${rgbMarca}, ${claro ? 0.32 : 0.45})`;
+        ctx.lineWidth = 2 * pr.esc;
+        ctx.stroke();
+
+        const el = nodosDOM.get(p.id);
+        if (!el) return;
+        const esHover = estado.hoverId === p.id || estado.fijadoId === p.id;
+        const escalaFinal = esHover ? Math.max(1.06, pr.esc * 1.08) : Math.max(0.80, Math.min(1.14, pr.esc));
+        const zOrder = esHover ? 1200 : Math.round(500 - pr.z);
+        const blur = esHover ? 0 : Math.max(0, (pr.z - 80) / 140);
+        const op = esHover ? 1 : Math.max(0.68, Math.min(1, 1.05 - (pr.z + 180) / 800));
+
+        el.style.zIndex = String(zOrder);
+        el.style.opacity = String(op);
+        el.style.filter = blur > 0.15 ? `blur(${blur.toFixed(2)}px)` : 'none';
+        el.style.transform = `translate3d(${pr.x.toFixed(1)}px, ${pr.y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${escalaFinal.toFixed(3)})`;
+      });
+
+      requestAnimationFrame(frame);
+    }
+
+    renderTarjetasDOM();
+    aplicarMarca('#0ea5e9');
+    redimensionarCanvas();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

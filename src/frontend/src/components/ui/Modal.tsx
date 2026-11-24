@@ -46,8 +46,6 @@ export default function Modal({
     if (bloqueado) return;
     const alTeclear = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
-      const objetivo = e.target as HTMLElement | null;
-      if (objetivo?.closest('input, textarea, select, [contenteditable="true"]')) return;
       onCerrar();
     };
     window.addEventListener('keydown', alTeclear);
@@ -75,6 +73,7 @@ export default function Modal({
             {acciones}
             <button
               ref={botonCerrar}
+              type="button"
               onClick={onCerrar}
               aria-label="Cerrar"
               className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"

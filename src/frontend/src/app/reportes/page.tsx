@@ -10,8 +10,10 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, Download } from 'lucide-react';
+import { Building2, CalendarDays, ChevronDown, Download } from 'lucide-react';
 import Marco from '@/components/Marco';
+import Selector from '@/components/ui/Selector';
+import { EsqueletoPagina, EsqueletoTabla } from '@/components/ui/Esqueleto';
 import GraficoBarras from '@/components/reportes/GraficoBarras';
 import CartaGantt from '@/components/reportes/CartaGantt';
 import { api, ErrorApi, URL_API, OrganizacionItem, Usuario } from '@/lib/api';
@@ -19,7 +21,7 @@ import { useTienePermiso } from '@/lib/sesion';
 import { PERMISOS } from '@/lib/rbac';
 import { useDatosCache } from '@/lib/cacheDatos';
 import { HorasActividad, HorasTrabajador, TareaGantt } from '@/lib/tipos';
-import { duracion } from '@/lib/formato';
+import { duracion, etiquetaPlan } from '@/lib/formato';
 import {
   leerCacheSesion,
   leerCacheSesionServidor,
@@ -48,13 +50,7 @@ const VISTAS: { clave: Vista; texto: string }[] = [
 
 export default function Reportes() {
   return (
-    <Suspense
-      fallback={
-        <main className="grid min-h-screen place-items-center bg-slate-950 text-sm text-slate-400">
-          Cargando reportes...
-        </main>
-      }
-    >
+    <Suspense fallback={<EsqueletoPagina />}>
       <ReportesContenido />
     </Suspense>
   );
@@ -142,7 +138,7 @@ function ReportesContenido() {
 
   // Clave de cache reactiva al periodo y al inquilino seleccionado
   const claveCache = `reportes:${dias}:${esSuperAdmin ? orgSeleccionada || 'global' : 'org'}`;
-  const { datos, cargando, error } = useDatosCache(claveCache, cargar);
+  const { datos, cargando, error, recargar } = useDatosCache(claveCache, cargar);
   const trabajadores = datos?.trabajadores ?? [];
   const actividades = datos?.actividades ?? [];
   const gantt = datos?.gantt ?? [];
@@ -181,37 +177,48 @@ function ReportesContenido() {
       acciones={
         <div className="flex flex-wrap items-center gap-2">
           {esSuperAdmin && (
-            <select
+            <Selector
               id="reportes-organizacion"
               name="organizacionId"
-              aria-label="Filtrar por organización"
-              value={orgSeleccionada}
-              onChange={(e) => cambiarOrganizacion(e.target.value)}
-              className="rounded-xl border border-sky-500/30 bg-slate-900 px-3 py-2 text-sm text-sky-200 outline-none focus:border-sky-400"
-            >
-              <option value="">🏢 Todas las Empresas (Consolidado Global)</option>
-              {organizaciones.map((org) => (
-                <option key={org.id} value={org.id}>
-                  🏢 {org.nombre} ({org.plan})
-                </option>
-              ))}
-            </select>
+              ariaLabel="Filtrar por organización"
+              forma="pildora"
+              buscable={organizaciones.length > 5}
+              placeholderBusqueda="Buscar empresa…"
+              minAnchoMenu={260}
+              valor={orgSeleccionada}
+              onChange={cambiarOrganizacion}
+              opciones={[
+                {
+                  valor: '',
+                  etiqueta: 'Todas las Empresas',
+                  subtitulo: 'Consolidado Global',
+                  icono: <Building2 size={13} aria-hidden className="text-[var(--tf-acento-azul)]" />,
+                },
+                ...organizaciones.map((org) => ({
+                  valor: org.id,
+                  etiqueta: org.nombre,
+                  subtitulo: org.slug,
+                  badge: etiquetaPlan(org.plan),
+                  icono: <Building2 size={13} aria-hidden className="text-[var(--tf-texto-tenue)]" />,
+                })),
+              ]}
+            />
           )}
 
-          <select
+          <Selector
             id="reportes-rango"
             name="dias"
-            aria-label="Rango de días"
-            value={dias}
-            onChange={(e) => setDias(Number(e.target.value))}
-            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 py-2 text-xs font-medium text-[var(--tf-texto)] outline-none focus:border-sky-400"
-          >
-            {RANGOS.map((r) => (
-              <option key={r.dias} value={r.dias}>
-                {r.texto}
-              </option>
-            ))}
-          </select>
+            ariaLabel="Rango de días"
+            forma="pildora"
+            minAnchoMenu={175}
+            valor={String(dias)}
+            onChange={(v) => setDias(Number(v))}
+            opciones={RANGOS.map((r) => ({
+              valor: String(r.dias),
+              etiqueta: r.texto,
+              icono: <CalendarDays size={13} aria-hidden className="text-[var(--tf-texto-tenue)]" />,
+            }))}
+          />
 
           {puedeExportar && (
             <div ref={exportRef} className="relative">
@@ -261,18 +268,18 @@ function ReportesContenido() {
     >
       {/* Banner explicativo del alcance actual para Super Admin */}
       {esSuperAdmin && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4 text-sm text-sky-300">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4 text-sm text-[var(--tf-acento-azul)]">
           <div className="flex items-center gap-3">
             <span className="text-xl">🏢</span>
             <div>
-              <div className="font-semibold text-white">
+              <div className="font-semibold text-[var(--tf-texto)]">
                 {orgActual
                   ? `Organización Seleccionada: ${orgActual.nombre}`
                   : 'Consolidado Global de la Plataforma'}
               </div>
-              <p className="text-xs text-sky-300/80">
+              <p className="text-xs text-[var(--tf-texto-tenue)]">
                 {orgActual
-                  ? `Visualizando exclusivamente las métricas, actividades y colaboradores de ${orgActual.nombre} (Plan ${orgActual.plan}).`
+                  ? `Visualizando exclusivamente las métricas, actividades y colaboradores de ${orgActual.nombre} (Plan ${etiquetaPlan(orgActual.plan)}).`
                   : 'Mostrando datos acumulados de todas las organizaciones registradas en TimeFlow.'}
               </p>
             </div>
@@ -280,11 +287,29 @@ function ReportesContenido() {
           {orgActual && (
             <button
               onClick={() => cambiarOrganizacion('')}
-              className="rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-400/20"
+              className="rounded-xl border border-sky-500/35 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-[var(--tf-acento-azul)] transition hover:bg-sky-500/25"
             >
               Ver Consolidado Global
             </button>
           )}
+        </div>
+      )}
+
+      {Boolean(error) && !(error instanceof ErrorApi && error.estado === 401) && (
+        <div
+          role="alert"
+          className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-[var(--tf-acento-rojo)]"
+        >
+          <span>
+            {error instanceof ErrorApi ? error.message : 'No se pudieron cargar los reportes.'}
+          </span>
+          <button
+            type="button"
+            onClick={() => recargar()}
+            className="rounded-lg border border-rose-500/30 bg-rose-500/15 px-2.5 py-1 font-semibold hover:bg-rose-500/25"
+          >
+            Reintentar
+          </button>
         </div>
       )}
 
@@ -351,7 +376,7 @@ function ReportesContenido() {
         </div>
 
         {cargando ? (
-          <Esqueleto filas={3} />
+          <EsqueletoTabla filas={4} columnas={5} />
         ) : trabajadores.length === 0 ? (
           <p className="py-8 text-center text-sm text-[var(--tf-texto-suave)]">
             Sin registros en el periodo seleccionado {orgActual ? `para ${orgActual.nombre}` : ''}.
@@ -436,7 +461,7 @@ function ReportesContenido() {
           {orgActual ? `Horas por actividad — ${orgActual.nombre}` : 'Horas por actividad'}
         </h2>
         {cargando ? (
-          <Esqueleto filas={5} />
+          <EsqueletoTabla filas={5} columnas={3} />
         ) : grafico.length === 0 ? (
           <p className="py-8 text-center text-sm text-[var(--tf-texto-suave)]">
             Sin registros en el periodo seleccionado {orgActual ? `para ${orgActual.nombre}` : ''}.
@@ -458,7 +483,7 @@ function ReportesContenido() {
           </span>
         </div>
         {cargando ? (
-          <Esqueleto filas={5} />
+          <EsqueletoTabla filas={5} columnas={6} />
         ) : (
           <CartaGantt tareas={gantt} desdeIso={desdeIso} hastaIso={hastaIso} />
         )}
@@ -502,23 +527,6 @@ function Indicador({
           />
         </svg>
       )}
-    </div>
-  );
-}
-
-/** Placeholder con la forma del contenido: la pantalla no salta al llegar los datos. */
-function Esqueleto({ filas }: { filas: number }) {
-  return (
-    <div className="flex flex-col gap-3 py-1">
-      {Array.from({ length: filas }, (_, i) => (
-        <div key={i} className="flex items-center gap-4">
-          <div className="h-3.5 w-40 animate-pulse rounded bg-white/10" />
-          <div
-            className="h-3.5 animate-pulse rounded bg-white/5"
-            style={{ width: `${70 - i * 11}%` }}
-          />
-        </div>
-      ))}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
+import TooltipAyuda from '@/components/ui/TooltipAyuda';
 import {
   esPersonalizada,
   EstiloCelda,
@@ -93,11 +94,17 @@ export default function PersonalizarVista({
         <div
           role="dialog"
           aria-label="Personalizar vista del calendario"
-          className="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-4 text-left text-[var(--tf-texto)] shadow-2xl backdrop-blur"
+          className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-4 text-left text-[var(--tf-texto)] shadow-2xl backdrop-blur"
         >
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">
-              Estilo de grilla
+            <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">
+              <span>Estilo de grilla</span>
+              <TooltipAyuda
+                etiqueta="Ayuda sobre estilos de grilla"
+                titulo="Modo de lectura"
+                texto="Limpio muestra tarjetas sobrias con borde lateral según horas. Mapa de calor colorea todo el recuadro según la intensidad diaria por persona."
+                tamano={13}
+              />
             </h3>
             {personalizada && (
               <button
@@ -152,6 +159,11 @@ export default function PersonalizarVista({
                   id={`pref-${op.clave}`}
                   name={op.clave}
                   etiqueta={op.etiqueta}
+                  ayuda={
+                    op.clave === 'mostrarAlertas'
+                      ? 'Marca días con jornadas sin cerrar, sesiones autocerradas (>10 h) o tiempo de presencia sin imputar.'
+                      : undefined
+                  }
                   activo={Boolean(prefs[op.clave])}
                   onCambio={(v) => onCambio({ [op.clave]: v })}
                 />
@@ -170,6 +182,11 @@ export default function PersonalizarVista({
                   id={`pref-${op.clave}`}
                   name={op.clave}
                   etiqueta={op.etiqueta}
+                  ayuda={
+                    op.clave === 'mostrarAlertas'
+                      ? 'Marca días con jornadas sin cerrar, sesiones autocerradas (>10 h) o tiempo de presencia sin imputar.'
+                      : undefined
+                  }
                   activo={Boolean(prefs[op.clave])}
                   onCambio={(v) => onCambio({ [op.clave]: v })}
                 />
@@ -186,12 +203,14 @@ function Interruptor({
   id,
   name,
   etiqueta,
+  ayuda,
   activo,
   onCambio,
 }: {
   id: string;
   name: string;
   etiqueta: string;
+  ayuda?: string;
   activo: boolean;
   onCambio: (valor: boolean) => void;
 }) {
@@ -200,7 +219,10 @@ function Interruptor({
       htmlFor={id}
       className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1.5 py-1 text-xs text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
     >
-      <span>{etiqueta}</span>
+      <span className="flex items-center gap-1.5">
+        <span>{etiqueta}</span>
+        {ayuda && <TooltipAyuda etiqueta={`Ayuda sobre ${etiqueta}`} texto={ayuda} tamano={12} />}
+      </span>
       <input
         id={id}
         name={name}

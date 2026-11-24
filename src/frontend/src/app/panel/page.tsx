@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Marco from '@/components/Marco';
 import EquipoProyecto from '@/components/panel/EquipoProyecto';
 import Modal from '@/components/ui/Modal';
+import ModalConfirmacion from '@/components/ui/ModalConfirmacion';
+import { BloqueEsqueleto, EsqueletoTarjetas } from '@/components/ui/Esqueleto';
+import { useToast } from '@/components/ui/Toast';
 import ConstelacionProyectos from '@/components/panel/ConstelacionProyectos';
 import VistaResumenProyectos from '@/components/panel/VistaResumenProyectos';
 import BandaAvance from '@/components/panel/BandaAvance';
@@ -57,23 +60,32 @@ export default function Panel() {
   const [detalleAbierto, setDetalleAbierto] = useState(false);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [editando, setEditando] = useState<ProyectoItem | null>(null);
+  const [proyectoPorEliminar, setProyectoPorEliminar] = useState<ProyectoItem | null>(null);
+  const [eliminandoProyecto, setEliminandoProyecto] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  async function handleEliminarProyecto(p: ProyectoItem) {
-    if (!esAdmin) return;
-    const confirmacion = window.confirm(
-      `¿Estás seguro de que deseas eliminar el proyecto "${p.nombre}" y todos sus nodos asociados?\n\nEsta acción es irreversible y finalizará las tareas activas de este proyecto.`,
-    );
-    if (!confirmacion) return;
-
+  async function confirmarEliminarProyecto() {
+    if (!esAdmin || !proyectoPorEliminar) return;
+    setEliminandoProyecto(true);
     try {
-      await api.delete(`/proyectos/${p.id}`);
+      await api.delete(`/proyectos/${proyectoPorEliminar.id}`);
+      const nombreEliminado = proyectoPorEliminar.nombre;
+      setProyectoPorEliminar(null);
       setSeleccionado(null);
       setDetalleAbierto(false);
       setEditando(null);
+      toast({
+        tipo: 'info',
+        titulo: 'Proyecto eliminado',
+        descripcion: `Se eliminó «${nombreEliminado}» y sus nodos asociados.`,
+      });
       await cargar();
     } catch (err) {
       setAviso(err instanceof ErrorApi ? err.message : 'No se pudo eliminar el proyecto.');
+      setProyectoPorEliminar(null);
+    } finally {
+      setEliminandoProyecto(false);
     }
   }
 
@@ -89,7 +101,7 @@ export default function Panel() {
   useEffect(() => {
     if (!error) return;
     if (error instanceof ErrorApi && error.estado === 401) router.replace('/login');
-    else setAviso('No se pudo conectar con el servidor.');
+    else setAviso(error instanceof ErrorApi ? error.message : 'No se pudo conectar con el servidor.');
   }, [error, router]);
 
   useEffect(() => {
@@ -123,7 +135,7 @@ export default function Panel() {
     <div
       role="group"
       aria-label="Modo de visualización de proyectos"
-      className="inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
+      className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
     >
       {(
         [
@@ -138,8 +150,12 @@ export default function Panel() {
             type="button"
             aria-pressed={activo}
             onClick={() => cambiarVistaPanel(v.id)}
-            style={activo ? { backgroundColor: colorPrimario, color: '#ffffff' } : undefined}
-            className={`rounded-lg px-3 py-1.5 font-medium transition ${
+            style={
+              activo
+                ? { backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }
+                : undefined
+            }
+            className={`rounded-full px-3.5 py-1.5 font-medium transition ${
               activo
                 ? 'shadow-sm'
                 : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -158,16 +174,36 @@ export default function Panel() {
       activo="/panel"
       titulo={tituloVista}
       tituloOculto
-      permitirOcultarCabecera
-      compacto={vistaPanel === 'constelacion' && !esTrabajador}
+      controlesEnSidebar
+      compacto
     >
       {aviso && (
-        <p
+        <div
           role="alert"
-          className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-ambar)] shadow-sm"
+          className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-sm text-[var(--tf-acento-ambar)] shadow-sm"
         >
-          {aviso}
-        </p>
+          <span>{aviso}</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setAviso(null);
+                cargar();
+              }}
+              className="rounded-lg border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold hover:bg-amber-500/25"
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => setAviso(null)}
+              aria-label="Cerrar aviso"
+              className="text-xs font-bold opacity-70 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       )}
 
       {/* -------------------- Isla Dinámica de sesión activa para trabajador -------------------- */}
@@ -249,25 +285,25 @@ export default function Panel() {
           <div className="tf-stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <TarjetaMetrica
               etiqueta="Horas Semanales"
-              valor={cargandoProgreso ? '…' : formatearHoras(progreso?.segundosSemana ?? 0)}
+              valor={cargandoProgreso ? null : formatearHoras(progreso?.segundosSemana ?? 0)}
               subtexto="Semana en curso"
               icono="⏱️"
             />
             <TarjetaMetrica
               etiqueta="Horas Mensuales"
-              valor={cargandoProgreso ? '…' : formatearHoras(progreso?.segundosMes ?? 0)}
+              valor={cargandoProgreso ? null : formatearHoras(progreso?.segundosMes ?? 0)}
               subtexto="Mes en curso"
               icono="📅"
             />
             <TarjetaMetrica
               etiqueta="Días Laborados"
-              valor={cargandoProgreso ? '…' : `${progreso?.diasLaborados ?? 0} días`}
+              valor={cargandoProgreso ? null : `${progreso?.diasLaborados ?? 0} días`}
               subtexto="Presencia registrada"
               icono="📍"
             />
             <TarjetaMetrica
               etiqueta="Jornadas Completadas"
-              valor={cargandoProgreso ? '…' : `${progreso?.totalJornadas ?? 0}`}
+              valor={cargandoProgreso ? null : `${progreso?.totalJornadas ?? 0}`}
               subtexto="Turnos cerrados"
               icono="✅"
             />
@@ -278,9 +314,7 @@ export default function Panel() {
       {/* -------------------- Proyectos: Constelación o Resumen -------------------- */}
       <section aria-label={esTrabajador ? 'Mis proyectos' : 'Proyectos'}>
         {cargando ? (
-          <p className="rounded-2xl border border-dashed border-[var(--tf-borde)] p-10 text-center text-sm text-[var(--tf-texto-tenue)]">
-            Cargando proyectos…
-          </p>
+          <EsqueletoTarjetas />
         ) : vistaPanel === 'resumen' ? (
           <VistaResumenProyectos
             proyectos={proyectos}
@@ -314,11 +348,11 @@ export default function Panel() {
           puedeEditar={esAdmin || esSupervisor}
           esAdmin={esAdmin}
           esTrabajador={esTrabajador}
-          // Con el formulario de edicion encima, Escape cierra solo ese.
-          bloqueado={editando !== null}
+          // Con el formulario de edicion o confirmacion encima, Escape cierra solo ese.
+          bloqueado={editando !== null || proyectoPorEliminar !== null}
           onCerrar={() => setDetalleAbierto(false)}
           onEditar={() => setEditando(proyecto)}
-          onEliminar={() => handleEliminarProyecto(proyecto)}
+          onEliminar={() => setProyectoPorEliminar(proyecto)}
           onIrAlMapa={() => irATareas(proyecto)}
           onCambio={cargar}
         />
@@ -329,6 +363,7 @@ export default function Panel() {
           onCerrar={() => setModalAbierto(false)}
           onCreado={async () => {
             setModalAbierto(false);
+            toast({ tipo: 'exito', titulo: 'Proyecto creado' });
             await cargar();
           }}
         />
@@ -338,16 +373,35 @@ export default function Panel() {
         <ModalEditarProyecto
           proyecto={editando}
           esAdmin={esAdmin}
+          bloqueado={proyectoPorEliminar !== null}
           onCerrar={() => setEditando(null)}
-          onEliminar={async () => {
-            await handleEliminarProyecto(editando);
-          }}
+          onEliminar={() => setProyectoPorEliminar(editando)}
           onGuardado={async () => {
             setEditando(null);
+            toast({ tipo: 'exito', titulo: 'Proyecto actualizado' });
             await cargar();
           }}
         />
       )}
+
+      <ModalConfirmacion
+        abierto={proyectoPorEliminar !== null}
+        titulo="Eliminar proyecto"
+        descripcion={
+          proyectoPorEliminar
+            ? `¿Seguro que deseas eliminar «${proyectoPorEliminar.nombre}»?`
+            : ''
+        }
+        detalles={[
+          'Se eliminarán todos los nodos y subtareas asociados al proyecto.',
+          'Se cerrarán las sesiones de trabajo activas dentro de este proyecto.',
+          'Esta acción es irreversible.',
+        ]}
+        etiquetaConfirmar="Sí, eliminar proyecto"
+        ocupado={eliminandoProyecto}
+        onConfirmar={confirmarEliminarProyecto}
+        onCancelar={() => setProyectoPorEliminar(null)}
+      />
     </Marco>
   );
 }
@@ -359,7 +413,7 @@ function TarjetaMetrica({
   icono,
 }: {
   etiqueta: string;
-  valor: string;
+  valor: string | null;
   subtexto: string;
   icono: string;
 }) {
@@ -370,7 +424,11 @@ function TarjetaMetrica({
         <span className="text-base">{icono}</span>
       </div>
       <div className="mt-2">
-        <p className="tf-display text-2xl font-bold text-[var(--tf-texto)]">{valor}</p>
+        {valor === null ? (
+          <BloqueEsqueleto className="h-7 w-20" />
+        ) : (
+          <p className="tf-display text-2xl font-bold text-[var(--tf-texto)]">{valor}</p>
+        )}
         <p className="mt-0.5 text-[11px] text-[var(--tf-texto-suave)]">{subtexto}</p>
       </div>
     </div>
@@ -482,83 +540,76 @@ function ModalCrearProyecto({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="tf-enter w-full max-w-md rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
-          <h2 className="tf-display text-lg font-bold text-[var(--tf-texto)]">Crear proyecto</h2>
-          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">
-            ✕
-          </button>
+    <Modal titulo="Crear proyecto" ancho="md" bloqueado={enviando} onCerrar={onCerrar}>
+      {error && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={enviar} className="space-y-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre</label>
+          <input
+            type="text"
+            required
+            autoFocus
+            placeholder="Ej: Sitio web corporativo"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-400">
-            {error}
-          </div>
-        )}
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+            Descripción <span className="font-normal text-[var(--tf-texto-suave)]">(opcional)</span>
+          </label>
+          <textarea
+            rows={3}
+            placeholder="De qué trata este proyecto"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-        <form onSubmit={enviar} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre</label>
-            <input
-              type="text"
-              required
-              autoFocus
-              placeholder="Ej: Sitio web corporativo"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
-              Descripción <span className="font-normal text-[var(--tf-texto-suave)]">(opcional)</span>
-            </label>
-            <textarea
-              rows={3}
-              placeholder="De qué trata este proyecto"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
-
-          <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={enviando}
-              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={enviando}
-              style={{ backgroundColor: colorPrimario }}
-              className="tf-shimmer-cta rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
-            >
-              {enviando ? 'Creando…' : 'Crear proyecto'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="mt-6 flex justify-end gap-2 border-t border-[var(--tf-borde)] pt-4">
+          <button
+            type="button"
+            onClick={onCerrar}
+            disabled={enviando}
+            className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={enviando}
+            style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+            className="tf-shimmer-cta rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition hover:brightness-110 disabled:opacity-50"
+          >
+            {enviando ? 'Creando…' : 'Crear proyecto'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
 function ModalEditarProyecto({
   proyecto,
   esAdmin,
+  bloqueado = false,
   onCerrar,
   onEliminar,
   onGuardado,
 }: {
   proyecto: ProyectoItem;
   esAdmin?: boolean;
+  bloqueado?: boolean;
   onCerrar: () => void;
-  onEliminar?: () => Promise<void>;
+  onEliminar?: () => void;
   onGuardado: () => Promise<void>;
 }) {
   const colorPrimario = useColorPrimario();
@@ -584,81 +635,72 @@ function ModalEditarProyecto({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="tf-modal-entra w-full max-w-md rounded-3xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-6 text-[var(--tf-texto)] shadow-2xl">
-        <div className="mb-4 flex items-center justify-between border-b border-[var(--tf-borde)] pb-3">
-          <h2 className="text-lg font-bold text-[var(--tf-texto)]">Editar proyecto</h2>
-          <button onClick={onCerrar} className="text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]">
-            ✕
-          </button>
+    <Modal titulo="Editar proyecto" ancho="md" bloqueado={bloqueado || enviando} onCerrar={onCerrar}>
+      {error && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={enviar} className="space-y-4">
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre</label>
+          <input
+            type="text"
+            required
+            autoFocus
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
         </div>
 
-        {error && (
-          <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
-            {error}
-          </div>
-        )}
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
+            Descripción <span className="font-normal text-[var(--tf-texto-suave)]">(opcional)</span>
+          </label>
+          <textarea
+            rows={3}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
+          />
+        </div>
 
-        <form onSubmit={enviar} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">Nombre</label>
-            <input
-              type="text"
-              required
-              autoFocus
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
-          </div>
+        <div className="mt-6 flex items-center justify-between gap-2 border-t border-[var(--tf-borde)] pt-4">
+          {esAdmin && onEliminar ? (
+            <button
+              type="button"
+              onClick={onEliminar}
+              disabled={enviando}
+              className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/20"
+            >
+              Eliminar Proyecto
+            </button>
+          ) : (
+            <div />
+          )}
 
-          <div>
-            <label className="mb-1 block text-xs font-semibold text-[var(--tf-texto-tenue)]">
-              Descripción <span className="font-normal text-[var(--tf-texto-suave)]">(opcional)</span>
-            </label>
-            <textarea
-              rows={3}
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
-            />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onCerrar}
+              disabled={enviando}
+              className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={enviando}
+              style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+              className="rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition hover:brightness-110 disabled:opacity-50"
+            >
+              {enviando ? 'Guardando…' : 'Guardar cambios'}
+            </button>
           </div>
-
-          <div className="mt-6 flex items-center justify-between gap-2 border-t border-[var(--tf-borde)] pt-4">
-            {esAdmin && onEliminar ? (
-              <button
-                type="button"
-                onClick={onEliminar}
-                disabled={enviando}
-                className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/20"
-              >
-                Eliminar Proyecto
-              </button>
-            ) : (
-              <div />
-            )}
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onCerrar}
-                disabled={enviando}
-                className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-sm font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={enviando}
-                style={{ backgroundColor: colorPrimario }}
-                className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
-              >
-                {enviando ? 'Guardando…' : 'Guardar cambios'}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </Modal>
   );
 }

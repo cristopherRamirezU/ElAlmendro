@@ -12,6 +12,7 @@ import {
   ChevronsRight,
   ChevronsUp,
   History,
+  Keyboard,
   LayoutGrid,
   LogOut,
   LucideIcon,
@@ -47,9 +48,17 @@ import {
 } from '@/lib/cacheSesion';
 import { precalentarRutas } from '@/lib/precalentar';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
-import { colorConAlfa, COLOR_PRIMARIO_DEFECTO, colorRgb } from '@/lib/color';
+import {
+  colorConAlfa,
+  COLOR_PRIMARIO_DEFECTO,
+  colorRgb,
+  colorSecundarioDeMarca,
+  colorTextoSobre,
+} from '@/lib/color';
 import { TEMA_FONDO_DEFECTO, useAplicarTemaFondo } from '@/lib/tema';
 import FondoAmbiental from './FondoAmbiental';
+import { EsqueletoPagina } from './ui/Esqueleto';
+import AtajosTeclado, { abrirPanelAtajos } from './ui/AtajosTeclado';
 
 /** La barra lateral escondida se recuerda en este navegador. */
 const CLAVE_BARRA = 'tf_barra_oculta';
@@ -131,6 +140,7 @@ export default function Marco({
   subtitulo,
   tituloOculto = false,
   permitirOcultarCabecera = false,
+  controlesEnSidebar = false,
   compacto = false,
   acciones,
   children,
@@ -142,6 +152,8 @@ export default function Marco({
   tituloOculto?: boolean;
   /** Permite replegar la cabecera superior para ampliar vistas de mapas. */
   permitirOcultarCabecera?: boolean;
+  /** En escritorio oculta la cabecera superior y ubica los controles al pie del sidebar. */
+  controlesEnSidebar?: boolean;
   /** Reduce el relleno del contenedor principal para aprovechar mas el alto/ancho. */
   compacto?: boolean;
   acciones?: React.ReactNode;
@@ -164,8 +176,21 @@ export default function Marco({
   // corre: el aviso ofrece ir directo a ella para cerrarlo.
   const [tareaAbierta, setTareaAbierta] = useState<Sesion['actividad'] | null>(null);
   const colorPrimario = usuario?.organizacionColor || COLOR_PRIMARIO_DEFECTO;
+  const colorSecundario = colorSecundarioDeMarca(colorPrimario);
+  const textoPrimario = colorTextoSobre(colorPrimario);
   const temaFondo = usuario?.organizacionTema || TEMA_FONDO_DEFECTO;
   useAplicarTemaFondo(temaFondo);
+  const textoSobreSuave =
+    temaFondo === 'claro-nube' && textoPrimario === '#0f172a' ? '#0f172a' : colorPrimario;
+
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty('--color-primario', colorPrimario);
+    root.setProperty('--color-primario-2', colorSecundario);
+    root.setProperty('--tf-primario-rgb', colorRgb(colorPrimario));
+    root.setProperty('--tf-primario-2-rgb', colorRgb(colorSecundario));
+    root.setProperty('--tf-texto-primario', textoPrimario);
+  }, [colorPrimario, colorSecundario, textoPrimario]);
 
   useEffect(() => {
     let vigente = true;
@@ -259,10 +284,10 @@ export default function Marco({
     }
   }, [permitirOcultarCabecera]);
   useEffect(() => {
-    if (!permitirOcultarCabecera) return;
+    if (!permitirOcultarCabecera && !controlesEnSidebar) return;
     const raf = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
     return () => cancelAnimationFrame(raf);
-  }, [cabeceraOculta, barraOculta, permitirOcultarCabecera]);
+  }, [cabeceraOculta, barraOculta, permitirOcultarCabecera, controlesEnSidebar]);
   useEffect(() => {
     setMenuMovil(false);
   }, [activo]);
@@ -333,11 +358,7 @@ export default function Marco({
   }, [usuario, activo]);
 
   if (!listo) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-[var(--tf-fondo)] text-sm text-[var(--tf-texto-tenue)]">
-        Cargando…
-      </main>
-    );
+    return <EsqueletoPagina />;
   }
 
   // Filtrado RBAC: los usuarios solo ven los módulos que tienen autorizados
@@ -369,18 +390,55 @@ export default function Marco({
         />
       )}
       <div
-        className="relative flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
+        className="relative isolate flex min-h-screen bg-[var(--tf-fondo)] text-[var(--tf-texto)]"
         style={
           {
             '--color-primario': colorPrimario,
+            '--color-primario-2': colorSecundario,
             '--tf-primario-rgb': colorRgb(colorPrimario),
+            '--tf-primario-2-rgb': colorRgb(colorSecundario),
+            '--tf-texto-primario': textoPrimario,
+            '--tf-sangria-izq-barra': controlesEnSidebar && barraOculta ? '6.25rem' : '0px',
           } as React.CSSProperties
         }
       >
         <FondoAmbiental colorPrimario={colorPrimario} />
 
+        {controlesEnSidebar && barraOculta && (
+          <button
+            type="button"
+            onClick={alternarBarra}
+            title={
+              jornada
+                ? 'Mostrar barra lateral · En jornada activa'
+                : 'Mostrar barra lateral · Fuera de jornada'
+            }
+            aria-label={
+              jornada
+                ? 'Mostrar barra lateral (En jornada activa)'
+                : 'Mostrar barra lateral (Fuera de jornada)'
+            }
+            className="fixed left-4 top-3 z-40 hidden h-9 items-center gap-2 rounded-full border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)]/95 px-2.5 text-[var(--tf-texto-tenue)] shadow-lg backdrop-blur-md transition hover:border-[var(--color-primario)] hover:text-[var(--tf-texto)] md:inline-flex"
+          >
+            <LogoTimeFlow tamano={20} className="h-5 w-5 shrink-0" />
+            <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
+              {jornada && (
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              )}
+              <span
+                className={`relative inline-flex h-2 w-2 rounded-full ${
+                  jornada
+                    ? 'bg-emerald-500 ring-4 ring-emerald-500/20'
+                    : 'bg-slate-400 ring-4 ring-slate-400/15'
+                }`}
+              />
+            </span>
+            <ChevronsRight size={15} aria-hidden />
+          </button>
+        )}
+
         <aside
-          className={`relative z-10 w-60 shrink-0 flex-col gap-1 border-r border-[var(--tf-borde)] bg-[var(--tf-sidebar)] p-4 backdrop-blur-xl ${barraOculta ? 'hidden' : 'hidden md:flex'}`}
+          className={`relative z-30 w-60 shrink-0 flex-col gap-1 border-r border-[var(--tf-borde)] bg-[var(--tf-sidebar)] p-4 backdrop-blur-xl ${barraOculta ? 'hidden' : 'hidden md:flex'}`}
         >
           <div className="mb-4 flex items-center gap-3 border-b border-[var(--tf-borde)] px-2 pb-4 pt-1">
             <LogoTimeFlow tamano={40} className="h-10 w-10 shrink-0" />
@@ -439,30 +497,97 @@ export default function Marco({
             );
           })}
 
-          <div className="mt-auto border-t border-[var(--tf-borde)] pt-3">
-            <Link
-              href="/cuenta"
-              style={
-                activo === '/cuenta'
-                  ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }
-                  : undefined
-              }
-              className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition ${
-                activo === '/cuenta'
-                  ? 'font-semibold'
-                  : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
-              }`}
-            >
-              <UserCog size={18} className="shrink-0" />
-              Mi cuenta
-            </Link>
-            <button
-              onClick={salir}
-              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
-            >
-              <LogOut size={18} className="shrink-0" />
-              Cerrar sesión
-            </button>
+          <div className="mt-auto">
+            {controlesEnSidebar && (
+              <div className="mb-3 flex flex-col gap-2.5 border-t border-[var(--tf-borde)] pt-3">
+                {avisoJornada && (
+                  <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 px-2.5 py-2 text-[11px] font-medium text-[var(--tf-acento-rojo)]">
+                    <p>{avisoJornada}</p>
+                    {tareaAbierta && (
+                      <button
+                        type="button"
+                        onClick={irATareaAbierta}
+                        title={`Ir a «${tareaAbierta.titulo}» para cerrar su cronómetro`}
+                        className="mt-1.5 inline-flex rounded-lg bg-rose-500/20 px-2 py-0.5 text-[11px] font-semibold text-[var(--tf-texto)] transition hover:bg-rose-500/35"
+                      >
+                        Ir a la tarea →
+                      </button>
+                    )}
+                  </div>
+                )}
+                {usuario?.rol !== 'SUPER_ADMIN' && (
+                  <InterruptorJornada
+                    variante="sidebar"
+                    encendido={Boolean(jornada)}
+                    pendiente={jornadaPendiente}
+                    desde={jornada?.inicioEn}
+                    onAlternar={alternarJornada}
+                  />
+                )}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {usuario && <CampanaNotificaciones posicion="sidebar" />}
+                    <Link
+                      href="/cuenta"
+                      className="rounded-full transition hover:brightness-110"
+                      title={`${usuario?.nombreCompleto ?? ''} · Mi cuenta`}
+                      aria-label={`Mi cuenta (${usuario?.nombreCompleto ?? ''})`}
+                    >
+                      <Avatar
+                        id={usuario?.id ?? ''}
+                        nombre={usuario?.nombreCompleto ?? ''}
+                        foto={usuario?.fotoPerfil}
+                        style={{
+                          backgroundColor: colorConAlfa(colorPrimario, 0.16),
+                          color: textoSobreSuave,
+                        }}
+                        className="h-9 w-9 text-xs font-bold"
+                      />
+                    </Link>
+                  </div>
+                  {acciones && <div className="min-w-0 max-w-full">{acciones}</div>}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t border-[var(--tf-borde)] pt-3">
+              <Link
+                href="/cuenta"
+                style={
+                  activo === '/cuenta'
+                    ? { backgroundColor: colorConAlfa(colorPrimario, 0.15), color: textoSobreSuave }
+                    : undefined
+                }
+                className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm transition ${
+                  activo === '/cuenta'
+                    ? 'font-semibold'
+                    : 'text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+                }`}
+              >
+                <UserCog size={18} className="shrink-0" />
+                Mi cuenta
+              </Link>
+              <button
+                type="button"
+                onClick={abrirPanelAtajos}
+                className="flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-left text-xs text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+              >
+                <span className="flex items-center gap-2.5">
+                  <Keyboard size={16} className="shrink-0" aria-hidden />
+                  Atajos de teclado
+                </span>
+                <kbd className="rounded border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] px-1.5 py-0.5 font-mono text-[10px] font-semibold">
+                  ?
+                </kbd>
+              </button>
+              <button
+                onClick={salir}
+                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+              >
+                <LogOut size={18} className="shrink-0" />
+                Cerrar sesión
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -551,9 +676,9 @@ export default function Marco({
           </div>
         )}
 
-        <div className="relative z-10 flex min-w-0 flex-1 flex-col">
-          {permitirOcultarCabecera && cabeceraOculta ? (
-            <div className="pointer-events-none sticky top-0 z-20 flex items-start justify-center px-3">
+        <div className="flex min-w-0 flex-1 flex-col">
+          {!controlesEnSidebar && permitirOcultarCabecera && cabeceraOculta ? (
+            <div className="pointer-events-none sticky top-0 z-30 flex items-start justify-center px-3">
               <div className="pointer-events-auto inline-flex items-center gap-1 rounded-b-xl border border-t-0 border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] px-2 py-1 text-[11px] font-medium text-[var(--tf-texto-tenue)] shadow-md backdrop-blur">
                 {barraOculta && (
                   <button
@@ -583,7 +708,11 @@ export default function Marco({
               </div>
             </div>
           ) : (
-            <header className="relative flex flex-wrap items-center gap-3 border-b border-[var(--tf-borde)] bg-[var(--tf-sidebar)] px-4 py-3.5 backdrop-blur-xl md:px-6 md:py-4">
+            <header
+              className={`relative z-30 flex flex-wrap items-center gap-3 border-b border-[var(--tf-borde)] bg-[var(--tf-sidebar)] px-4 py-3.5 backdrop-blur-xl md:px-6 md:py-4 ${
+                controlesEnSidebar ? 'md:hidden' : ''
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => setMenuMovil(true)}
@@ -650,11 +779,11 @@ export default function Marco({
                     id={usuario?.id ?? ''}
                     nombre={usuario?.nombreCompleto ?? ''}
                     foto={usuario?.fotoPerfil}
-                    style={{ backgroundColor: colorConAlfa(colorPrimario, 0.15), color: colorPrimario }}
+                    style={{ backgroundColor: colorConAlfa(colorPrimario, 0.16), color: textoSobreSuave }}
                     className="h-9 w-9 text-xs font-bold"
                   />
                 </Link>
-                {permitirOcultarCabecera && (
+                {permitirOcultarCabecera && !controlesEnSidebar && (
                   <button
                     type="button"
                     onClick={alternarCabecera}
@@ -688,6 +817,7 @@ export default function Marco({
         </div>
       </div>
       {usuario && conChatFlotante && <ChatFlotante yoId={usuario.id} />}
+      <AtajosTeclado activo={activo} />
     </ContextoSesion.Provider>
   );
 

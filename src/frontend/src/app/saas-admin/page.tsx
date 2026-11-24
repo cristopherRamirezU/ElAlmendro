@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Marco from '@/components/Marco';
+import Selector from '@/components/ui/Selector';
+import Modal from '@/components/ui/Modal';
+import ModalConfirmacion from '@/components/ui/ModalConfirmacion';
+import { EsqueletoTabla } from '@/components/ui/Esqueleto';
+import { useToast } from '@/components/ui/Toast';
 import {
   api,
   ErrorApi,
@@ -12,6 +17,7 @@ import {
   CrearOrganizacionPayload,
   ActualizarOrganizacionPayload,
 } from '@/lib/api';
+import { etiquetaPlan } from '@/lib/formato';
 import { PERMISOS } from '@/lib/rbac';
 import { useTienePermiso } from '@/lib/sesion';
 import { AYUDA_CONTRASENA, CONTRASENA_MAXIMO } from '@/lib/contrasena';
@@ -45,6 +51,9 @@ function ContenidoSaasAdmin() {
   // Modales
   const [modalCrear, setModalCrear] = useState(false);
   const [modalEditar, setModalEditar] = useState<OrganizacionItem | null>(null);
+  const [orgPorAlternar, setOrgPorAlternar] = useState<OrganizacionItem | null>(null);
+  const [alternandoOrg, setAlternandoOrg] = useState(false);
+  const { toast } = useToast();
 
   const cargarDatos = useCallback(async () => {
     setCargando(true);
@@ -79,17 +88,17 @@ function ContenidoSaasAdmin() {
 
   if (!puedeVer) {
     return (
-      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-slate-900 p-8 text-center shadow-sm backdrop-blur">
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-lg font-bold text-rose-400">
+      <div className="mx-auto max-w-lg rounded-2xl border border-rose-500/30 bg-[var(--tf-superficie)] p-8 text-center shadow-sm backdrop-blur">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-rose-500/10 text-lg font-bold text-[var(--tf-acento-rojo)]">
           ✕
         </div>
-        <h2 className="text-lg font-bold text-white">Acceso Restringido</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <h2 className="text-lg font-bold text-[var(--tf-texto)]">Acceso Restringido</h2>
+        <p className="mt-1 text-sm text-[var(--tf-texto-tenue)]">
           Esta consola es exclusiva para la administración global de la plataforma SaaS.
         </p>
         <Link
           href="/panel"
-          className="mt-5 inline-block rounded-xl bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-600"
+          className="mt-5 inline-block rounded-xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] px-5 py-2.5 text-sm font-semibold text-[var(--tf-texto)] transition hover:bg-[var(--tf-borde)]"
         >
           Volver a Proyectos
         </Link>
@@ -102,25 +111,33 @@ function ContenidoSaasAdmin() {
     cargarDatos();
   }
 
-  async function alternarEstado(org: OrganizacionItem) {
+  async function confirmarAlternarEstado() {
+    if (!orgPorAlternar) return;
+    const org = orgPorAlternar;
     const nuevoEstado = !org.activo;
-    const confirmacion = window.confirm(
-      nuevoEstado
-        ? `¿Deseas reactivar la organización "${org.nombre}"?`
-        : `¿Deseas suspender la organización "${org.nombre}"? Sus usuarios no podrán iniciar sesión.`,
-    );
-    if (!confirmacion) return;
-
+    setAlternandoOrg(true);
     try {
       await api.patch(`/organizaciones/${org.id}`, { activo: nuevoEstado });
-      setMensajeExito(
-        nuevoEstado
-          ? `Organización "${org.nombre}" reactivada con éxito.`
-          : `Organización "${org.nombre}" suspendida con éxito.`,
-      );
+      setOrgPorAlternar(null);
+      toast({
+        tipo: 'exito',
+        titulo: nuevoEstado ? 'Organización reactivada' : 'Organización suspendida',
+        descripcion: `«${org.nombre}» fue ${nuevoEstado ? 'reactivada' : 'suspendida'}.`,
+        duracionMs: 7000,
+        accion: {
+          etiqueta: 'Deshacer',
+          alHacer: async () => {
+            await api.patch(`/organizaciones/${org.id}`, { activo: org.activo });
+            cargarDatos();
+          },
+        },
+      });
       cargarDatos();
     } catch (err) {
       setError(err instanceof ErrorApi ? err.message : 'No se pudo cambiar el estado.');
+      setOrgPorAlternar(null);
+    } finally {
+      setAlternandoOrg(false);
     }
   }
 
@@ -262,10 +279,13 @@ function ContenidoSaasAdmin() {
         </div>
 
         {/* Tabla de Organizaciones */}
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 backdrop-blur-xl">
+        <div className="tf-card-pro overflow-hidden rounded-2xl">
+          {cargando ? (
+            <EsqueletoTabla filas={5} columnas={6} />
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-white/10 bg-slate-950/40 uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-[var(--tf-borde)] bg-[var(--tf-hover)] uppercase tracking-wider text-[var(--tf-texto-suave)]">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Organización / Empresa</th>
                   <th className="px-5 py-3 font-semibold">Plan SaaS</th>
@@ -275,16 +295,10 @@ function ContenidoSaasAdmin() {
                   <th className="px-5 py-3 font-semibold text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
-                {cargando ? (
+              <tbody className="divide-y divide-[var(--tf-borde)] text-[var(--tf-texto-tenue)]">
+                {organizaciones.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
-                      Cargando organizaciones...
-                    </td>
-                  </tr>
-                ) : organizaciones.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                    <td colSpan={6} className="py-8 text-center text-[var(--tf-texto-suave)]">
                       No se encontraron organizaciones registradas.
                     </td>
                   </tr>
@@ -294,26 +308,26 @@ function ContenidoSaasAdmin() {
                     const pctProyectos = Math.min(100, Math.round((org.totalProyectos / org.maxProyectos) * 100));
 
                     return (
-                      <tr key={org.id} className="transition hover:bg-white/[0.02]">
+                      <tr key={org.id} className="transition hover:bg-[var(--tf-hover)]">
                         <td className="px-5 py-4">
-                          <div className="font-semibold text-white">{org.nombre}</div>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                            <span>slug: <strong className="text-slate-300">{org.slug}</strong></span>
+                          <div className="font-semibold text-[var(--tf-texto)]">{org.nombre}</div>
+                          <div className="flex items-center gap-2 text-[11px] text-[var(--tf-texto-tenue)]">
+                            <span>identificador: <strong className="text-[var(--tf-texto)]">{org.slug}</strong></span>
                             {org.rut && <span>· RUT: {org.rut}</span>}
                           </div>
                         </td>
 
                         <td className="px-5 py-4">
                           <span
-                            className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                            className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-bold ${
                               org.plan === 'EMPRESA'
-                                ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                                ? 'border-purple-500/30 bg-purple-500/15 text-[var(--tf-acento-violeta)]'
                                 : org.plan === 'PRO'
-                                ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
-                                : 'bg-slate-700/30 text-slate-300 border border-slate-600/30'
+                                ? 'border-sky-500/30 bg-sky-500/15 text-[var(--tf-acento-azul)]'
+                                : 'border-[var(--tf-borde)] bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)]'
                             }`}
                           >
-                            {org.plan}
+                            {etiquetaPlan(org.plan)}
                           </span>
                         </td>
 
@@ -380,11 +394,11 @@ function ContenidoSaasAdmin() {
                               Editar Plan
                             </button>
                             <button
-                              onClick={() => alternarEstado(org)}
+                              onClick={() => setOrgPorAlternar(org)}
                               className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition ${
                                 org.activo
-                                  ? 'border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
-                                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                                  ? 'border-rose-500/30 bg-rose-500/10 text-[var(--tf-acento-rojo)] hover:bg-rose-500/20'
+                                  : 'border-emerald-500/30 bg-emerald-500/10 text-[var(--tf-acento-verde)] hover:bg-emerald-500/20'
                               }`}
                             >
                               {org.activo ? 'Suspender' : 'Reactivar'}
@@ -398,6 +412,7 @@ function ContenidoSaasAdmin() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
 
@@ -425,6 +440,23 @@ function ContenidoSaasAdmin() {
           }}
         />
       )}
+
+      <ModalConfirmacion
+        abierto={orgPorAlternar !== null}
+        variante={orgPorAlternar?.activo ? 'peligro' : 'advertencia'}
+        titulo={orgPorAlternar?.activo ? 'Suspender organización' : 'Reactivar organización'}
+        descripcion={
+          orgPorAlternar?.activo
+            ? `¿Seguro que deseas suspender «${orgPorAlternar.nombre}»? Sus usuarios no podrán iniciar sesión mientras esté suspendida.`
+            : orgPorAlternar
+              ? `¿Deseas reactivar la organización «${orgPorAlternar.nombre}»?`
+              : ''
+        }
+        etiquetaConfirmar={orgPorAlternar?.activo ? 'Sí, suspender' : 'Sí, reactivar'}
+        ocupado={alternandoOrg}
+        onConfirmar={confirmarAlternarEstado}
+        onCancelar={() => setOrgPorAlternar(null)}
+      />
     </>
   );
 }
@@ -492,140 +524,136 @@ function ModalCrearOrganizacion({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <h2 className="text-base font-bold text-white">Alta de Nueva Empresa / Tenant</h2>
-          <button onClick={alCerrar} className="text-slate-400 hover:text-white">✕</button>
+    <Modal titulo="Alta de Nueva Empresa / Cliente" ancho="md" bloqueado={guardando} onCerrar={alCerrar}>
+      {errorModal && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
+          {errorModal}
+        </div>
+      )}
+
+      <form onSubmit={enviar} className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Nombre de la Empresa *</label>
+            <input
+              type="text"
+              required
+              value={nombre}
+              onChange={(e) => autoSlug(e.target.value)}
+              placeholder="Ej. Minera Norte SpA"
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Identificador único *</label>
+            <input
+              type="text"
+              required
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase().trim())}
+              placeholder="ej. minera-norte"
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 font-mono text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] focus:border-sky-500 focus:outline-none"
+            />
+          </div>
         </div>
 
-        {errorModal && (
-          <div className="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
-            {errorModal}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">RUT (opcional)</label>
+            <input
+              type="text"
+              value={rut}
+              onChange={(e) => setRut(e.target.value)}
+              placeholder="76.123.456-7"
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] focus:border-sky-500 focus:outline-none"
+            />
           </div>
-        )}
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Plan Asignado</label>
+            <Selector
+              ariaLabel="Plan Asignado"
+              valor={plan}
+              onChange={(v) => setPlan(v as PlanSaaS)}
+              className="mt-1"
+              opciones={[
+                { valor: 'GRATIS', etiqueta: 'Básico', badge: 'Inicial' },
+                { valor: 'PRO', etiqueta: 'Pro', badge: 'Popular' },
+                { valor: 'EMPRESA', etiqueta: 'Empresa', badge: 'Ilimitado' },
+              ]}
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Máx Usuarios</label>
+            <input
+              type="number"
+              min={1}
+              required
+              value={maxUsuarios}
+              onChange={(e) => setMaxUsuarios(Number(e.target.value))}
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+        </div>
 
-        <form onSubmit={enviar} className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="border-t border-[var(--tf-borde)] pt-3">
+          <h3 className="text-xs font-bold text-[var(--tf-acento-azul)]">Administrador Inicial (Opcional)</h3>
+          <p className="text-[11px] text-[var(--tf-texto-tenue)]">Crea el primer usuario de gestión para este cliente.</p>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="text-[11px] font-semibold text-slate-300">Nombre de la Empresa *</label>
+              <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Nombre Administrador</label>
               <input
                 type="text"
-                required
-                value={nombre}
-                onChange={(e) => autoSlug(e.target.value)}
-                placeholder="Ej. Minera Norte SpA"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+                value={adminNombre}
+                onChange={(e) => setAdminNombre(e.target.value)}
+                placeholder="Carlos Mendoza"
+                className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] focus:border-sky-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-slate-300">Slug identificador (único) *</label>
+              <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Correo Electrónico</label>
+              <input
+                type="email"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+                placeholder="admin@empresa.cl"
+                className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] focus:border-sky-500 focus:outline-none"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Contraseña Provisoria</label>
               <input
                 type="text"
-                required
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().trim())}
-                placeholder="ej. minera-norte"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none font-mono"
+                autoComplete="new-password"
+                maxLength={CONTRASENA_MAXIMO}
+                placeholder={AYUDA_CONTRASENA}
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 font-mono text-xs text-[var(--tf-texto)] focus:border-sky-500 focus:outline-none"
               />
             </div>
           </div>
+        </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">RUT (opcional)</label>
-              <input
-                type="text"
-                value={rut}
-                onChange={(e) => setRut(e.target.value)}
-                placeholder="76.123.456-7"
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">Plan Asignado</label>
-              <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value as PlanSaaS)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              >
-                <option value="GRATIS">GRATIS</option>
-                <option value="PRO">PRO</option>
-                <option value="EMPRESA">EMPRESA</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">Máx Usuarios</label>
-              <input
-                type="number"
-                min={1}
-                required
-                value={maxUsuarios}
-                onChange={(e) => setMaxUsuarios(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 pt-3">
-            <h3 className="text-xs font-bold text-sky-400">Administrador Inicial (Opcional)</h3>
-            <p className="text-[11px] text-slate-400">Crea el primer usuario de gestión para este cliente.</p>
-
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300">Nombre Administrador</label>
-                <input
-                  type="text"
-                  value={adminNombre}
-                  onChange={(e) => setAdminNombre(e.target.value)}
-                  placeholder="Carlos Mendoza"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-semibold text-slate-300">Correo Electrónico</label>
-                <input
-                  type="email"
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@empresa.cl"
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-[11px] font-semibold text-slate-300">Contraseña Provisoria</label>
-                <input
-                  type="text"
-                  autoComplete="new-password"
-                  maxLength={CONTRASENA_MAXIMO}
-                  placeholder={AYUDA_CONTRASENA}
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none font-mono"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={alCerrar}
-              className="rounded-xl px-4 py-2 text-xs text-slate-400 hover:text-white"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="rounded-xl bg-sky-500 px-5 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:opacity-50"
-            >
-              {guardando ? 'Creando empresa...' : 'Dar de Alta Organización'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--tf-borde)] pt-4">
+          <button
+            type="button"
+            onClick={alCerrar}
+            disabled={guardando}
+            className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-xs font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={guardando}
+            className="rounded-xl bg-sky-500 px-5 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:opacity-50"
+          >
+            {guardando ? 'Creando empresa...' : 'Dar de Alta Organización'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -672,113 +700,116 @@ function ModalEditarOrganizacion({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div>
-            <h2 className="text-base font-bold text-white">Editar Plan y Límites</h2>
-            <p className="text-xs text-slate-400 font-mono">{org.slug}</p>
-          </div>
-          <button onClick={alCerrar} className="text-slate-400 hover:text-white">✕</button>
+    <Modal
+      ancho="md"
+      bloqueado={guardando}
+      onCerrar={alCerrar}
+      titulo={
+        <div>
+          <span className="block text-base font-bold text-[var(--tf-texto)]">Editar Plan y Límites</span>
+          <span className="block font-mono text-xs font-normal text-[var(--tf-texto-tenue)]">{org.slug}</span>
+        </div>
+      }
+    >
+      {errorModal && (
+        <div role="alert" className="mb-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-[var(--tf-acento-rojo)]">
+          {errorModal}
+        </div>
+      )}
+
+      <form onSubmit={enviar} className="space-y-4">
+        <div>
+          <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Nombre de la Empresa</label>
+          <input
+            type="text"
+            required
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] focus:border-sky-500 focus:outline-none"
+          />
         </div>
 
-        {errorModal && (
-          <div className="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-300">
-            {errorModal}
-          </div>
-        )}
-
-        <form onSubmit={enviar} className="mt-4 space-y-4">
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] font-semibold text-slate-300">Nombre de la Empresa</label>
-            <input
-              type="text"
-              required
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Plan SaaS</label>
+            <Selector
+              ariaLabel="Plan SaaS"
+              valor={plan}
+              onChange={(v) => setPlan(v as PlanSaaS)}
+              className="mt-1"
+              opciones={[
+                { valor: 'GRATIS', etiqueta: 'Básico', badge: 'Inicial' },
+                { valor: 'PRO', etiqueta: 'Pro', badge: 'Popular' },
+                { valor: 'EMPRESA', etiqueta: 'Empresa', badge: 'Ilimitado' },
+              ]}
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">Plan SaaS</label>
-              <select
-                value={plan}
-                onChange={(e) => setPlan(e.target.value as PlanSaaS)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              >
-                <option value="GRATIS">GRATIS</option>
-                <option value="PRO">PRO</option>
-                <option value="EMPRESA">EMPRESA</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">RUT</label>
-              <input
-                type="text"
-                value={rut}
-                onChange={(e) => setRut(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              />
-            </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">RUT</label>
+            <input
+              type="text"
+              value={rut}
+              onChange={(e) => setRut(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] focus:border-sky-500 focus:outline-none"
+            />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">Límite Usuarios</label>
-              <input
-                type="number"
-                min={1}
-                required
-                value={maxUsuarios}
-                onChange={(e) => setMaxUsuarios(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold text-slate-300">Límite Proyectos</label>
-              <input
-                type="number"
-                min={1}
-                required
-                value={maxProyectos}
-                onChange={(e) => setMaxProyectos(Number(e.target.value))}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-xs text-white focus:border-sky-500 focus:outline-none"
-              />
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Límite Usuarios</label>
+            <input
+              type="number"
+              min={1}
+              required
+              value={maxUsuarios}
+              onChange={(e) => setMaxUsuarios(Number(e.target.value))}
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] focus:border-sky-500 focus:outline-none"
+            />
           </div>
+          <div>
+            <label className="text-[11px] font-semibold text-[var(--tf-texto-tenue)]">Límite Proyectos</label>
+            <input
+              type="number"
+              min={1}
+              required
+              value={maxProyectos}
+              onChange={(e) => setMaxProyectos(Number(e.target.value))}
+              className="mt-1 w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] focus:border-sky-500 focus:outline-none"
+            />
+          </div>
+        </div>
 
-          <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={activo}
-                onChange={(e) => setActivo(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-500 focus:ring-sky-500"
-              />
-              <span className="text-xs text-slate-200">Organización activa (permite inicio de sesión a sus usuarios)</span>
-            </label>
-          </div>
+        <div className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={activo}
+              onChange={(e) => setActivo(e.target.checked)}
+              className="h-4 w-4 rounded text-sky-500 focus:ring-sky-500"
+            />
+            <span className="text-xs text-[var(--tf-texto)]">Organización activa (permite inicio de sesión a sus usuarios)</span>
+          </label>
+        </div>
 
-          <div className="flex items-center justify-end gap-3 border-t border-white/10 pt-4">
-            <button
-              type="button"
-              onClick={alCerrar}
-              className="rounded-xl px-4 py-2 text-xs text-slate-400 hover:text-white"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={guardando}
-              className="rounded-xl bg-sky-500 px-5 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:opacity-50"
-            >
-              {guardando ? 'Guardando...' : 'Guardar Cambios'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--tf-borde)] pt-4">
+          <button
+            type="button"
+            onClick={alCerrar}
+            disabled={guardando}
+            className="rounded-xl border border-[var(--tf-borde)] px-4 py-2 text-xs font-medium text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={guardando}
+            className="rounded-xl bg-sky-500 px-5 py-2 text-xs font-semibold text-white transition hover:bg-sky-400 disabled:opacity-50"
+          >
+            {guardando ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }

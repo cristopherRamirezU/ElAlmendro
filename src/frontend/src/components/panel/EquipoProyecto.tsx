@@ -1,25 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, ErrorApi, MiembroProyecto, PersonaRef } from '@/lib/api';
-
-/** Colores de los avatares: cada persona tiene siempre el mismo. */
-const COLORES = ['#3f6bff', '#825aff', '#1d9e75', '#0ea5e9', '#d4537e', '#ba7517'];
-
-function colorDe(id: string) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return COLORES[Math.abs(h) % COLORES.length];
-}
-
-function iniciales(nombre: string) {
-  return nombre
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-}
+import Selector from '@/components/ui/Selector';
+import { api, ErrorApi, MiembroProyecto, PersonaRef, UsuarioItem } from '@/lib/api';
+import { colorAvatarDe, etiquetaRol, iniciales } from '@/lib/formato';
+import { PERMISOS } from '@/lib/rbac';
+import { useTienePermiso } from '@/lib/sesion';
 
 /**
  * Equipo de un proyecto, compacto: en una fila, lo que va a la izquierda
@@ -39,11 +25,12 @@ export default function EquipoProyecto({
   children?: React.ReactNode;
 }) {
   const [miembros, setMiembros] = useState<MiembroProyecto[]>([]);
-  const [personas, setPersonas] = useState<PersonaRef[]>([]);
+  const [personas, setPersonas] = useState<(PersonaRef & { rol?: string })[]>([]);
   const [elegido, setElegido] = useState('');
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [abierto, setAbierto] = useState(false);
+  const puedeVerUsuarios = useTienePermiso(PERMISOS.USUARIOS_VER);
 
   useEffect(() => {
     let vigente = true;
@@ -53,15 +40,23 @@ export default function EquipoProyecto({
       .then((m) => vigente && setMiembros(m))
       .catch(() => vigente && setAviso('No se pudo cargar el equipo.'));
     if (puedeGestionar) {
-      api
-        .get<PersonaRef[]>('/usuarios/trabajadores')
-        .then((p) => vigente && setPersonas(p))
+      Promise.all([
+        api.get<PersonaRef[]>('/usuarios/trabajadores'),
+        puedeVerUsuarios
+          ? api.get<UsuarioItem[]>('/usuarios').catch(() => [] as UsuarioItem[])
+          : Promise.resolve([] as UsuarioItem[]),
+      ])
+        .then(([p, usuarios]) => {
+          if (!vigente) return;
+          const rolPorId = new Map(usuarios.map((u) => [u.id, u.rol]));
+          setPersonas(p.map((item) => ({ ...item, rol: rolPorId.get(item.id) })));
+        })
         .catch(() => undefined);
     }
     return () => {
       vigente = false;
     };
-  }, [proyectoId, puedeGestionar]);
+  }, [proyectoId, puedeGestionar, puedeVerUsuarios]);
 
   const disponibles = personas.filter((p) => !miembros.some((m) => m.id === p.id));
 
@@ -93,7 +88,7 @@ export default function EquipoProyecto({
             className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--tf-superficie-solida)] text-[10px] font-semibold text-white ${
               i > 0 ? '-ml-2' : ''
             } ${m.activo ? '' : 'opacity-50'}`}
-            style={{ background: colorDe(m.id) }}
+            style={{ background: colorAvatarDe(m.id) }}
           >
             {iniciales(m.nombre)}
           </span>
@@ -107,7 +102,7 @@ export default function EquipoProyecto({
             title={puedeGestionar ? 'Equipo: agregar o quitar personas' : 'Ver el equipo'}
             className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--tf-superficie-solida)] text-sm leading-none transition ${
               miembros.length > 0 ? '-ml-2' : ''
-            } ${abierto ? 'bg-[#3f6bff] text-white' : 'bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)] hover:text-[var(--tf-texto)]'}`}
+            } ${abierto ? 'bg-[var(--color-primario)] text-[var(--tf-texto-primario)]' : 'bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)] hover:text-[var(--tf-texto)]'}`}
           >
             {puedeGestionar ? '+' : '…'}
           </button>
@@ -131,7 +126,7 @@ export default function EquipoProyecto({
                 <li key={m.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
                   <span
                     className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[9px] font-semibold text-white"
-                    style={{ background: colorDe(m.id) }}
+                    style={{ background: colorAvatarDe(m.id) }}
                   >
                     {iniciales(m.nombre)}
                   </span>
@@ -155,19 +150,24 @@ export default function EquipoProyecto({
           )}
           {puedeGestionar && (
             <div className="mt-1 flex gap-2 border-t border-[var(--tf-borde)] px-1 pt-2">
-              <select
-                value={elegido}
-                onChange={(e) => setElegido(e.target.value)}
+              <Selector
+                ariaLabel="Agregar persona al proyecto"
+                forma="compacto"
+                buscable={disponibles.length > 5}
+                placeholderBusqueda="Buscar persona…"
+                placeholder={disponibles.length === 0 ? 'Todo el equipo ya está asignado' : 'Agregar persona…'}
                 disabled={ocupado || disponibles.length === 0}
-                className="min-w-0 flex-1 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-[#7f9dff]/60 disabled:opacity-50"
-              >
-                <option value="">{disponibles.length === 0 ? 'Todo el equipo ya está asignado' : 'Agregar persona…'}</option>
-                {disponibles.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nombre}
-                  </option>
-                ))}
-              </select>
+                valor={elegido}
+                onChange={setElegido}
+                className="min-w-0 flex-1"
+                opciones={disponibles.map((p) => ({
+                  valor: p.id,
+                  etiqueta: p.nombre,
+                  subtitulo: p.rol ? etiquetaRol(p.rol) : undefined,
+                  inicialesAvatar: iniciales(p.nombre),
+                  colorAvatar: colorAvatarDe(p.id),
+                }))}
+              />
               <button
                 onClick={() =>
                   ejecutar(() =>
@@ -177,7 +177,7 @@ export default function EquipoProyecto({
                   )
                 }
                 disabled={ocupado || !elegido}
-                className="tf-boton-marca shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                className="tf-boton-marca shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--tf-texto-primario)] disabled:opacity-50"
               >
                 Asignar
               </button>

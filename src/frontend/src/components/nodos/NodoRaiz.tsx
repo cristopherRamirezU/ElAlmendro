@@ -2,8 +2,11 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useReactFlow, useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
+import Selector from '@/components/ui/Selector';
 import { ALTO_RAIZ, ANCHO_RAIZ, type Orientacion } from '@/lib/mapaMental';
 import { api, PersonaRef } from '@/lib/api';
+import { colorAvatarDe, etiquetaRol, iniciales } from '@/lib/formato';
+import type { ContextoEquipoUsuario } from '@/lib/tipos';
 import { disposicionNodo, type Ancla } from './orientacion';
 import Manillas from './Manillas';
 import { fuenteTitulo } from '@/lib/fuentes';
@@ -24,6 +27,8 @@ export interface DatosNodoRaiz {
   anclas?: Ancla[];
   /** Se esta arrastrando el extremo de una linea: sus bordes lo reciben. */
   recibiendoExtremo?: boolean;
+  esMapaClaro?: boolean;
+  contextoEquipo?: Record<string, ContextoEquipoUsuario>;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   /**
@@ -198,9 +203,9 @@ export default function NodoRaiz({ id, data }: NodeProps) {
         <div className="tf-insignia-cuerpo flex h-full items-center gap-3.5 px-[18px]">
           <AnilloAvance avance={avance} />
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-sky-300">Proyecto</p>
+            <p className="tf-raiz-etiqueta text-[10px] font-bold uppercase tracking-[0.24em] text-sky-300">Proyecto</p>
             <p
-              className={`${fuenteTitulo.className} mt-0.5 font-bold leading-[1.05] tracking-[-0.03em] text-white ${
+              className={`tf-raiz-nombre ${fuenteTitulo.className} mt-0.5 font-bold leading-[1.05] tracking-[-0.03em] text-white ${
                 nombreCorto ? 'truncate' : 'line-clamp-2 break-words'
               }`}
               style={{ fontSize: tamanoNombre }}
@@ -209,7 +214,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
               {d.nombre}
             </p>
             {d.totalTareas > 0 && <SegmentosAvance total={d.totalTareas} hechas={d.completadas} />}
-            <p className="mt-1.5 truncate text-[11px] font-medium text-[#93a3c4]">
+            <p className="tf-raiz-meta mt-1.5 truncate text-[11px] font-medium text-[#93a3c4]">
               {d.totalTareas === 0
                 ? 'Sin tareas todavía'
                 : `${d.totalTareas} ${d.totalTareas === 1 ? 'tarea' : 'tareas'} · ${d.completadas} ${
@@ -244,7 +249,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
           }}
           title={d.expandido ? 'Contraer' : 'Desplegar'}
           aria-label={d.expandido ? 'Contraer las tareas del proyecto' : 'Desplegar las tareas del proyecto'}
-          className={`absolute ${disposicion.claseBoton} z-10 grid h-6 w-6 place-items-center rounded-full bg-slate-800 text-white ring-1 ring-white/25 hover:bg-slate-700`}
+          className={`tf-nodo-btn absolute ${disposicion.claseBoton} z-10 grid h-6 w-6 place-items-center rounded-full bg-slate-800 text-white ring-1 ring-white/25 hover:bg-slate-700`}
         >
           <svg
             viewBox="0 0 24 24"
@@ -271,6 +276,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
               color="#38bdf8"
               titulo="Nueva tarea"
               detalle="Una tarea suelta del proyecto"
+              claro={d.esMapaClaro}
               onElegir={() => elegir('nueva')}
             />
           )}
@@ -279,6 +285,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
               color="#f59e0b"
               titulo="Tarea para alguien"
               detalle="Créala ya con responsable"
+              claro={d.esMapaClaro}
               onElegir={() => elegir('para-alguien')}
             />
           )}
@@ -304,7 +311,7 @@ export default function NodoRaiz({ id, data }: NodeProps) {
             aria-label="Título de la nueva tarea"
             placeholder="Nueva tarea…"
             maxLength={160}
-            className="w-56 rounded-lg border border-white/20 bg-slate-900 px-2.5 py-1.5 text-[11px] text-white shadow-xl outline-none focus:border-sky-400"
+            className="tf-nodo-input w-56 rounded-lg border border-white/20 bg-slate-900 px-2.5 py-1.5 text-[11px] text-white shadow-xl outline-none focus:border-sky-400"
           />
         </div>
       )}
@@ -315,8 +322,17 @@ export default function NodoRaiz({ id, data }: NodeProps) {
           onClick={(e) => e.stopPropagation()}
           className="nodrag absolute left-0 top-full z-10 pt-2"
         >
-          <div ref={panel} className="w-64 rounded-xl border border-amber-400/30 bg-slate-900/95 p-3 shadow-2xl">
-            <p className="mb-2 text-[11px] font-semibold text-amber-200">Tarea para alguien</p>
+          <div
+            ref={panel}
+            className={`w-64 rounded-xl border p-3 shadow-2xl ${
+              d.esMapaClaro
+                ? 'border-amber-500/40 bg-white text-slate-900'
+                : 'border-amber-400/30 bg-slate-900/95 text-white'
+            }`}
+          >
+            <p className={`mb-2 text-[11px] font-semibold ${d.esMapaClaro ? 'text-amber-700' : 'text-amber-200'}`}>
+              Tarea para alguien
+            </p>
             <input
               autoFocus
               value={texto}
@@ -324,24 +340,50 @@ export default function NodoRaiz({ id, data }: NodeProps) {
               aria-label="Título de la tarea"
               placeholder="Qué hay que hacer…"
               maxLength={160}
-              className="mb-2 w-full rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-[11px] text-white placeholder-slate-500 outline-none focus:border-amber-400"
+              className={`mb-2 w-full rounded-lg border px-2.5 py-1.5 text-[11px] outline-none focus:border-amber-400 ${
+                d.esMapaClaro
+                  ? 'border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400'
+                  : 'border-white/15 bg-white/5 text-white placeholder-slate-500'
+              }`}
             />
-            <select
-              value={responsableId}
-              onChange={(e) => setResponsableId(e.target.value)}
-              aria-label="Responsable de la tarea"
+            <Selector
+              ariaLabel="Responsable de la tarea"
+              enPortal={false}
+              forzarTema={d.esMapaClaro ? 'claro' : 'oscuro'}
+              forma="compacto"
+              buscable={(personas?.length ?? 0) > 6}
+              placeholderBusqueda="Buscar persona…"
               disabled={!personas}
-              className="mb-2 w-full rounded-lg border border-white/15 bg-slate-950 px-2 py-1.5 text-[11px] text-white outline-none focus:border-amber-400 disabled:opacity-50"
-            >
-              <option value="">{personas ? 'Elige a la persona…' : 'Cargando equipo…'}</option>
-              {personas?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}
-                </option>
-              ))}
-            </select>
+              placeholder={personas ? 'Elige a la persona…' : 'Cargando equipo…'}
+              valor={responsableId}
+              onChange={setResponsableId}
+              className="mb-2 w-full"
+              opciones={(personas ?? []).map((p) => {
+                const ctx = d.contextoEquipo?.[p.id];
+                const rolTexto = ctx?.rol ? etiquetaRol(ctx.rol) : undefined;
+                const cargaTexto = ctx
+                  ? ctx.activas > 0
+                    ? `${ctx.activas} en curso`
+                    : ctx.total > 0
+                      ? `${ctx.total} asignada(s)`
+                      : 'Disponible'
+                  : undefined;
+                return {
+                  valor: p.id,
+                  etiqueta: p.nombre,
+                  inicialesAvatar: iniciales(p.nombre),
+                  colorAvatar: colorAvatarDe(p.id),
+                  subtitulo: [rolTexto, cargaTexto].filter(Boolean).join(' · ') || undefined,
+                  badge: ctx
+                    ? ctx.activas > 0
+                      ? `${ctx.activas} activas`
+                      : 'Libre'
+                    : undefined,
+                };
+              })}
+            />
             {aviso && (
-              <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-300">
+              <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-500">
                 {aviso}
               </p>
             )}
@@ -357,7 +399,11 @@ export default function NodoRaiz({ id, data }: NodeProps) {
                 type="button"
                 onClick={() => cerrar(true)}
                 disabled={enviando}
-                className="flex-1 rounded-lg border border-white/15 py-1.5 text-[11px] font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-40 motion-reduce:transition-none"
+                className={`flex-1 rounded-lg border py-1.5 text-[11px] font-semibold transition disabled:opacity-40 motion-reduce:transition-none ${
+                  d.esMapaClaro
+                    ? 'border-slate-200 text-slate-600 hover:bg-slate-100'
+                    : 'border-white/15 text-slate-300 hover:bg-white/5'
+                }`}
               >
                 Cancelar
               </button>
@@ -374,11 +420,13 @@ function OpcionMenu({
   color,
   titulo,
   detalle,
+  claro,
   onElegir,
 }: {
   color: string;
   titulo: string;
   detalle: string;
+  claro?: boolean;
   onElegir: () => void;
 }) {
   return (
@@ -388,7 +436,11 @@ function OpcionMenu({
         e.stopPropagation();
         onElegir();
       }}
-      className="flex items-center gap-2 whitespace-nowrap rounded-full bg-slate-900/95 py-2 pl-2 pr-3.5 text-left text-xs font-bold text-slate-100 shadow-[inset_0_0_0_1px_rgba(148,163,184,.25),0_10px_24px_-10px_rgba(0,0,0,.8)] outline-none transition hover:bg-[#10213f] hover:shadow-[inset_0_0_0_1px_rgba(56,189,248,.7),0_10px_24px_-10px_rgba(56,189,248,.5)] focus-visible:bg-[#10213f] focus-visible:shadow-[inset_0_0_0_1px_rgba(56,189,248,.7),0_10px_24px_-10px_rgba(56,189,248,.5)] motion-reduce:transition-none"
+      className={`flex items-center gap-2 whitespace-nowrap rounded-full py-2 pl-2 pr-3.5 text-left text-xs font-bold outline-none transition motion-reduce:transition-none ${
+        claro
+          ? 'bg-white text-slate-900 shadow-[inset_0_0_0_1px_rgba(15,23,42,.15),0_10px_24px_-10px_rgba(15,23,42,.28)] hover:bg-slate-50 hover:shadow-[inset_0_0_0_1px_rgba(14,165,233,.7),0_10px_24px_-10px_rgba(14,165,233,.28)]'
+          : 'bg-slate-900/95 text-slate-100 shadow-[inset_0_0_0_1px_rgba(148,163,184,.25),0_10px_24px_-10px_rgba(0,0,0,.8)] hover:bg-[#10213f] hover:shadow-[inset_0_0_0_1px_rgba(56,189,248,.7),0_10px_24px_-10px_rgba(56,189,248,.5)] focus-visible:bg-[#10213f] focus-visible:shadow-[inset_0_0_0_1px_rgba(56,189,248,.7),0_10px_24px_-10px_rgba(56,189,248,.5)]'
+      }`}
     >
       <span
         aria-hidden
@@ -399,7 +451,9 @@ function OpcionMenu({
       </span>
       <span>
         {titulo}
-        <small className="block text-[10px] font-medium text-slate-400">{detalle}</small>
+        <small className={`block text-[10px] font-medium ${claro ? 'text-slate-500' : 'text-slate-400'}`}>
+          {detalle}
+        </small>
       </span>
     </button>
   );
@@ -417,11 +471,11 @@ function AnilloAvance({ avance }: { avance: number }) {
     <svg width="56" height="56" viewBox="-28 -28 56 56" className="shrink-0" role="img" aria-label={`Avance del proyecto: ${avance}%`}>
       <defs>
         <linearGradient id={id} x1="0" x2="1">
-          <stop offset="0" stopColor="#3f6bff" />
-          <stop offset="1" stopColor="#825aff" />
+          <stop offset="0" stopColor="var(--color-primario, #0ea5e9)" />
+          <stop offset="1" stopColor="var(--color-primario-2, #06b6d4)" />
         </linearGradient>
       </defs>
-      <circle r={radio} fill="none" stroke="rgba(110,150,255,.15)" strokeWidth="5" />
+      <circle r={radio} fill="none" stroke="rgba(110,150,255,.15)" strokeWidth="5" className="tf-raiz-anillo-pista" />
       <circle
         r={radio}
         fill="none"
@@ -432,7 +486,7 @@ function AnilloAvance({ avance }: { avance: number }) {
         transform="rotate(-90)"
         className="transition-[stroke-dasharray] duration-700 motion-reduce:transition-none"
       />
-      <text y="4" fill="#fff" fontSize="12" fontWeight="300" textAnchor="middle" className="tabular-nums">
+      <text y="4" fill="#fff" fontSize="12" fontWeight="400" textAnchor="middle" className="tf-raiz-anillo-texto tabular-nums">
         {avance}%
       </text>
     </svg>

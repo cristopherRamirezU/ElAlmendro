@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
@@ -39,6 +40,12 @@ export class ActividadesController {
   @Get('mias')
   mias(@Usuario() u: UsuarioActual) {
     return this.actividades.mias(u);
+  }
+
+  /** Busqueda rapida global de tareas (respetando aislamiento SaaS y RBAC). Va antes de ':id'. */
+  @Get('buscar')
+  buscar(@Usuario() u: UsuarioActual, @Query('q') q?: string) {
+    return this.actividades.buscar(u, q);
   }
 
   /** Crea una tarea nueva, opcionalmente colgada de otra (mapa de nodos). */

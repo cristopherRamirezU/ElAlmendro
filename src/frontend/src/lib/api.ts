@@ -21,29 +21,130 @@ export function urlFotoPerfil(usuarioId: string, version: string): string {
 }
 
 export class ErrorApi extends Error {
-  constructor(public readonly estado: number, mensaje: string) {
+  public readonly recuperable: boolean;
+  constructor(
+    public readonly estado: number,
+    mensaje: string,
+    opciones?: { recuperable?: boolean },
+  ) {
     super(mensaje);
+    this.name = 'ErrorApi';
+    this.recuperable =
+      opciones?.recuperable ??
+      (estado === 0 || estado === 408 || estado === 429 || estado >= 500);
   }
 }
 
+let ultimoAvisoSesionMs = 0;
+
+function notificarSesionExpirada(ruta: string) {
+  if (typeof window === 'undefined' || ruta.startsWith('/auth/login')) return;
+  const ahora = Date.now();
+  if (ahora - ultimoAvisoSesionMs < 3000) return;
+  ultimoAvisoSesionMs = ahora;
+  window.dispatchEvent(new CustomEvent('tf:sesion-expirada'));
+}
+
+/**
+ * Traduce códigos HTTP y errores de red a mensajes claros y accionables
+ * en lenguaje del dominio, preservando mensajes específicos del servidor.
+ */
+export function traducirErrorHttp(
+  estado: number,
+  mensajeServidor?: string,
+  ruta = '',
+): string {
+  const limpio = (mensajeServidor ?? '').trim();
+  const esGenerico =
+    !limpio ||
+    /^forbidden(\s+resource)?$/i.test(limpio) ||
+    /^unauthorized$/i.test(limpio) ||
+    /^not found$/i.test(limpio) ||
+    /^internal server error$/i.test(limpio) ||
+    /^bad request$/i.test(limpio);
+
+  if (estado === 0) {
+    return 'Sin conexión con el servidor. Revisa tu red e intenta nuevamente; tus cambios escritos no se han perdido.';
+  }
+  if (estado === 401) {
+    return !esGenerico
+      ? limpio
+      : 'Tu sesión expiró o dejó de ser válida. Vuelve a iniciar sesión para continuar.';
+  }
+  if (estado === 403) {
+    if (!esGenerico) return limpio;
+    if (
+      ruta.includes('/actividades/posiciones') ||
+      ruta.includes('/actividades/lados') ||
+      ruta.includes('/bloqueo-hijas')
+    ) {
+      return 'No tienes permiso para editar el mapa de nodos (requiere permiso «Editar el mapa» o rol Supervisor/Administrador).';
+    }
+    if (ruta.startsWith('/usuarios')) {
+      return 'No tienes permisos suficientes para gestionar usuarios (requiere rol Administrador o Supervisor).';
+    }
+    if (ruta.includes('/organizaciones/mia')) {
+      return 'Solo un Administrador de la empresa puede modificar la apariencia y configuración.';
+    }
+    if (ruta.startsWith('/organizaciones')) {
+      return 'Esta acción está reservada para el Super Administrador de la plataforma.';
+    }
+    if (ruta.startsWith('/proyectos') || ruta.startsWith('/actividades')) {
+      return 'No tienes permiso para realizar esta acción en el proyecto o tarea. Consulta con un Administrador.';
+    }
+    return 'No tienes los permisos necesarios para realizar esta acción.';
+  }
+  if (estado === 404) {
+    return !esGenerico ? limpio : 'El elemento solicitado ya no existe o fue eliminado.';
+  }
+  if (estado === 429) {
+    return 'Demasiadas solicitudes seguidas. Espera unos segundos y vuelve a intentar.';
+  }
+  if (estado >= 500) {
+    return !esGenerico
+      ? limpio
+      : 'El servidor tuvo un inconveniente temporal. Intenta nuevamente en unos segundos.';
+  }
+  return !esGenerico
+    ? limpio
+    : 'No se pudo completar la operación. Revisa los datos e intenta nuevamente.';
+}
+
+async function extraerMensajeError(
+  res: Response,
+  ruta: string,
+  porDefecto: string,
+): Promise<string> {
+  let crudo = '';
+  try {
+    const cuerpo = await res.json();
+    crudo = Array.isArray(cuerpo.message)
+      ? String(cuerpo.message[0] ?? '')
+      : typeof cuerpo.message === 'string'
+        ? cuerpo.message
+        : '';
+  } catch {
+    /* la respuesta no traía cuerpo JSON */
+  }
+  return traducirErrorHttp(res.status, crudo || porDefecto, ruta);
+}
+
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}/api${ruta}`, {
-    ...init,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api${ruta}`, {
+      ...init,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+      cache: 'no-store',
+    });
+  } catch {
+    throw new ErrorApi(0, traducirErrorHttp(0, undefined, ruta), { recuperable: true });
+  }
 
   if (!res.ok) {
-    let mensaje = 'No se pudo completar la operacion.';
-    try {
-      const cuerpo = await res.json();
-      mensaje = Array.isArray(cuerpo.message)
-        ? cuerpo.message[0]
-        : (cuerpo.message ?? mensaje);
-    } catch {
-      /* la respuesta no traia cuerpo JSON */
-    }
+    if (res.status === 401) notificarSesionExpirada(ruta);
+    const mensaje = await extraerMensajeError(res, ruta, '');
     throw new ErrorApi(res.status, mensaje);
   }
 
@@ -71,24 +172,24 @@ export const api = {
       method: 'DELETE',
     }),
   /** Sin Content-Type propio: el navegador arma el boundary del multipart. */
-  subirArchivo: <T>(ruta: string, formulario: FormData) =>
-    fetch(`${BASE}/api${ruta}`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formulario,
-    }).then(async (res) => {
-      if (!res.ok) {
-        let mensaje = 'No se pudo subir el archivo.';
-        try {
-          const cuerpo = await res.json();
-          mensaje = Array.isArray(cuerpo.message) ? cuerpo.message[0] : (cuerpo.message ?? mensaje);
-        } catch {
-          /* sin cuerpo JSON */
-        }
-        throw new ErrorApi(res.status, mensaje);
-      }
-      return res.json() as Promise<T>;
-    }),
+  subirArchivo: async <T>(ruta: string, formulario: FormData): Promise<T> => {
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/api${ruta}`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formulario,
+      });
+    } catch {
+      throw new ErrorApi(0, traducirErrorHttp(0, undefined, ruta), { recuperable: true });
+    }
+    if (!res.ok) {
+      if (res.status === 401) notificarSesionExpirada(ruta);
+      const mensaje = await extraerMensajeError(res, ruta, 'No se pudo subir el archivo.');
+      throw new ErrorApi(res.status, mensaje);
+    }
+    return res.json() as Promise<T>;
+  },
 };
 
 // ------------------------------- tipos -------------------------------
@@ -214,6 +315,15 @@ export interface ProyectoItem {
   totalTareas: number;
   /** Tareas ya guardadas en el cofre: es el llenado del proyecto. */
   tareasCompletadas: number;
+}
+
+export interface TareaBusquedaItem {
+  id: string;
+  titulo: string;
+  estado: string;
+  proyectoId: string;
+  proyectoNombre: string;
+  responsableNombre: string;
 }
 
 export interface Actividad {

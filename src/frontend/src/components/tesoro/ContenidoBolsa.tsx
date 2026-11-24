@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Actividad, api, ErrorApi, Evidencia, Sesion, Subtarea } from '@/lib/api';
 import { duracion } from '@/lib/formato';
+import { useToast } from '@/components/ui/Toast';
 import ContadorTarea, {
   TEXTO_ESTADO,
   type AccionContador,
@@ -51,6 +52,7 @@ export default function ContenidoBolsa({
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [pestana, setPestana] = useState<'objetivos' | 'evidencia'>('objetivos');
+  const { toast } = useToast();
 
   const cargar = useCallback(async () => {
     const [a, s, ev] = await Promise.all([
@@ -265,9 +267,24 @@ export default function ContenidoBolsa({
           <p className="shrink-0 text-center text-[11px] text-[#8fa0d0]">
             Tarea terminada ·{' '}
             <button
-              onClick={() =>
-                accion(() => api.patch(`/actividades/${bolsaId}/estado`, { estado: 'EN_PROGRESO' }))
-              }
+              onClick={async () => {
+                await accion(() =>
+                  api.patch(`/actividades/${bolsaId}/estado`, { estado: 'EN_PROGRESO' }),
+                );
+                toast({
+                  tipo: 'info',
+                  titulo: 'Tarea reabierta',
+                  descripcion: `«${titulo}» volvió a estado En progreso.`,
+                  duracionMs: 6500,
+                  accion: {
+                    etiqueta: 'Deshacer',
+                    alHacer: () =>
+                      accion(() =>
+                        api.patch(`/actividades/${bolsaId}/estado`, { estado: 'COMPLETADA' }),
+                      ),
+                  },
+                });
+              }}
               disabled={ocupado}
               className="font-semibold text-[#9fb4ff] hover:text-white disabled:opacity-40"
             >

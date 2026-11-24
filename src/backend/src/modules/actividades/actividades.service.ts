@@ -25,6 +25,7 @@ import { puedeEliminarAudio, puedeGrabarAudio } from './audio-comentario.service
 import {
   exigirOrganizacion,
   filtroActividadOrganizacion,
+  filtroOrganizacion,
 } from '../../common/organizacion';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
@@ -69,6 +70,67 @@ export class ActividadesService {
     return actividades.map((a) => ({
       ...a,
       segundosTrabajados: tiempos.get(a.id) ?? 0,
+    }));
+  }
+
+  /**
+   * Busqueda global de tareas para el buscador unificado del Panel.
+   * Respeta aislamiento Multi-SaaS (solo proyectos activos de la organizacion)
+   * y alcance RBAC (trabajador solo ve sus tareas o proyectos donde participa).
+   */
+  async buscar(u: UsuarioActual, q?: string) {
+    const termino = (q ?? '').trim();
+    if (termino.length < 2) return [];
+
+    const whereOrg = filtroOrganizacion(u);
+    const filtroTexto: Prisma.ActividadWhereInput = {
+      OR: [
+        { titulo: { contains: termino, mode: 'insensitive' } },
+        { descripcion: { contains: termino, mode: 'insensitive' } },
+      ],
+    };
+
+    const whereRol: Prisma.ActividadWhereInput =
+      u.rol === 'TRABAJADOR'
+        ? {
+            AND: [
+              {
+                OR: [
+                  { responsableId: u.id },
+                  { proyecto: { propietarioId: u.id } },
+                  { proyecto: { miembros: { some: { usuarioId: u.id } } } },
+                ],
+              },
+              filtroTexto,
+            ],
+          }
+        : filtroTexto;
+
+    const filas = await this.prisma.actividad.findMany({
+      where: {
+        eliminadoEn: null,
+        proyecto: { eliminadoEn: null, ...whereOrg },
+        ...whereRol,
+      },
+      orderBy: [{ actualizadoEn: 'desc' }, { creadoEn: 'desc' }],
+      take: 15,
+      select: {
+        id: true,
+        titulo: true,
+        estado: true,
+        proyectoId: true,
+        proyecto: { select: { nombre: true } },
+        responsable: { select: { nombreCompleto: true } },
+      },
+    });
+
+    return filas.map((a) => ({
+      id: a.id,
+      titulo: a.titulo,
+      estado: a.estado,
+      proyectoId: a.proyectoId,
+      proyectoNombre: a.proyecto.nombre,
+      responsableNombre: a.responsable.nombreCompleto,
     }));
   }
 

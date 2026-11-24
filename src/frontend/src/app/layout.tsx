@@ -6,6 +6,7 @@ import '@fontsource-variable/sora';
 import '@fontsource-variable/space-grotesk';
 import './globals.css';
 import { ProveedorTesoro } from '@/lib/tesoro';
+import { ProveedorToast } from '@/components/ui/Toast';
 import VentanaBolsa from '@/components/tesoro/VentanaBolsa';
 
 export const metadata: Metadata = {
@@ -44,12 +45,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es-CL" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: FILTRO_EXTENSIONES }} />
-        {/* El tesoro envuelve toda la aplicacion desde la raiz: asi la ventana
-            de la bolsa no se desmonta al navegar entre pantallas. */}
-        <ProveedorTesoro>
-          {children}
-          <VentanaBolsa />
-        </ProveedorTesoro>
+        <ProveedorToast>
+          {/* El tesoro envuelve toda la aplicacion desde la raiz: asi la ventana
+              de la bolsa no se desmonta al navegar entre pantallas. */}
+          <ProveedorTesoro>
+            {children}
+            <VentanaBolsa />
+          </ProveedorTesoro>
+        </ProveedorToast>
       </body>
     </html>
   );
