@@ -37,10 +37,16 @@ export default function InterruptorJornada({
         role="switch"
         aria-checked={visible}
         aria-label={visible ? 'Jornada abierta: marcar salida' : 'Jornada cerrada: marcar entrada'}
-        title={visible ? 'Apaga para marcar la salida' : 'Enciende para marcar la entrada'}
+        title={
+          visible
+            ? desde
+              ? `En jornada desde ${hora(desde)} · Apaga para marcar la salida`
+              : 'Apaga para marcar la salida'
+            : 'Enciende para marcar la entrada'
+        }
         onClick={onAlternar}
         disabled={pendiente !== null}
-        className="tf-interruptor flex w-full flex-col items-stretch gap-2 rounded-2xl px-3 py-2.5 text-left disabled:cursor-wait"
+        className="tf-interruptor flex w-full items-center justify-between gap-2 rounded-2xl px-3 py-2 text-left disabled:cursor-wait"
         data-encendido={visible}
       >
         <span className="flex items-center gap-2">
@@ -54,31 +60,21 @@ export default function InterruptorJornada({
               }`}
             />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[12px] font-bold tracking-tight">
-            <span className={visible ? 'text-[var(--tf-acento-verde)]' : 'text-[var(--tf-texto)]'}>
-              {visible ? 'En jornada' : 'Fuera de jornada'}
+          {visible && desde && pendiente === null && (
+            <span className="whitespace-nowrap font-mono text-[12px] font-semibold tabular-nums tracking-tight text-[var(--tf-texto-tenue)]">
+              {hora(desde)}
             </span>
-            {visible && desde && pendiente === null && (
-              <span className="ml-1 font-mono text-[11px] font-semibold text-[var(--tf-texto-tenue)]">
-                · {hora(desde)}
-              </span>
-            )}
-          </span>
+          )}
         </span>
-        <span className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tf-texto-suave)]">
-            {visible ? 'Activa' : 'Marcar entrada'}
-          </span>
-          <span aria-hidden className="tf-interruptor-pista">
-            <span className="tf-interruptor-rotulo tf-interruptor-on">ON</span>
-            <span className="tf-interruptor-rotulo tf-interruptor-off">OFF</span>
-            <span className="tf-interruptor-perilla">
-              <span
-                className={`h-2 w-2 rounded-full transition-colors ${
-                  visible ? 'bg-emerald-500' : 'bg-slate-400'
-                }`}
-              />
-            </span>
+        <span aria-hidden className="tf-interruptor-pista">
+          <span className="tf-interruptor-rotulo tf-interruptor-on">ON</span>
+          <span className="tf-interruptor-rotulo tf-interruptor-off">OFF</span>
+          <span className="tf-interruptor-perilla">
+            <span
+              className={`h-2 w-2 rounded-full transition-colors ${
+                visible ? 'bg-emerald-500' : 'bg-slate-400'
+              }`}
+            />
           </span>
         </span>
       </button>
@@ -101,7 +97,7 @@ export default function InterruptorJornada({
       onClick={onAlternar}
       disabled={pendiente !== null}
       className={`tf-interruptor flex items-center rounded-full text-left disabled:cursor-wait ${
-        compactarHora ? 'gap-2.5 py-0.5 pl-3 pr-1' : 'gap-3 py-1.5 pl-3.5 pr-1.5'
+        compactarHora ? 'gap-2 py-0.5 pl-2.5 pr-1' : 'gap-2.5 py-1 pl-3 pr-1.5'
       }`}
       data-encendido={visible}
     >
@@ -116,24 +112,11 @@ export default function InterruptorJornada({
             }`}
           />
         </span>
-        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
-          <span
-            className={`text-[13px] font-bold tracking-tight ${
-              visible ? 'text-[var(--tf-acento-verde)]' : 'text-[var(--tf-texto)]'
-            }`}
-          >
-            {visible ? 'En jornada' : 'Fuera de jornada'}
+        {visible && desde && pendiente === null && (
+          <span className="hidden whitespace-nowrap font-mono text-[12px] font-semibold tabular-nums tracking-tight text-[var(--tf-texto-tenue)] sm:inline">
+            {hora(desde)}
           </span>
-          {visible && desde && pendiente === null && (
-            <span
-              className={`hidden font-mono text-[11px] font-semibold text-[var(--tf-texto-tenue)] ${
-                compactarHora ? '2xl:inline' : 'sm:inline'
-              }`}
-            >
-              · {hora(desde)}
-            </span>
-          )}
-        </span>
+        )}
       </span>
       <span aria-hidden className="tf-interruptor-pista">
         <span className="tf-interruptor-rotulo tf-interruptor-on">ON</span>

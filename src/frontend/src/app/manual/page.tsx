@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { BookOpen, ChevronDown, HelpCircle, Search, X } from 'lucide-react';
 import Marco from '@/components/Marco';
 import {
-  ETIQUETAS_ROL,
   PREGUNTAS_FRECUENTES,
   SECCIONES_MANUAL,
   SeccionManual,
@@ -13,15 +12,11 @@ import {
 import { Rol } from '@/lib/rbac';
 import { useSesion } from '@/lib/sesion';
 
-type FiltroRol = 'MI_ROL' | 'TODOS' | Rol;
+type FiltroRol = 'MI_ROL' | 'TODOS';
 
 const FILTROS_ROL: { valor: FiltroRol; texto: string }[] = [
-  { valor: 'MI_ROL', texto: 'Para mi rol' },
+  { valor: 'MI_ROL', texto: 'Para mí' },
   { valor: 'TODOS', texto: 'Todo el manual' },
-  { valor: 'TRABAJADOR', texto: 'Trabajador' },
-  { valor: 'SUPERVISOR', texto: 'Supervisor' },
-  { valor: 'ADMINISTRADOR', texto: 'Administrador' },
-  { valor: 'SUPER_ADMIN', texto: 'SuperAdmin' },
 ];
 
 export default function PaginaManual() {
@@ -29,7 +24,7 @@ export default function PaginaManual() {
     <Marco
       activo="/manual"
       titulo="Manual de uso"
-      subtitulo="Guía interactiva de TimeFlow adaptada a tu rol"
+      subtitulo="Guía interactiva paso a paso de TimeFlow"
     >
       <ContenidoManual />
     </Marco>
@@ -47,8 +42,7 @@ function ContenidoManual() {
 
   const rolEfectivo: Rol | null = useMemo(() => {
     if (filtroRol === 'TODOS') return null;
-    if (filtroRol === 'MI_ROL') return usuario?.rol ?? null;
-    return filtroRol;
+    return usuario?.rol ?? null;
   }, [filtroRol, usuario?.rol]);
 
   const termino = busqueda.trim().toLowerCase();
@@ -142,10 +136,6 @@ function ContenidoManual() {
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           {FILTROS_ROL.map((f) => {
             const activo = filtroRol === f.valor;
-            const etiquetaExtra =
-              f.valor === 'MI_ROL' && usuario?.rol
-                ? ` (${ETIQUETAS_ROL[usuario.rol].nombre})`
-                : '';
             return (
               <button
                 key={f.valor}
@@ -159,7 +149,6 @@ function ContenidoManual() {
                 }`}
               >
                 {f.texto}
-                {etiquetaExtra}
               </button>
             );
           })}
@@ -203,14 +192,6 @@ function ContenidoManual() {
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--tf-acento-azul)]">
                         {s.categoria}
                       </span>
-                      {s.roles.map((r) => (
-                        <span
-                          key={r}
-                          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${ETIQUETAS_ROL[r].clase}`}
-                        >
-                          {ETIQUETAS_ROL[r].nombre}
-                        </span>
-                      ))}
                     </div>
                     <h3 className="text-base font-semibold text-[var(--tf-texto)]">{s.titulo}</h3>
                     <p className="mt-0.5 text-xs text-[var(--tf-texto-tenue)]">{s.resumen}</p>

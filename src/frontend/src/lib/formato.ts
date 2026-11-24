@@ -29,11 +29,16 @@ export function duracion(segundos: number): string {
 
 /** Hora en la zona de quien mira, o en otra (p. ej. la del trabajador). */
 export function hora(iso: string, zona: string = zonaActual()): string {
-  return new Date(iso).toLocaleTimeString('es-CL', {
+  const texto = new Date(iso).toLocaleTimeString('es-CL', {
     timeZone: zona,
     hour: '2-digit',
     minute: '2-digit',
+    hour12: true,
   });
+  return texto
+    .replace(/[\u00a0\u202f]/g, ' ')
+    .replace(/\s*([ap])\.?\s*m\.?/i, (_, letra: string) => ` ${letra.toUpperCase()}M`)
+    .trim();
 }
 
 export interface DefinicionEstado {

@@ -21,99 +21,37 @@ import {
 import { TEMA_FONDO_DEFECTO, TEMAS } from '@/lib/tema';
 import { guardarCacheSesion, leerCacheSesion } from '@/lib/cacheSesion';
 
-/** Paleta sugerida: 8 tonos destacados visibles al abrir Configuración. */
+/** Paleta sugerida destacada visible al abrir Configuración. */
 const PRESETS = [
-  { nombre: 'Celeste TimeFlow', valor: '#0ea5e9' },
-  { nombre: 'Esmeralda', valor: '#10b981' },
-  { nombre: 'Violeta', valor: '#8b5cf6' },
-  { nombre: 'Rosa', valor: '#f43f5e' },
-  { nombre: 'Ámbar', valor: '#f59e0b' },
-  { nombre: 'Fucsia', valor: '#d946ef' },
-  { nombre: 'Cian', valor: '#06b6d4' },
-  { nombre: 'Naranja', valor: '#f97316' },
+  '#0ea5e9',
+  '#10b981',
+  '#8b5cf6',
+  '#f43f5e',
+  '#f59e0b',
+  '#d946ef',
+  '#06b6d4',
+  '#f97316',
 ];
 
-const FAMILIAS_COLORES: {
-  familia: string;
-  tonos: { nombre: string; valor: string }[];
-}[] = [
-  {
-    familia: 'Azules y Cian',
-    tonos: [
-      { nombre: 'Azul Océano', valor: '#0284c7' },
-      { nombre: 'Celeste TimeFlow', valor: '#0ea5e9' },
-      { nombre: 'Azul Cobalto', valor: '#2563eb' },
-      { nombre: 'Azul Real', valor: '#3b82f6' },
-      { nombre: 'Cian Eléctrico', valor: '#06b6d4' },
-      { nombre: 'Turquesa Profundo', valor: '#0891b2' },
-    ],
-  },
-  {
-    familia: 'Verdes y Menta',
-    tonos: [
-      { nombre: 'Jade Oscuro', valor: '#059669' },
-      { nombre: 'Esmeralda', valor: '#10b981' },
-      { nombre: 'Menta Bosque', valor: '#14b8a6' },
-      { nombre: 'Verde Trébol', valor: '#16a34a' },
-      { nombre: 'Verde Vivo', valor: '#22c55e' },
-      { nombre: 'Lima Oliva', valor: '#65a30d' },
-    ],
-  },
-  {
-    familia: 'Violetas y Fucsia',
-    tonos: [
-      { nombre: 'Índigo', valor: '#4f46e5' },
-      { nombre: 'Índigo Claro', valor: '#6366f1' },
-      { nombre: 'Amatista', valor: '#7c3aed' },
-      { nombre: 'Violeta', valor: '#8b5cf6' },
-      { nombre: 'Púrpura Suave', valor: '#a855f7' },
-      { nombre: 'Fucsia Intenso', valor: '#c026d3' },
-    ],
-  },
-  {
-    familia: 'Cálidos y Terracota',
-    tonos: [
-      { nombre: 'Ocre Dorado', valor: '#d97706' },
-      { nombre: 'Ámbar', valor: '#f59e0b' },
-      { nombre: 'Terracota', valor: '#ea580c' },
-      { nombre: 'Naranja', valor: '#f97316' },
-      { nombre: 'Bronce Tostado', valor: '#b45309' },
-      { nombre: 'Mostaza', valor: '#ca8a04' },
-    ],
-  },
-  {
-    familia: 'Rojos y Coral',
-    tonos: [
-      { nombre: 'Carmesí', valor: '#e11d48' },
-      { nombre: 'Rosa Coral', valor: '#f43f5e' },
-      { nombre: 'Rojo Rubí', valor: '#dc2626' },
-      { nombre: 'Rojo Vivo', valor: '#ef4444' },
-      { nombre: 'Frambuesa', valor: '#db2777' },
-      { nombre: 'Rosa Vibrante', valor: '#ec4899' },
-    ],
-  },
-  {
-    familia: 'Neutros y Grafito',
-    tonos: [
-      { nombre: 'Pizarra Profunda', valor: '#334155' },
-      { nombre: 'Pizarra Media', valor: '#475569' },
-      { nombre: 'Acero Azulado', valor: '#64748b' },
-      { nombre: 'Grafito Carbón', valor: '#3f3f46' },
-      { nombre: 'Piedra Cálida', valor: '#57534e' },
-      { nombre: 'Noche Obsidiana', valor: '#0f172a' },
-    ],
-  },
+/** Parrilla ampliada de tonalidades en todo el espectro (claras, medias y profundas). */
+const PALETA_AMPLIADA = [
+  // Azules y celestes
+  '#e0f2fe', '#7dd3fc', '#38bdf8', '#0ea5e9', '#0284c7', '#0369a1', '#075985', '#1d4ed8', '#2563eb', '#1e3a8a',
+  // Cianes, turquesas y agua
+  '#cffafe', '#67e8f9', '#22d3ee', '#06b6d4', '#0891b2', '#0e7490', '#2dd4bf', '#14b8a6', '#0d9488', '#115e59',
+  // Verdes, esmeraldas y limas
+  '#d1fae5', '#6ee7b7', '#34d399', '#10b981', '#059669', '#047857', '#22c55e', '#16a34a', '#84cc16', '#65a30d',
+  // Amarillos, dorados y naranjas
+  '#fef08a', '#facc15', '#eab308', '#fbbf24', '#f59e0b', '#d97706', '#fb923c', '#f97316', '#ea580c', '#c2410c',
+  // Rojos, corales y rosas
+  '#fecdd3', '#fda4af', '#fb7185', '#f43f5e', '#e11d48', '#be123c', '#ef4444', '#dc2626', '#b91c1c', '#991b1b',
+  // Fucsias, violetas e indigos
+  '#f9a8d4', '#ec4899', '#db2777', '#e879f9', '#d946ef', '#a855f7', '#8b5cf6', '#7c3aed', '#6366f1', '#4f46e5',
+  // Tierras y neutros
+  '#d97757', '#b45309', '#92400e', '#78350f', '#94a3b8', '#64748b', '#475569', '#334155', '#1e293b', '#0f172a',
 ];
 
 const HEX_VALIDO = /^#[0-9A-Fa-f]{6}$/;
-
-function ratioContraste(hexA: string, hexB: string): number {
-  const la = luminanciaRelativa(hexA);
-  const lb = luminanciaRelativa(hexB);
-  const claro = Math.max(la, lb);
-  const oscuro = Math.min(la, lb);
-  return (claro + 0.05) / (oscuro + 0.05);
-}
 
 export default function ConfiguracionPage() {
   return (
@@ -135,7 +73,6 @@ function ContenidoConfiguracion() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [explorarColores, setExplorarColores] = useState(false);
-  const [familiaActiva, setFamiliaActiva] = useState<string>('Todas');
   const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
 
   useEffect(() => {
@@ -250,21 +187,13 @@ function ContenidoConfiguracion() {
   const colorSecundario = colorSecundarioDeMarca(colorEfectivo);
   const textoSobreColor = colorTextoSobre(colorEfectivo);
   const luminanciaColor = luminanciaRelativa(colorEfectivo);
-  const ratioBoton = ratioContraste(colorEfectivo, textoSobreColor);
   const temaPreview = TEMAS.find((t) => t.codigo === tema) ?? TEMAS[0];
-  const contrasteSuperficie = ratioContraste(colorEfectivo, temaPreview.superficie);
-  const esTonoMuyClaro = luminanciaColor > 0.68;
-  const esTonoMuyOscuro = luminanciaColor < 0.06;
   const colorTextoEnChip =
     tema === 'claro-nube' && luminanciaColor > 0.48
       ? '#0f172a'
       : tema !== 'claro-nube' && luminanciaColor < 0.07
       ? '#e2e8f0'
       : colorEfectivo;
-  const familiasVisibles =
-    familiaActiva === 'Todas'
-      ? FAMILIAS_COLORES
-      : FAMILIAS_COLORES.filter((f) => f.familia === familiaActiva);
 
   return (
     <div className="tf-enter grid max-w-6xl items-start gap-6 xl:grid-cols-12">
@@ -398,21 +327,20 @@ function ContenidoConfiguracion() {
             />
           </p>
           <div className="flex flex-wrap gap-3">
-            {PRESETS.map((preset) => {
-              const activo = color.toLowerCase() === preset.valor.toLowerCase();
+            {PRESETS.map((valor) => {
+              const activo = color.toLowerCase() === valor.toLowerCase();
               return (
                 <button
-                  key={preset.valor}
+                  key={valor}
                   type="button"
-                  onClick={() => setColor(preset.valor)}
-                  title={preset.nombre}
-                  aria-label={preset.nombre}
+                  onClick={() => setColor(valor)}
+                  aria-label={`Seleccionar color ${valor}`}
                   className={`grid h-9 w-9 place-items-center rounded-full border-2 transition ${
                     activo
                       ? 'scale-110 border-white ring-2 ring-sky-400/50'
                       : 'border-transparent hover:scale-105'
                   }`}
-                  style={{ backgroundColor: preset.valor, color: colorTextoSobre(preset.valor) }}
+                  style={{ backgroundColor: valor, color: colorTextoSobre(valor) }}
                 >
                   {activo && <Check size={14} strokeWidth={2.75} aria-hidden />}
                 </button>
@@ -427,7 +355,7 @@ function ContenidoConfiguracion() {
               onClick={() => setExplorarColores((v) => !v)}
               className="inline-flex items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-3.5 py-2 text-xs font-semibold text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
             >
-              <span>Explorar más colores (36 tonos)</span>
+              <span>Explorar más colores</span>
               <ChevronDown
                 size={14}
                 aria-hidden
@@ -438,60 +366,30 @@ function ContenidoConfiguracion() {
             </button>
 
             {explorarColores && (
-              <div className="mt-3 rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-4">
-                <div className="mb-3 flex flex-wrap gap-1.5">
-                  {(['Todas', ...FAMILIAS_COLORES.map((f) => f.familia)] as const).map((fam) => {
-                    const activa = familiaActiva === fam;
+              <div className="mt-3 rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3.5">
+                <div className="grid grid-cols-7 gap-2 sm:grid-cols-10">
+                  {PALETA_AMPLIADA.map((valor) => {
+                    const activo = color.toLowerCase() === valor.toLowerCase();
                     return (
                       <button
-                        key={fam}
+                        key={valor}
                         type="button"
-                        onClick={() => setFamiliaActiva(fam)}
-                        className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                          activa
-                            ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)] ring-1 ring-[var(--tf-borde-fuerte)]'
-                            : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
+                        onClick={() => setColor(valor)}
+                        aria-label={`Color ${valor}`}
+                        style={{
+                          backgroundColor: valor,
+                          color: colorTextoSobre(valor),
+                        }}
+                        className={`grid h-8 w-full place-items-center rounded-lg border transition ${
+                          activo
+                            ? 'scale-[1.06] border-white ring-2 ring-[var(--color-primario)]'
+                            : 'border-black/15 hover:scale-[1.06]'
                         }`}
                       >
-                        {fam}
+                        {activo && <Check size={13} strokeWidth={2.75} aria-hidden />}
                       </button>
                     );
                   })}
-                </div>
-
-                <div className="space-y-3">
-                  {familiasVisibles.map((grupo) => (
-                    <div key={grupo.familia}>
-                      <p className="mb-1.5 text-[11px] font-semibold text-[var(--tf-texto-tenue)]">
-                        {grupo.familia}
-                      </p>
-                      <div className="grid grid-cols-6 gap-2 sm:grid-cols-6">
-                        {grupo.tonos.map((tono) => {
-                          const activo = color.toLowerCase() === tono.valor.toLowerCase();
-                          return (
-                            <button
-                              key={tono.valor}
-                              type="button"
-                              onClick={() => setColor(tono.valor)}
-                              title={`${tono.nombre} (${tono.valor})`}
-                              aria-label={`${tono.nombre} (${tono.valor})`}
-                              style={{
-                                backgroundColor: tono.valor,
-                                color: colorTextoSobre(tono.valor),
-                              }}
-                              className={`grid h-9 w-full place-items-center rounded-xl border transition ${
-                                activo
-                                  ? 'scale-[1.03] border-white ring-2 ring-[var(--color-primario)]'
-                                  : 'border-black/15 hover:scale-[1.03]'
-                              }`}
-                            >
-                              {activo && <Check size={14} strokeWidth={2.75} aria-hidden />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -632,26 +530,6 @@ function ContenidoConfiguracion() {
               Botón de ejemplo
             </button>
           </div>
-        </div>
-
-        <div
-          className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
-            esTonoMuyClaro || esTonoMuyOscuro || contrasteSuperficie < 2.2
-              ? 'border-amber-500/30 bg-amber-500/10 text-[var(--tf-acento-ambar)]'
-              : 'border-emerald-500/30 bg-emerald-500/10 text-[var(--tf-acento-verde)]'
-          }`}
-        >
-          {esTonoMuyClaro
-            ? `Tono muy claro: los botones cambian automáticamente a texto oscuro (${ratioBoton.toFixed(1)}:1), aunque algunos bordes o enlaces pueden verse suaves en modo claro.`
-            : esTonoMuyOscuro
-            ? `Tono muy oscuro: los botones usan texto blanco automáticamente (${ratioBoton.toFixed(1)}:1), pero el acento puede fundirse en fondos oscuros.`
-            : contrasteSuperficie < 2.2
-            ? `Contraste moderado sobre «${temaPreview.nombre}» · Botón ${ratioBoton.toFixed(1)}:1 con texto ${
-                textoSobreColor === '#ffffff' ? 'blanco' : 'oscuro'
-              } automático.`
-            : `Legibilidad óptima · Contraste botón ${ratioBoton.toFixed(1)}:1 · Texto ${
-                textoSobreColor === '#ffffff' ? 'blanco' : 'oscuro'
-              } automático.`}
         </div>
       </aside>
     </div>
