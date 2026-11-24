@@ -69,6 +69,9 @@ const CABECERAS_SEGURIDAD = [
 const config: NextConfig = {
   reactStrictMode: true,
   devIndicators: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react', '@xyflow/react', 'luxon'],
+  },
   // No anunciar "X-Powered-By: Next.js": no ayuda a nadie salvo a quien
   // busca versiones vulnerables.
   poweredByHeader: false,

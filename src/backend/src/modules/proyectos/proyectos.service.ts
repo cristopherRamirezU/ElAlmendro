@@ -44,24 +44,43 @@ export class ProyectosService {
         descripcion: true,
         estado: true,
         creadoEn: true,
-        actividades: {
-          where: { eliminadoEn: null },
-          select: { estado: true },
-        },
       },
     });
 
+    const conteos = proyectos.length
+      ? await this.prisma.actividad.groupBy({
+          by: ['proyectoId', 'estado'],
+          where: {
+            proyectoId: { in: proyectos.map((p) => p.id) },
+            eliminadoEn: null,
+          },
+          _count: { _all: true },
+        })
+      : [];
+
+    const totalesPorProyecto = new Map<string, { total: number; completadas: number }>();
+    for (const fila of conteos) {
+      const actual = totalesPorProyecto.get(fila.proyectoId) ?? { total: 0, completadas: 0 };
+      const cantidad = fila._count._all;
+      actual.total += cantidad;
+      if (fila.estado === 'COMPLETADA') actual.completadas += cantidad;
+      totalesPorProyecto.set(fila.proyectoId, actual);
+    }
+
     // El cofre se llena con las tareas ya guardadas: por eso ademas del total
     // viaja cuantas estan completadas.
-    return proyectos.map((p) => ({
-      id: p.id,
-      nombre: p.nombre,
-      descripcion: p.descripcion,
-      estado: p.estado,
-      creadoEn: p.creadoEn,
-      totalTareas: p.actividades.length,
-      tareasCompletadas: p.actividades.filter((a) => a.estado === 'COMPLETADA').length,
-    }));
+    return proyectos.map((p) => {
+      const resumen = totalesPorProyecto.get(p.id);
+      return {
+        id: p.id,
+        nombre: p.nombre,
+        descripcion: p.descripcion,
+        estado: p.estado,
+        creadoEn: p.creadoEn,
+        totalTareas: resumen?.total ?? 0,
+        tareasCompletadas: resumen?.completadas ?? 0,
+      };
+    });
   }
 
   async crear(u: UsuarioActual, dto: CrearProyectoDto) {

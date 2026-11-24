@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { problemaContrasena } from '../../common/seguridad/politica-contrasena';
+import { invalidarCacheUsuario } from '../../common/seguridad/cache-usuario';
 import {
   CODIGOS_PERMISOS_EXTRA,
   permisosEfectivos,
@@ -376,6 +377,7 @@ export class UsuariosService {
       throw error;
     });
 
+    invalidarCacheUsuario(id);
     return {
       ...actualizado,
       permisos: permisosEfectivos(actualizado.rol, actualizado.permisosExtra),
@@ -430,6 +432,7 @@ export class UsuariosService {
       });
     });
 
+    invalidarCacheUsuario(id);
     return {
       id,
       permisosExtra,
@@ -534,6 +537,7 @@ export class UsuariosService {
         });
       });
 
+      invalidarCacheUsuario(id);
       return {
         ok: true,
         id,
@@ -563,6 +567,7 @@ export class UsuariosService {
         });
       });
 
+      invalidarCacheUsuario(id);
       return {
         ok: true,
         id,

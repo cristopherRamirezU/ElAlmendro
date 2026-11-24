@@ -36,14 +36,17 @@ import { cerrarSocketChat } from '@/lib/socket';
 import { cerrarSocketNotificaciones } from '@/lib/notificaciones';
 import ChatFlotante from '@/components/chat/ChatFlotante';
 import InsigniaChat from '@/components/chat/InsigniaChat';
-import CampanaNotificaciones from '@/components/CampanaNotificaciones';
+import CampanaNotificaciones, { limpiarCacheNotificaciones } from '@/components/CampanaNotificaciones';
 import LogoTimeFlow from '@/components/login/LogoTimeFlow';
 import '@/components/login/login.css';
+import { invalidarCacheDatos } from '@/lib/cacheDatos';
 import {
+  esCacheSesionFresca,
   guardarCacheSesion,
   leerCacheSesion,
   leerCacheSesionServidor,
   limpiarCacheSesion,
+  revalidarSesionUnica,
   suscribirCacheSesion,
 } from '@/lib/cacheSesion';
 import { precalentarRutas } from '@/lib/precalentar';
@@ -286,19 +289,27 @@ export default function Marco({
   }, [colorPrimario]);
 
   useEffect(() => {
+    if (cache?.usuario && esCacheSesionFresca()) {
+      setRespondio(true);
+      return;
+    }
+
     let vigente = true;
     (async () => {
       try {
-        // Las dos peticiones son independientes: en paralelo, no en cascada.
-        const [u, j] = await Promise.all([
-          api.get<Usuario>('/auth/yo'),
-          api.get<Jornada | null>('/jornadas/actual'),
-        ]);
-        if (!vigente) return;
-        guardarCacheSesion({ usuario: u, jornada: j });
+        // Las dos peticiones son independientes y se deduplican si hay llamadas simultaneas.
+        await revalidarSesionUnica(async () => {
+          const [u, j] = await Promise.all([
+            api.get<Usuario>('/auth/yo'),
+            api.get<Jornada | null>('/jornadas/actual'),
+          ]);
+          return { usuario: u, jornada: j };
+        });
       } catch (err) {
         if (err instanceof ErrorApi && err.estado === 401) {
           limpiarCacheSesion();
+          limpiarCacheNotificaciones();
+          invalidarCacheDatos();
           router.replace('/login');
           return;
         }
@@ -419,6 +430,8 @@ export default function Marco({
     cerrarSocketChat();
     cerrarSocketNotificaciones();
     limpiarCacheSesion();
+    limpiarCacheNotificaciones();
+    invalidarCacheDatos();
     limpiarBolsaAbierta();
     await api.post('/auth/logout');
     router.replace('/login');

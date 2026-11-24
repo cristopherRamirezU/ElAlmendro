@@ -14,6 +14,13 @@
  * pantalla de 120 Hz no gira al doble.
  */
 
+import {
+  COLOR_PRIMARIO_DEFECTO,
+  colorConAlfa,
+  colorSecundarioDeMarca,
+  colorTextoSobre,
+} from '@/lib/color';
+
 export type Filtro = 'todos' | 'proceso' | 'completados';
 
 /** Texto para comparar al buscar: sin mayusculas ni tildes ("Orión" = "orion"). */
@@ -714,10 +721,41 @@ export class EscenaConstelacion {
   private esperaMedida: ReturnType<typeof setTimeout> | null = null;
   private io: IntersectionObserver | null = null;
   private enVista = true;
+  private visibleDoc = true;
   private reducido = false;
+  private colorMarca = COLOR_PRIMARIO_DEFECTO;
   private mediaMovimiento: MediaQueryList | null = null;
   private alCambiarMovimiento = (e: MediaQueryListEvent) => {
     this.reducido = e.matches;
+  };
+  private alCambiarVisibilidad = () => {
+    this.visibleDoc = typeof document === 'undefined' ? true : !document.hidden;
+    if (!this.visibleDoc) {
+      if (this.raf) {
+        cancelAnimationFrame(this.raf);
+        this.raf = 0;
+      }
+      return;
+    }
+    this.last = performance.now();
+    if (!this.raf) this.raf = requestAnimationFrame(this.loop);
+  };
+  private erroresLoop = 0;
+  private loop = () => {
+    if (!this.visibleDoc) {
+      this.raf = 0;
+      return;
+    }
+    this.raf = requestAnimationFrame(this.loop);
+    if (!this.enVista) {
+      this.last = performance.now();
+      return;
+    }
+    try {
+      this.cuadro(performance.now());
+    } catch (err) {
+      if (this.erroresLoop++ < 3) console.error('Constelacion: error al dibujar', err);
+    }
   };
   private puedeDesenfocar = false;
 
@@ -806,24 +844,18 @@ export class EscenaConstelacion {
     this.fx = this.W / 2;
     this.fy = this.H / 2;
     this.last = performance.now();
-    let errores = 0;
-    const loop = () => {
-      this.raf = requestAnimationFrame(loop);
-      if (!this.enVista) {
-        this.last = performance.now();
-        return;
-      }
-      try {
-        this.cuadro(performance.now());
-      } catch (err) {
-        if (errores++ < 3) console.error('Constelacion: error al dibujar', err);
-      }
-    };
-    this.raf = requestAnimationFrame(loop);
+    this.visibleDoc = typeof document === 'undefined' ? true : !document.hidden;
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.alCambiarVisibilidad);
+    }
+    if (this.visibleDoc) {
+      this.raf = requestAnimationFrame(this.loop);
+    }
   }
 
   destruir() {
     cancelAnimationFrame(this.raf);
+    this.raf = 0;
     if (this.esperaMedida) clearTimeout(this.esperaMedida);
     this.ro?.disconnect();
     this.io?.disconnect();
@@ -835,6 +867,9 @@ export class EscenaConstelacion {
     this.tarjeta.removeEventListener('pointerleave', this.alSalirTarjeta);
     this.mediaMovimiento?.removeEventListener?.('change', this.alCambiarMovimiento);
     document.fonts?.removeEventListener('loadingdone', this.alCargarFuentes);
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.alCambiarVisibilidad);
+    }
   }
 
   set filtro(f: Filtro) {
@@ -850,6 +885,10 @@ export class EscenaConstelacion {
     if (f === this.fondoActual) return;
     this.fondoActual = f;
     this.capaFondo = crearFondo(f, this.W, this.H, this.dpr, this.fuente);
+  }
+
+  set colorPrimario(c: string) {
+    this.colorMarca = c || COLOR_PRIMARIO_DEFECTO;
   }
 
   /** Sin permiso para crear, la esfera no despliega "Nuevo proyecto". */
@@ -1454,6 +1493,10 @@ export class EscenaConstelacion {
   private dibujarBoton(g: CanvasRenderingContext2D, cx: number, cy: number, b: Rect) {
     const ab = this.ab;
     const abHover = this.abHover;
+    const primario = this.colorMarca || COLOR_PRIMARIO_DEFECTO;
+    const secundario = colorSecundarioDeMarca(primario);
+    const texto = colorTextoSobre(primario);
+    const esTextoOscuro = texto === '#0f172a';
     // Con movimiento reducido no se despliega: aparece entera, de a poco.
     const ee = this.reducido ? 1 : salida(Math.min(1, ab * 1.15));
     const sx = cx + RADIO_ESFERA + 3;
@@ -1461,15 +1504,15 @@ export class EscenaConstelacion {
     g.save();
     if (this.reducido) g.globalAlpha = ab;
     const gl = g.createRadialGradient(cx, cy, 0, cx, cy, 60);
-    gl.addColorStop(0, `rgba(110,140,255,${0.16 * ab})`);
-    gl.addColorStop(1, 'rgba(110,140,255,0)');
+    gl.addColorStop(0, colorConAlfa(primario, 0.2 * ab));
+    gl.addColorStop(1, colorConAlfa(primario, 0));
     g.fillStyle = gl;
     g.beginPath();
     g.arc(cx, cy, 60, 0, TAU);
     g.fill();
     const st = g.createLinearGradient(sx, 0, b.x, 0);
-    st.addColorStop(0, `rgba(200,215,255,${0.9 * ab})`);
-    st.addColorStop(1, `rgba(120,150,255,${0.15 * ab})`);
+    st.addColorStop(0, colorConAlfa(primario, 0.9 * ab));
+    st.addColorStop(1, colorConAlfa(secundario, 0.2 * ab));
     g.strokeStyle = st;
     g.lineWidth = 1;
     g.beginPath();
@@ -1479,7 +1522,7 @@ export class EscenaConstelacion {
     if (!this.reducido) {
       for (const s of this.chispas) {
         const ph = (this.t * s.s * 0.5 + s.o) % 1;
-        g.fillStyle = `rgba(220,230,255,${0.7 * ab * (1 - ph)})`;
+        g.fillStyle = colorConAlfa(primario, 0.75 * ab * (1 - ph));
         g.beginPath();
         g.arc(sx + ph * (SEPARACION_BOTON + 8) * ee, cy + s.y * (1 - ph) * 0.5, 1, 0, TAU);
         g.fill();
@@ -1492,21 +1535,23 @@ export class EscenaConstelacion {
       g.roundRect(b.x, b.y, bw, b.h, b.h / 2);
       g.clip();
       const bg = g.createLinearGradient(b.x, 0, b.x + b.w, 0);
-      bg.addColorStop(0, 'rgba(63,107,255,.95)');
-      bg.addColorStop(1, 'rgba(130,90,255,.95)');
+      bg.addColorStop(0, colorConAlfa(primario, 0.96));
+      bg.addColorStop(1, colorConAlfa(secundario, 0.96));
       g.fillStyle = bg;
       g.fillRect(b.x, b.y, b.w, b.h);
       if (!this.reducido) {
         const brillo = ((this.t * 0.35) % 1.6) - 0.3;
         const sg = g.createLinearGradient(b.x + b.w * brillo - 40, 0, b.x + b.w * brillo + 40, 0);
         sg.addColorStop(0, 'rgba(255,255,255,0)');
-        sg.addColorStop(0.5, `rgba(255,255,255,${0.18 + abHover * 0.12})`);
+        sg.addColorStop(0.5, `rgba(255,255,255,${(esTextoOscuro ? 0.26 : 0.18) + abHover * 0.12})`);
         sg.addColorStop(1, 'rgba(255,255,255,0)');
         g.fillStyle = sg;
         g.fillRect(b.x, b.y, b.w, b.h);
       }
       if (abHover > 0.01) {
-        g.fillStyle = `rgba(255,255,255,${0.08 * abHover})`;
+        g.fillStyle = esTextoOscuro
+          ? `rgba(15,23,42,${0.06 * abHover})`
+          : `rgba(255,255,255,${0.08 * abHover})`;
         g.fillRect(b.x, b.y, b.w, b.h);
       }
       // El "+" entra girando y el texto aparece un instante despues.
@@ -1514,7 +1559,7 @@ export class EscenaConstelacion {
       g.save();
       g.translate(b.x + 17, cy);
       g.rotate((this.reducido ? 0 : (1 - ta) * -1.57) + abHover * 1.57);
-      g.strokeStyle = `rgba(255,255,255,${ta})`;
+      g.strokeStyle = colorConAlfa(texto, ta);
       g.lineWidth = 1.8;
       g.lineCap = 'round';
       g.beginPath();
@@ -1524,13 +1569,13 @@ export class EscenaConstelacion {
       g.lineTo(0, 5);
       g.stroke();
       g.restore();
-      g.fillStyle = `rgba(255,255,255,${ta})`;
-      g.font = `500 13px ${this.fuente}`;
+      g.fillStyle = colorConAlfa(texto, ta);
+      g.font = `600 13px ${this.fuente}`;
       g.textAlign = 'left';
       g.textBaseline = 'middle';
       g.fillText('Nuevo proyecto', b.x + 32 + (this.reducido ? 0 : (1 - ta) * 8), cy + 1);
       g.restore();
-      g.strokeStyle = `rgba(190,205,255,${0.35 + abHover * 0.35})`;
+      g.strokeStyle = colorConAlfa(secundario, 0.45 + abHover * 0.35);
       g.lineWidth = 1;
       g.beginPath();
       g.roundRect(b.x, b.y, bw, b.h, b.h / 2);
@@ -1538,7 +1583,7 @@ export class EscenaConstelacion {
       // Onda de luz al hacer clic.
       if (this.pulso > 0.02) {
         const q = 1 - this.pulso;
-        g.strokeStyle = `rgba(190,205,255,${this.pulso})`;
+        g.strokeStyle = colorConAlfa(primario, this.pulso);
         g.beginPath();
         g.roundRect(b.x - q * 10, b.y - q * 10, bw + q * 20, b.h + q * 20, b.h / 2 + 10);
         g.stroke();

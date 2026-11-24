@@ -20,6 +20,22 @@ function puntoPorTipo(tipo: string): string {
   return 'bg-sky-500';
 }
 
+const TTL_CACHE_NOTIFICACIONES_MS = 60_000;
+interface CacheNotificaciones {
+  items: NotificacionItem[];
+  noLeidas: number;
+  actualizadaEn: number;
+}
+let cacheNotificaciones: CacheNotificaciones | null = null;
+
+function guardarCacheNotif(items: NotificacionItem[], noLeidas: number) {
+  cacheNotificaciones = { items, noLeidas, actualizadaEn: Date.now() };
+}
+
+export function limpiarCacheNotificaciones() {
+  cacheNotificaciones = null;
+}
+
 /**
  * Campana de notificaciones en tiempo real en la cabecera.
  * Recibe avisos sobre asignaciones, derivaciones, mensajes/audios en nodos
@@ -32,29 +48,40 @@ export default function CampanaNotificaciones({
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
-  const [items, setItems] = useState<NotificacionItem[]>([]);
-  const [noLeidas, setNoLeidas] = useState(0);
+  const [items, setItems] = useState<NotificacionItem[]>(() => cacheNotificaciones?.items ?? []);
+  const [noLeidas, setNoLeidas] = useState(() => cacheNotificaciones?.noLeidas ?? 0);
   const contenedorRef = useRef<HTMLDivElement>(null);
 
   const cargar = useCallback(() => {
     api
       .get<RespuestaNotificaciones>('/notificaciones')
       .then((res) => {
-        setItems(res.items ?? []);
-        setNoLeidas(res.noLeidas ?? 0);
+        const nuevosItems = res.items ?? [];
+        const nuevasNoLeidas = res.noLeidas ?? 0;
+        setItems(nuevosItems);
+        setNoLeidas(nuevasNoLeidas);
+        guardarCacheNotif(nuevosItems, nuevasNoLeidas);
       })
       .catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    cargar();
+    const fresca =
+      cacheNotificaciones !== null &&
+      Date.now() - cacheNotificaciones.actualizadaEn < TTL_CACHE_NOTIFICACIONES_MS;
+    if (!fresca) cargar();
     const socket = socketNotificaciones();
     const alRecibir = (nueva: NotificacionItem) => {
       setItems((prev) => {
         if (prev.some((n) => n.id === nueva.id)) return prev;
-        return [nueva, ...prev].slice(0, 25);
+        const siguientes = [nueva, ...prev].slice(0, 25);
+        setNoLeidas((n) => {
+          const total = n + 1;
+          guardarCacheNotif(siguientes, total);
+          return total;
+        });
+        return siguientes;
       });
-      setNoLeidas((n) => n + 1);
     };
     socket.on('notificacion:nueva', alRecibir);
     return () => {
@@ -82,12 +109,14 @@ export default function CampanaNotificaciones({
 
   async function abrirNotificacion(n: NotificacionItem) {
     if (!n.leidaEn) {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === n.id ? { ...item, leidaEn: new Date().toISOString() } : item,
-        ),
+      const marca = new Date().toISOString();
+      const siguientes = items.map((item) =>
+        item.id === n.id ? { ...item, leidaEn: marca } : item,
       );
-      setNoLeidas((v) => Math.max(0, v - 1));
+      const nuevasNoLeidas = Math.max(0, noLeidas - 1);
+      setItems(siguientes);
+      setNoLeidas(nuevasNoLeidas);
+      guardarCacheNotif(siguientes, nuevasNoLeidas);
       api.patch(`/notificaciones/${n.id}/leer`).catch(() => undefined);
     }
     setAbierto(false);
@@ -97,8 +126,10 @@ export default function CampanaNotificaciones({
   async function marcarTodas() {
     if (noLeidas === 0) return;
     const ahora = new Date().toISOString();
-    setItems((prev) => prev.map((item) => ({ ...item, leidaEn: item.leidaEn ?? ahora })));
+    const siguientes = items.map((item) => ({ ...item, leidaEn: item.leidaEn ?? ahora }));
+    setItems(siguientes);
     setNoLeidas(0);
+    guardarCacheNotif(siguientes, 0);
     await api.post('/notificaciones/leer-todas').catch(() => undefined);
   }
 

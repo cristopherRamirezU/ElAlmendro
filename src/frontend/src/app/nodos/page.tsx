@@ -22,6 +22,7 @@ import { EsqueletoMapa, EsqueletoPagina } from '@/components/ui/Esqueleto';
 import { useToast } from '@/components/ui/Toast';
 import { llenadoDeBolsa } from '@/components/tesoro/llenado';
 import { api, ErrorApi, MiembroProyecto, ProyectoItem, Sesion } from '@/lib/api';
+import { guardarDatoCache, invalidarCacheDatos, leerDatoCache } from '@/lib/cacheDatos';
 import { estadoDeActividad, tiempoRelativo } from '@/lib/formato';
 import { ContextoEquipoUsuario, Derivacion, NodoActividad } from '@/lib/tipos';
 import {
@@ -75,6 +76,12 @@ type EntradaHistorial =
     };
 
 type EstadoGuardadoMapa = 'inactivo' | 'guardando' | 'guardado' | 'error';
+
+interface CacheMapaNodos {
+  actividades: NodoActividad[];
+  derivaciones: Derivacion[];
+  miembros: MiembroProyecto[];
+}
 
 /**
  * Reencuadra el mapa cuando cambia su forma (expandir, colapsar, recargar,
@@ -425,6 +432,37 @@ function Nodos() {
   // del mapa, el panel saltaria de vuelta a ella cada vez que algo cambia.
   const tareaEnfocada = useRef<string | null>(null);
 
+  const aplicarDatosMapa = useCallback(
+    (datosMapa: CacheMapaNodos) => {
+      setActividades(datosMapa.actividades);
+      setDerivaciones(datosMapa.derivaciones);
+      setMiembros(datosMapa.miembros);
+      setCargas((c) => c + 1);
+      setAviso(null);
+
+      // Si hay una tarea en el parametro de la URL, seleccionarla y expandir su linaje
+      if (tareaParam && tareaEnfocada.current !== tareaParam) {
+        tareaEnfocada.current = tareaParam;
+        const encontrada = datosMapa.actividades.find((a) => a.id === tareaParam);
+        if (encontrada) {
+          setTareaSeleccionada(encontrada.id);
+          setExpandidoRaiz(true);
+          const ancestros = new Set<string>();
+          let padreId = encontrada.actividadPadreId;
+          while (padreId) {
+            ancestros.add(padreId);
+            const p = datosMapa.actividades.find((a) => a.id === padreId);
+            padreId = p?.actividadPadreId ?? null;
+          }
+          if (ancestros.size > 0) {
+            setExpandido((prev) => new Set([...prev, ...ancestros]));
+          }
+        }
+      }
+    },
+    [tareaParam],
+  );
+
   const cargar = useCallback(async () => {
     if (!proyectoId) return;
     const [d, listaMiembros] = await Promise.all([
@@ -433,39 +471,27 @@ function Nodos() {
       ),
       api.get<MiembroProyecto[]>(`/proyectos/${proyectoId}/miembros`).catch(() => [] as MiembroProyecto[]),
     ]);
-    setActividades(d.actividades);
-    setDerivaciones(d.derivaciones);
-    setMiembros(listaMiembros);
-    setCargas((c) => c + 1);
-    setAviso(null);
-
-    // Si hay una tarea en el parametro de la URL, seleccionarla y expandir su linaje
-    if (tareaParam && tareaEnfocada.current !== tareaParam) {
-      tareaEnfocada.current = tareaParam;
-      const encontrada = d.actividades.find((a) => a.id === tareaParam);
-      if (encontrada) {
-        setTareaSeleccionada(encontrada.id);
-        setExpandidoRaiz(true);
-        const ancestros = new Set<string>();
-        let padreId = encontrada.actividadPadreId;
-        while (padreId) {
-          ancestros.add(padreId);
-          const p = d.actividades.find((a) => a.id === padreId);
-          padreId = p?.actividadPadreId ?? null;
-        }
-        if (ancestros.size > 0) {
-          setExpandido((prev) => new Set([...prev, ...ancestros]));
-        }
-      }
-    }
-  }, [proyectoId, tareaParam]);
+    const snapshot: CacheMapaNodos = {
+      actividades: d.actividades,
+      derivaciones: d.derivaciones,
+      miembros: listaMiembros,
+    };
+    guardarDatoCache(`nodos:${proyectoId}`, snapshot);
+    aplicarDatosMapa(snapshot);
+  }, [proyectoId, aplicarDatosMapa]);
 
   useEffect(() => {
+    if (!proyectoId) return;
+    const enCache = leerDatoCache<CacheMapaNodos>(`nodos:${proyectoId}`);
+    if (enCache) {
+      aplicarDatosMapa(enCache.datos);
+      if (Date.now() - enCache.actualizadaEn < 10_000) return;
+    }
     cargar().catch((err) => {
       if (err instanceof ErrorApi && err.estado === 401) router.replace('/login');
-      else setAviso(err instanceof ErrorApi ? err.message : 'No se pudo conectar con el servidor.');
+      else if (!enCache) setAviso(err instanceof ErrorApi ? err.message : 'No se pudo conectar con el servidor.');
     });
-  }, [cargar, router]);
+  }, [proyectoId, aplicarDatosMapa, cargar, router]);
 
   const contextoEquipo = useMemo(() => {
     const mapa: Record<string, ContextoEquipoUsuario> = {};
@@ -784,6 +810,7 @@ function Nodos() {
           cambios: [{ id: destinoId, lados: limpios }],
         })
         .then(() => {
+          if (proyectoId) invalidarCacheDatos(`nodos:${proyectoId}`);
           notificarGuardado('guardado');
         })
         .catch((err) => {
@@ -910,6 +937,7 @@ function Nodos() {
       return api
         .patch('/actividades/posiciones', cambio)
         .then(() => {
+          if (proyectoId) invalidarCacheDatos(`nodos:${proyectoId}`);
           notificarGuardado('guardado');
         })
         .catch((err) => {

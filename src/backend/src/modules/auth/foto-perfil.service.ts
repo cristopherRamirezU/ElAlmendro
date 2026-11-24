@@ -11,6 +11,7 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AlmacenamientoService } from '../../infra/almacenamiento/almacenamiento.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { invalidarCacheUsuario } from '../../common/seguridad/cache-usuario';
 import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { ErroresSubidaFilter } from '../evidencias/errores-subida.filter';
 
@@ -72,6 +73,7 @@ export class FotoPerfilService {
     try {
       const anterior = await this.prisma.usuario.findUnique({ where: { id: u.id }, select: { fotoPerfil: true } });
       await this.prisma.usuario.update({ where: { id: u.id }, data: { fotoPerfil: version } });
+      invalidarCacheUsuario(u.id);
       if (anterior?.fotoPerfil) await this.borrarArchivo(u.id, anterior.fotoPerfil);
     } catch (error) {
       await this.borrarArchivo(u.id, version);
@@ -84,6 +86,7 @@ export class FotoPerfilService {
   async quitar(u: UsuarioActual) {
     const anterior = await this.prisma.usuario.findUnique({ where: { id: u.id }, select: { fotoPerfil: true } });
     await this.prisma.usuario.update({ where: { id: u.id }, data: { fotoPerfil: null } });
+    invalidarCacheUsuario(u.id);
     if (anterior?.fotoPerfil) await this.borrarArchivo(u.id, anterior.fotoPerfil);
     return { fotoPerfil: null };
   }

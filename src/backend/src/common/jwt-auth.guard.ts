@@ -7,6 +7,11 @@ import { PrismaService } from '../infra/prisma/prisma.service';
 import { permisosEfectivos } from './rbac';
 import { UsuarioActual } from './usuario-actual.decorator';
 import {
+  cacheUsuariosActiva,
+  guardarUsuarioCache,
+  obtenerUsuarioCache,
+} from './seguridad/cache-usuario';
+import {
   emitirCookieSesion,
   firmarSesion,
   leerSesion,
@@ -65,7 +70,14 @@ export async function cargarUsuarioVigente(
   prisma: PrismaService,
   usuarioId: string,
   versionToken: number,
+  opciones?: { forzarCache?: boolean },
 ): Promise<UsuarioActual> {
+  const usarCache = cacheUsuariosActiva(opciones?.forzarCache);
+  if (usarCache) {
+    const enCache = obtenerUsuarioCache(usuarioId, versionToken);
+    if (enCache) return enCache;
+  }
+
   const usuario = await prisma.usuario.findUnique({
     where: { id: usuarioId },
     select: {
@@ -103,7 +115,7 @@ export async function cargarUsuarioVigente(
     }
   }
 
-  return {
+  const vigente: UsuarioActual = {
     id: usuario.id,
     email: usuario.email,
     rol: usuario.rol,
@@ -118,4 +130,10 @@ export async function cargarUsuarioVigente(
     zonaHoraria: usuario.zonaHoraria,
     fotoPerfil: usuario.fotoPerfil ?? null,
   };
+
+  if (usarCache) {
+    guardarUsuarioCache(usuario.id, usuario.versionSesion, vigente);
+  }
+
+  return vigente;
 }

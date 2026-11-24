@@ -21,6 +21,7 @@ import {
 } from './dto/subtarea.dto';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
 import { PERMISOS } from '../../common/rbac';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { puedeEliminarAudio, puedeGrabarAudio } from './audio-comentario.service';
 import {
   exigirOrganizacion,
@@ -43,6 +44,7 @@ export class ActividadesService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notificaciones?: NotificacionesService,
+    @Optional() private readonly limites?: LimiteIntentosService,
   ) {}
 
   /**
@@ -79,7 +81,8 @@ export class ActividadesService {
    * y alcance RBAC (trabajador solo ve sus tareas o proyectos donde participa).
    */
   async buscar(u: UsuarioActual, q?: string) {
-    const termino = (q ?? '').trim();
+    this.limites?.consumir(`buscar:${u.id}`, REGLAS.busquedaActividades);
+    const termino = (q ?? '').trim().slice(0, 100);
     if (termino.length < 2) return [];
 
     const whereOrg = filtroOrganizacion(u);

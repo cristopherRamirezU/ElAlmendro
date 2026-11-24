@@ -24,6 +24,8 @@ export interface CacheSesion {
 
 let memoria: CacheSesion | null = null;
 let leida = false;
+let ultimaValidacionMs = 0;
+let revalidacionEnVuelo: Promise<CacheSesion> | null = null;
 const oyentes = new Set<() => void>();
 
 function avisar() {
@@ -56,6 +58,7 @@ export function suscribirCacheSesion(fn: () => void): () => void {
 export function guardarCacheSesion(datos: CacheSesion) {
   memoria = datos;
   leida = true;
+  ultimaValidacionMs = Date.now();
   try {
     window.sessionStorage.setItem(CLAVE, JSON.stringify(datos));
   } catch {
@@ -64,9 +67,32 @@ export function guardarCacheSesion(datos: CacheSesion) {
   avisar();
 }
 
+export function esCacheSesionFresca(ttlMs = 30_000): boolean {
+  return (
+    Boolean(memoria?.usuario) &&
+    ultimaValidacionMs > 0 &&
+    Date.now() - ultimaValidacionMs < ttlMs
+  );
+}
+
+export function revalidarSesionUnica(fn: () => Promise<CacheSesion>): Promise<CacheSesion> {
+  if (revalidacionEnVuelo) return revalidacionEnVuelo;
+  revalidacionEnVuelo = fn()
+    .then((datos) => {
+      guardarCacheSesion(datos);
+      return datos;
+    })
+    .finally(() => {
+      revalidacionEnVuelo = null;
+    });
+  return revalidacionEnVuelo;
+}
+
 export function limpiarCacheSesion() {
   memoria = null;
   leida = true;
+  ultimaValidacionMs = 0;
+  revalidacionEnVuelo = null;
   try {
     window.sessionStorage.removeItem(CLAVE);
   } catch {

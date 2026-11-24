@@ -70,6 +70,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   /** usuarioId -> organizacion e ids de socket abiertos (varias pestanas = varios sockets). */
   private readonly conexiones = new Map<string, { organizacionId: string; sockets: Set<string> }>();
+  /** Throttle de evento "escribiendo" por cliente para evitar flood por WebSocket. */
+  private readonly ultimoEscribiendo = new Map<string, number>();
 
   constructor(
     private readonly jwt: JwtService,
@@ -103,6 +105,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(cliente: Socket) {
+    this.ultimoEscribiendo.delete(cliente.id);
     const usuario = cliente.data.usuario as UsuarioSocket | undefined;
     if (!usuario) return;
 
@@ -125,6 +128,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const usuario = cliente.data.usuario as UsuarioSocket | undefined;
     if (!usuario) return;
+    const ahora = Date.now();
+    const previo = this.ultimoEscribiendo.get(cliente.id) ?? 0;
+    if (ahora - previo < 500) return;
+    this.ultimoEscribiendo.set(cliente.id, ahora);
     const receptorId = cuerpo?.receptorId ?? null;
     const carga = { usuarioId: usuario.id, receptorId };
     if (receptorId) {

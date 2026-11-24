@@ -10,6 +10,7 @@ import { CrearOrganizacionDto } from './dto/crear-organizacion.dto';
 import { ActualizarOrganizacionDto } from './dto/actualizar-organizacion.dto';
 import { PlanSaaS, Rol } from '@prisma/client';
 import { esViolacionUnica, normalizarCorreo, normalizarRut } from '../../common/organizacion';
+import { invalidarCacheOrganizacion } from '../../common/seguridad/cache-usuario';
 import { problemaContrasena } from '../../common/seguridad/politica-contrasena';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
 
@@ -235,6 +236,7 @@ export class OrganizacionesService {
       },
     });
 
+    invalidarCacheOrganizacion(id);
     return actualizada;
   }
 
@@ -305,6 +307,7 @@ export class OrganizacionesService {
       },
     });
 
+    invalidarCacheOrganizacion(u.organizacionId);
     return actualizada;
   }
 
