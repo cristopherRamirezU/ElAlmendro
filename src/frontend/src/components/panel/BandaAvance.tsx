@@ -63,7 +63,7 @@ export default function BandaAvance({
           {porcentaje}
           <span className="ml-0.5 text-base text-[var(--tf-texto-tenue)]">%</span>
         </p>
-        <button type="button" onClick={onIrAlMapa} className="tf-boton-marca rounded-xl px-5 py-2.5 text-xs font-medium text-white">
+        <button type="button" onClick={onIrAlMapa} className="tf-boton-marca rounded-xl px-5 py-2.5 text-xs font-medium text-[var(--tf-texto-primario)]">
           {textoMapa}
         </button>
       </div>

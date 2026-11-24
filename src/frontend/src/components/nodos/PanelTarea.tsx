@@ -293,7 +293,7 @@ export default function PanelTarea({
             onChange={(e) => setNota(e.target.value)}
             rows={2}
             placeholder="Nota de cierre (obligatoria si queda inconclusa)"
-            className="mb-2 w-full rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-[#7f9dff]"
+            className="mb-2 w-full rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-[var(--color-primario)]"
           />
           {!hayRespaldo && (
             <p className="mb-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-[var(--tf-acento-azul)]">

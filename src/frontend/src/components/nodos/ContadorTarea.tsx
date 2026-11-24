@@ -78,7 +78,7 @@ export default function ContadorTarea({
         disabled={principal.deshabilitado}
         title={principal.titulo}
         aria-label={principal.texto}
-        className={`tf-boton-vidrio grid ${compacto ? 'h-11 w-11' : 'h-14 w-14'} shrink-0 place-items-center rounded-full text-white disabled:cursor-not-allowed disabled:opacity-40`}
+        className={`tf-boton-vidrio grid ${compacto ? 'h-11 w-11' : 'h-14 w-14'} shrink-0 place-items-center rounded-full text-[var(--tf-texto-primario)] disabled:cursor-not-allowed disabled:opacity-40`}
       >
         <IconoPrincipal size={18} fill={estado === 'terminado' ? 'none' : 'currentColor'} aria-hidden />
       </button>

@@ -241,7 +241,7 @@ export default function ZonaEvidencias({
                   type="button"
                   onClick={subir}
                   disabled={subiendo}
-                  className="tf-boton-vidrio flex-1 rounded-xl py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+                  className="tf-boton-vidrio flex-1 rounded-xl py-2.5 text-xs font-semibold text-[var(--tf-texto-primario)] disabled:opacity-50"
                 >
                   {subiendo ? 'Subiendo…' : 'Subir archivo'}
                 </button>
@@ -281,14 +281,14 @@ export default function ZonaEvidencias({
               arrastrando ? 'border-sky-400 bg-sky-500/10' : 'border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-2)]'
             }`}
           >
-            <span className="tf-boton-vidrio grid h-12 w-12 place-items-center rounded-2xl text-white">
+            <span className="tf-boton-vidrio grid h-12 w-12 place-items-center rounded-2xl text-[var(--tf-texto-primario)]">
               <Upload size={20} aria-hidden />
             </span>
             <p className="text-[13px] font-medium text-[var(--tf-texto)]">{arrastrando ? 'Suelta el archivo aquí' : 'Arrastra un archivo aquí'}</p>
             <button
               type="button"
               onClick={() => input.current?.click()}
-              className="tf-boton-vidrio rounded-xl px-5 py-2.5 text-xs font-semibold text-white"
+              className="tf-boton-vidrio rounded-xl px-5 py-2.5 text-xs font-semibold text-[var(--tf-texto-primario)]"
             >
               Elegir archivo
             </button>

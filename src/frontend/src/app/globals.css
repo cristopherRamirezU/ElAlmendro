@@ -6,6 +6,11 @@
  * que una empresa que no eligio tema ve exactamente lo de siempre.
  */
 :root {
+  --color-primario: #0ea5e9;
+  --color-primario-2: #06b6d4;
+  --tf-primario-rgb: 14, 165, 233;
+  --tf-primario-2-rgb: 6, 182, 212;
+  --tf-texto-primario: #ffffff;
   --tf-fondo: #040814;
   --tf-sidebar: rgba(7, 12, 26, 0.88);
   --tf-superficie: rgba(15, 23, 42, 0.72);
@@ -139,7 +144,13 @@ body {
   content: '';
   position: absolute;
   inset: -130%;
-  background: conic-gradient(from 0deg, transparent 0 58%, var(--color-primario, #38bdf8) 73%, #818cf8 86%, transparent 100%);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 58%,
+    var(--color-primario, #0ea5e9) 73%,
+    var(--color-primario-2, #06b6d4) 86%,
+    transparent 100%
+  );
   animation: tf-gira 6.5s linear infinite;
 }
 .tf-glow-inner {
@@ -286,19 +297,101 @@ body {
   border-radius: 20px;
   padding: 1.5px;
   overflow: hidden;
-  box-shadow: 0 20px 50px -18px rgba(56, 189, 248, 0.55);
+  box-shadow: 0 20px 50px -18px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.55);
 }
 .tf-insignia-marco::before {
   content: '';
   position: absolute;
   inset: -80%;
-  background: conic-gradient(from 0deg, transparent 0 55%, #38bdf8 70%, #a78bfa 82%, #34d399 92%, transparent 100%);
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 55%,
+    var(--color-primario, #0ea5e9) 72%,
+    var(--color-primario-2, #06b6d4) 86%,
+    transparent 100%
+  );
   animation: tf-gira 8s linear infinite;
 }
 .tf-insignia-cuerpo {
   position: relative;
   border-radius: 19px;
   background: linear-gradient(150deg, #0b1a3a, #0a1024 70%);
+}
+
+/* Adaptacion clara del mapa de nodos (.tf-mapa.tf-mapa-claro) */
+.tf-mapa.tf-mapa-claro .tf-insignia-marco {
+  box-shadow:
+    0 18px 42px -18px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.35),
+    0 10px 28px -16px rgba(15, 23, 42, 0.18);
+}
+.tf-mapa.tf-mapa-claro .tf-insignia-cuerpo {
+  background: linear-gradient(150deg, #ffffff, #f2f7fe 78%);
+}
+.tf-mapa.tf-mapa-claro .tf-raiz-etiqueta {
+  color: var(--color-primario, #0369a1);
+}
+.tf-mapa.tf-mapa-claro .tf-raiz-nombre {
+  color: #0f172a;
+}
+.tf-mapa.tf-mapa-claro .tf-raiz-meta {
+  color: #475569;
+}
+.tf-mapa.tf-mapa-claro .tf-raiz-anillo-pista {
+  stroke: rgba(15, 23, 42, 0.12);
+}
+.tf-mapa.tf-mapa-claro .tf-raiz-anillo-texto {
+  fill: #0f172a;
+}
+.tf-mapa.tf-mapa-claro .tf-segmento {
+  background: rgba(15, 23, 42, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+.tf-mapa.tf-mapa-claro .tf-tarea {
+  border: 1px solid rgba(var(--c), 0.42);
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(var(--c), 0.15), transparent 58%),
+    radial-gradient(90% 130% at 100% 100%, rgba(var(--c), 0.08), transparent 62%),
+    rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 10px 24px -14px rgba(15, 23, 42, 0.16),
+    0 4px 12px -6px rgba(var(--c), 0.22),
+    inset 0 1px 0 #ffffff;
+}
+.tf-mapa.tf-mapa-claro .tf-tarea::before {
+  background-image: radial-gradient(rgba(15, 23, 42, 0.07) 1px, transparent 1px);
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-titulo {
+  color: #0f172a;
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-orden {
+  background: rgba(15, 23, 42, 0.08);
+  color: #334155;
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-resp {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(241, 245, 249, 0.92);
+  color: #334155;
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-resp-mio {
+  border-color: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.4);
+  background: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.13);
+  color: #0f172a;
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-barra-base {
+  background: rgba(15, 23, 42, 0.09);
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-btn {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.16);
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-btn:hover {
+  background: #f1f5f9;
+}
+.tf-mapa.tf-mapa-claro .tf-nodo-input {
+  border-color: rgba(15, 23, 42, 0.2);
+  background: #ffffff;
+  color: #0f172a;
 }
 
 /*
@@ -451,23 +544,23 @@ body {
   clip-path: var(--tf-cajon-oculto);
   transition: clip-path 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.18s;
   background: rgba(10, 15, 34, 0.97);
-  border: 1px solid rgba(130, 165, 255, 0.6);
+  border: 1px solid rgba(var(--tf-primario-rgb, 14, 165, 233), 0.58);
   border-top: 0;
   border-radius: 0 0 14px 14px;
 }
 .tf-constelacion-tarjeta[data-claro='true'] {
   background: rgba(255, 255, 255, 0.98);
-  border-color: rgba(63, 107, 255, 0.35);
+  border-color: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.4);
   box-shadow: 0 12px 28px -12px rgba(15, 23, 42, 0.22);
 }
 .tf-constelacion-tarjeta[data-lado='arriba'] {
   --tf-cajon-oculto: inset(100% 0 0 0);
-  border-top: 1px solid rgba(130, 165, 255, 0.6);
+  border-top: 1px solid rgba(var(--tf-primario-rgb, 14, 165, 233), 0.58);
   border-bottom: 0;
   border-radius: 14px 14px 0 0;
 }
 .tf-constelacion-tarjeta[data-claro='true'][data-lado='arriba'] {
-  border-top-color: rgba(63, 107, 255, 0.35);
+  border-top-color: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.4);
 }
 .tf-constelacion-tarjeta[data-visible='true'] {
   opacity: 1;
@@ -487,61 +580,66 @@ body {
   transition: background-color 0.2s, filter 0.2s;
 }
 .tf-cajon-mapa {
-  color: #fff;
-  background: linear-gradient(90deg, #3f6bff, #825aff);
+  color: var(--tf-texto-primario, #fff);
+  background: linear-gradient(90deg, var(--color-primario, #0ea5e9), var(--color-primario-2, #06b6d4));
 }
-.tf-cajon-mapa:hover { filter: brightness(1.12); }
-.tf-cajon-ver { color: #cfd8ff; }
-.tf-cajon-ver:hover { background: rgba(110, 150, 255, 0.12); }
+.tf-cajon-mapa:hover { filter: brightness(1.08); }
+.tf-cajon-ver { color: #dbeafe; }
+.tf-cajon-ver:hover { background: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.14); }
 .tf-constelacion-tarjeta[data-claro='true'] .tf-cajon-ver { color: #1e293b; }
-.tf-constelacion-tarjeta[data-claro='true'] .tf-cajon-ver:hover { background: rgba(63, 107, 255, 0.09); }
+.tf-constelacion-tarjeta[data-claro='true'] .tf-cajon-ver:hover { background: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.1); }
 
 /* Avance del proyecto en su ventana: un segmento por tarea; los hechos con el
    degradado de la marca y el siguiente con rayas que avanzan. */
 .tf-banda-avance {
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(63, 107, 255, 0.16), transparent 55%),
-    radial-gradient(120% 140% at 100% 100%, rgba(130, 90, 255, 0.14), transparent 55%),
+    radial-gradient(120% 140% at 0% 0%, rgba(var(--tf-primario-rgb, 14, 165, 233), 0.16), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(var(--tf-primario-2-rgb, 6, 182, 212), 0.14), transparent 55%),
     #111933;
-  border: 1px solid rgba(130, 165, 255, 0.22);
+  border: 1px solid rgba(var(--tf-primario-rgb, 14, 165, 233), 0.24);
 }
 :root[data-tema="claro-nube"] .tf-banda-avance {
   background:
-    radial-gradient(120% 140% at 0% 0%, rgba(63, 107, 255, 0.12), transparent 55%),
-    radial-gradient(120% 140% at 100% 100%, rgba(130, 90, 255, 0.10), transparent 55%),
+    radial-gradient(120% 140% at 0% 0%, rgba(var(--tf-primario-rgb, 14, 165, 233), 0.12), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(var(--tf-primario-2-rgb, 6, 182, 212), 0.10), transparent 55%),
     #f1f6fe;
-  border-color: rgba(63, 107, 255, 0.22);
+  border-color: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.24);
 }
 .tf-boton-marca {
-  background: linear-gradient(90deg, #3f6bff, #825aff);
-  box-shadow: 0 6px 18px rgba(80, 90, 255, 0.25);
+  color: var(--tf-texto-primario, #fff);
+  background: linear-gradient(90deg, var(--color-primario, #0ea5e9), var(--color-primario-2, #06b6d4));
+  box-shadow: 0 6px 18px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.28);
   transition: filter 0.2s;
 }
-.tf-boton-marca:hover { filter: brightness(1.12); }
+.tf-boton-marca:hover { filter: brightness(1.08); }
 .tf-segmento {
   flex: 1;
   height: 12px;
   border-radius: 4px;
-  background: rgba(110, 150, 255, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(130, 165, 255, 0.14);
+  background: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.16);
   transition: background 0.4s, box-shadow 0.4s;
 }
 :root[data-tema="claro-nube"] .tf-segmento {
-  background: rgba(63, 107, 255, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(63, 107, 255, 0.22);
+  background: rgba(var(--tf-primario-rgb, 14, 165, 233), 0.14);
+  box-shadow: inset 0 0 0 1px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.24);
 }
 .tf-segmento-hecho {
-  background: linear-gradient(180deg, #6b8cff, #6a55f0);
-  box-shadow: 0 0 10px rgba(110, 120, 255, 0.35);
+  background: linear-gradient(180deg, var(--color-primario, #0ea5e9), var(--color-primario-2, #06b6d4));
+  box-shadow: 0 0 10px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.38);
 }
 @keyframes tf-segmento-rayas {
   to { background-position: 14px 0; }
 }
 .tf-segmento-activo {
-  background: repeating-linear-gradient(135deg, rgba(127, 157, 255, 0.85) 0 5px, rgba(127, 157, 255, 0.28) 5px 10px);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(var(--tf-primario-rgb, 14, 165, 233), 0.88) 0 5px,
+    rgba(var(--tf-primario-rgb, 14, 165, 233), 0.28) 5px 10px
+  );
   background-size: 14px 14px;
   animation: tf-segmento-rayas 0.9s linear infinite;
-  box-shadow: 0 0 12px rgba(127, 157, 255, 0.35), inset 0 0 0 1px rgba(170, 190, 255, 0.5);
+  box-shadow: 0 0 12px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.35), inset 0 0 0 1px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.5);
 }
 
 /* Ventana de una tarea: vidrio translucido que deja ver el fondo, desenfocado. */
@@ -580,11 +678,12 @@ body {
   border: 1px solid rgba(15, 23, 42, 0.12);
 }
 .tf-boton-vidrio {
-  background: linear-gradient(135deg, #5b7dff, #9a6bff);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  color: var(--tf-texto-primario, #fff);
+  background: linear-gradient(135deg, var(--color-primario, #0ea5e9), var(--color-primario-2, #06b6d4));
+  box-shadow: 0 6px 18px rgba(var(--tf-primario-rgb, 14, 165, 233), 0.28);
   transition: filter 0.2s;
 }
-.tf-boton-vidrio:hover { filter: brightness(1.1); }
+.tf-boton-vidrio:hover { filter: brightness(1.08); }
 
 /* Segmentos mas finos, para el nodo principal del mapa. */
 .tf-segmento.tf-segmento-fino { height: 5px; border-radius: 3px; }

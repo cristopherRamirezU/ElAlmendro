@@ -58,7 +58,7 @@ export default function ResponsableTarea({
       <div className="flex items-center justify-between gap-2.5">
         <span
           aria-hidden
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#3f6bff] text-[11px] font-semibold text-white"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--color-primario)] text-[11px] font-semibold text-[var(--tf-texto-primario)]"
         >
           {actividad.responsable.nombreCompleto
             .split(/\s+/)
@@ -114,7 +114,7 @@ export default function ResponsableTarea({
           <button
             onClick={derivar}
             disabled={ocupado || !elegido || !motivo.trim()}
-            className="tf-boton-marca rounded-xl py-2 text-xs font-semibold text-white disabled:opacity-50"
+            className="tf-boton-marca rounded-xl py-2 text-xs font-semibold text-[var(--tf-texto-primario)] disabled:opacity-50"
           >
             {ocupado ? 'Derivando…' : 'Confirmar derivacion'}
           </button>

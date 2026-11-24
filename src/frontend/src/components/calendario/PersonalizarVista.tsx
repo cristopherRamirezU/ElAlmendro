@@ -93,7 +93,7 @@ export default function PersonalizarVista({
         <div
           role="dialog"
           aria-label="Personalizar vista del calendario"
-          className="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-4 text-left text-[var(--tf-texto)] shadow-2xl backdrop-blur"
+          className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-4 text-left text-[var(--tf-texto)] shadow-2xl backdrop-blur"
         >
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">

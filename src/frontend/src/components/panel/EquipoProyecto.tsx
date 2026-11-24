@@ -107,7 +107,7 @@ export default function EquipoProyecto({
             title={puedeGestionar ? 'Equipo: agregar o quitar personas' : 'Ver el equipo'}
             className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--tf-superficie-solida)] text-sm leading-none transition ${
               miembros.length > 0 ? '-ml-2' : ''
-            } ${abierto ? 'bg-[#3f6bff] text-white' : 'bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)] hover:text-[var(--tf-texto)]'}`}
+            } ${abierto ? 'bg-[var(--color-primario)] text-[var(--tf-texto-primario)]' : 'bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)] hover:text-[var(--tf-texto)]'}`}
           >
             {puedeGestionar ? '+' : '…'}
           </button>
@@ -159,7 +159,7 @@ export default function EquipoProyecto({
                 value={elegido}
                 onChange={(e) => setElegido(e.target.value)}
                 disabled={ocupado || disponibles.length === 0}
-                className="min-w-0 flex-1 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-[#7f9dff]/60 disabled:opacity-50"
+                className="min-w-0 flex-1 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-[var(--color-primario)] disabled:opacity-50"
               >
                 <option value="">{disponibles.length === 0 ? 'Todo el equipo ya está asignado' : 'Agregar persona…'}</option>
                 {disponibles.map((p) => (
@@ -177,7 +177,7 @@ export default function EquipoProyecto({
                   )
                 }
                 disabled={ocupado || !elegido}
-                className="tf-boton-marca shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                className="tf-boton-marca shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--tf-texto-primario)] disabled:opacity-50"
               >
                 Asignar
               </button>

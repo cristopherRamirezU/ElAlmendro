@@ -138,7 +138,11 @@ export default function Panel() {
             type="button"
             aria-pressed={activo}
             onClick={() => cambiarVistaPanel(v.id)}
-            style={activo ? { backgroundColor: colorPrimario, color: '#ffffff' } : undefined}
+            style={
+              activo
+                ? { backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }
+                : undefined
+            }
             className={`rounded-lg px-3 py-1.5 font-medium transition ${
               activo
                 ? 'shadow-sm'
@@ -158,7 +162,7 @@ export default function Panel() {
       activo="/panel"
       titulo={tituloVista}
       tituloOculto
-      permitirOcultarCabecera
+      controlesEnSidebar
       compacto={vistaPanel === 'constelacion' && !esTrabajador}
     >
       {aviso && (
@@ -536,8 +540,8 @@ function ModalCrearProyecto({
             <button
               type="submit"
               disabled={enviando}
-              style={{ backgroundColor: colorPrimario }}
-              className="tf-shimmer-cta rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+              style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+              className="tf-shimmer-cta rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition hover:brightness-110 disabled:opacity-50"
             >
               {enviando ? 'Creando…' : 'Crear proyecto'}
             </button>
@@ -650,8 +654,8 @@ function ModalEditarProyecto({
               <button
                 type="submit"
                 disabled={enviando}
-                style={{ backgroundColor: colorPrimario }}
-                className="rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+                className="rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition hover:brightness-110 disabled:opacity-50"
               >
                 {enviando ? 'Guardando…' : 'Guardar cambios'}
               </button>

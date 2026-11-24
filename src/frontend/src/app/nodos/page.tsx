@@ -41,8 +41,9 @@ import { useSesion, useTienePermiso } from '@/lib/sesion';
 import { PERMISOS } from '@/lib/rbac';
 import { useTesoro } from '@/lib/tesoro';
 import { useColorPrimario } from '@/lib/color';
+import { useTemaFondo } from '@/lib/tema';
 import { leerCacheSesion, guardarCacheSesion } from '@/lib/cacheSesion';
-import { FondoMapa, fondoMapaValido } from '@/lib/fondosMapa';
+import { esFondoMapaClaro, FondoMapa, fondoMapaValido } from '@/lib/fondosMapa';
 import { fuenteTitulo } from '@/lib/fuentes';
 import SelectorFondo from '@/components/nodos/SelectorFondo';
 import { DecoracionFondo, estiloFondoMapa, PuntosFondo } from '@/components/nodos/FondoMapa';
@@ -203,10 +204,12 @@ function Nodos() {
   const router = useRouter();
   const sesionActual = useSesion();
 
+  const temaEsClaro = useTemaFondo() === 'claro-nube';
   // Fondo del mapa: preferencia de cada usuario, guardada en su cuenta. Mientras
   // se guarda se muestra ya el elegido; si el servidor lo rechaza, vuelve atras.
   const [fondoElegido, setFondoElegido] = useState<FondoMapa | null>(null);
-  const fondo = fondoElegido ?? fondoMapaValido(sesionActual?.fondoMapa);
+  const fondo = fondoElegido ?? fondoMapaValido(sesionActual?.fondoMapa, temaEsClaro);
+  const esClaro = esFondoMapaClaro(fondo);
   async function cambiarFondo(nuevo: FondoMapa) {
     const anterior = fondo;
     setFondoElegido(nuevo);
@@ -483,6 +486,7 @@ function Nodos() {
         expandido: expandidoRaiz,
         orientacion,
         editando,
+        esMapaClaro: esClaro,
         onAlternar: alternarRaiz,
         onAgregarHija: (titulo: string) => agregarTarea(titulo),
         onAgregarParaAlguien: puedeAsignar ? agregarTareaPara : undefined,
@@ -518,6 +522,7 @@ function Nodos() {
         bloqueadaPorOrden: a.bloqueadaPorOrden,
         prerequisitoTitulo: a.prerequisitoTitulo,
         ordenEnRama: a.ordenEnRama,
+        esMapaClaro: esClaro,
         retrasoEntrada: turnoEntrada(a.id, RETRASO_TAREA),
         onAlternar: () => alternarNodo(a.id),
         onAgregarHija: (titulo: string) => agregarTarea(titulo, a.id),
@@ -556,7 +561,7 @@ function Nodos() {
     return { nodos, aristas };
   }, [
     actividades, arbol, finales, nombreProyecto, expandidoRaiz, expandido, orientacion,
-    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando, entrada,
+    agregarTarea, agregarTareaPara, puedeAsignar, sesionActual, editando, entrada, esClaro,
   ]);
 
   /** Ramas de cada tarea: al arrastrar un padre lo acompanan sus descendientes. */
@@ -896,8 +901,8 @@ function Nodos() {
           </p>
           <Link
             href="/panel"
-            style={{ backgroundColor: colorPrimario }}
-            className="rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110"
+            style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
+            className="rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition hover:brightness-110"
           >
             Ir a Proyectos
           </Link>
@@ -911,20 +916,20 @@ function Nodos() {
       activo="/nodos"
       titulo="Mapa de nodos"
       subtitulo={`Tareas de "${nombreProyecto}"`}
-      permitirOcultarCabecera
+      controlesEnSidebar
       compacto
       acciones={
         <div className="flex items-center gap-2">
           {esTrabajador ? (
-            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-azul)]">
+            <span className="whitespace-nowrap rounded-full border border-sky-500/30 bg-sky-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-azul)]">
               Vista Colaborativa
             </span>
           ) : esSupervisor ? (
-            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-violeta)]">
+            <span className="whitespace-nowrap rounded-full border border-purple-500/30 bg-purple-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-violeta)]">
               Vista Supervisor
             </span>
           ) : (
-            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/12 px-3 py-1 text-xs font-semibold text-[var(--tf-acento-ambar)]">
+            <span className="whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-ambar)]">
               Vista Administrador
             </span>
           )}
@@ -944,7 +949,7 @@ function Nodos() {
         {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--tf-borde)] px-4 py-2">
           <h2
-            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)]`}
+            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)] transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]`}
             title={nombreProyecto ?? undefined}
           >
             {nombreProyecto}
@@ -1082,7 +1087,7 @@ function Nodos() {
           </div>
         )}
         <CajaMapa
-          className={`tf-mapa relative ${raizEnfocada ? 'raiz-enfocada' : ''}`}
+          className={`tf-mapa relative ${esClaro ? 'tf-mapa-claro' : ''} ${raizEnfocada ? 'raiz-enfocada' : ''}`}
           style={estiloFondoMapa(fondo)}
         >
           <DecoracionFondo fondo={fondo} />
@@ -1137,7 +1142,7 @@ function Nodos() {
             fitViewOptions={ENCUADRE}
             proOptions={{ hideAttribution: true }}
             ariaLabelConfig={TEXTOS_ACCESIBLES}
-            colorMode="dark"
+            colorMode={esClaro ? 'light' : 'dark'}
           >
             <AjustarVista
               clave={`${proyectoId}-${orientacion}-${cargas}-${expandidoRaiz}-${[...expandido].sort().join(',')}`}

@@ -287,7 +287,7 @@ export default function ConstelacionProyectos({
   return (
     <div className="flex flex-col gap-2.5">
       {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <div role="search" className="min-w-0 flex-1 sm:w-56 sm:flex-none">
             <label htmlFor="buscar-proyecto" className="relative block">
