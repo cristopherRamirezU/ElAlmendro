@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { aplicarColorMarcaEnDocumento, useColorPrimario } from '@/lib/color';
+import { useTemaFondo } from '@/lib/tema';
 import { useTesoro } from '@/lib/tesoro';
 import ContenidoBolsa from './ContenidoBolsa';
 
@@ -80,6 +82,16 @@ function copiarEstilos(destino: Window) {
   }
 }
 
+function sincronizarAparienciaVentana(destino: Window, color: string, tema: string) {
+  aplicarColorMarcaEnDocumento(destino.document, color);
+  if (tema === 'oscuro-medianoche') {
+    destino.document.documentElement.removeAttribute('data-tema');
+  } else {
+    destino.document.documentElement.setAttribute('data-tema', tema);
+  }
+  destino.document.body.style.background = tema === 'claro-nube' ? '#ffffff' : '#0e1526';
+}
+
 /**
  * Ventana de la tarea abierta: siempre fuera de la pagina, en una ventana
  * propia del navegador que queda por encima de todo y sobrevive al cambio de
@@ -92,6 +104,8 @@ function copiarEstilos(destino: Window) {
  */
 export default function VentanaBolsa() {
   const { bolsa, cerrarBolsa, volarAlCofre, notificarCambio } = useTesoro();
+  const colorPrimario = useColorPrimario();
+  const temaFondo = useTemaFondo();
 
   const [ventanaAparte, setVentanaAparte] = useState<Window | null>(null);
   const [contenedorAparte, setContenedorAparte] = useState<HTMLElement | null>(null);
@@ -132,10 +146,10 @@ export default function VentanaBolsa() {
       nueva.document.title = `Tarea · ${bolsa.titulo}`;
       nueva.document.body.style.margin = '0';
       nueva.document.body.style.overflow = 'hidden';
-      nueva.document.body.style.background = '#0e1526';
+      sincronizarAparienciaVentana(nueva, colorPrimario, temaFondo);
 
       const caja = nueva.document.createElement('div');
-      caja.className = 'tf-ventana-aparte flex h-screen justify-center overflow-hidden text-slate-100';
+      caja.className = 'tf-ventana-aparte flex h-screen justify-center overflow-hidden text-[var(--tf-texto)]';
       nueva.document.body.appendChild(caja);
 
       // Cerrar la ventana es cerrar la tarea: no hay otra forma de verla.
@@ -183,6 +197,12 @@ export default function VentanaBolsa() {
   useEffect(() => {
     if (ventanaAparte && bolsa) ventanaAparte.document.title = `Tarea · ${bolsa.titulo}`;
   }, [ventanaAparte, bolsa]);
+
+  useEffect(() => {
+    if (ventanaAparte) {
+      sincronizarAparienciaVentana(ventanaAparte, colorPrimario, temaFondo);
+    }
+  }, [ventanaAparte, colorPrimario, temaFondo]);
 
   useEffect(() => {
     // Si se cierra la tarea (por ejemplo al cerrar sesion), tambien su ventana.
@@ -233,7 +253,7 @@ export default function VentanaBolsa() {
                 onClick={() => cambiarTamano(!soloReloj)}
                 title={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
                 aria-label={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
-                className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
               >
                 {soloReloj ? '⤢' : '—'}
               </button>
@@ -241,7 +261,7 @@ export default function VentanaBolsa() {
                 onClick={() => ventanaAparte?.close()}
                 title="Cerrar la tarea"
                 aria-label="Cerrar la tarea"
-                className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
               >
                 ×
               </button>
@@ -264,12 +284,12 @@ export default function VentanaBolsa() {
   return (
     <div
       role="status"
-      className="tf-ventana-aparte fixed bottom-14 right-4 z-[60] flex items-center gap-2 rounded-2xl border border-white/15 py-2 pl-3 pr-2 shadow-xl md:bottom-4 md:right-[24rem]"
+      className="tf-ventana-aparte fixed bottom-14 right-4 z-[60] flex items-center gap-2 rounded-2xl border border-[var(--tf-borde-fuerte)] py-2 pl-3 pr-2 shadow-xl md:bottom-4 md:right-[24rem]"
     >
-      <span className="max-w-[12rem] truncate text-xs text-slate-300">{bolsa.titulo}</span>
+      <span className="max-w-[12rem] truncate text-xs text-[var(--tf-texto)]">{bolsa.titulo}</span>
       <button
         onClick={abrirAparte}
-        className="tf-boton-marca rounded-lg px-2.5 py-1 text-[11px] font-semibold text-white"
+        className="tf-boton-marca rounded-lg px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-texto-primario)]"
       >
         Abrir ventana
       </button>
@@ -277,7 +297,7 @@ export default function VentanaBolsa() {
         onClick={cerrarBolsa}
         title="Cerrar la tarea"
         aria-label="Cerrar la tarea"
-        className="grid h-6 w-6 place-items-center rounded-md text-slate-400 transition hover:bg-white/10 hover:text-white"
+        className="grid h-6 w-6 place-items-center rounded-md text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
       >
         ×
       </button>

@@ -416,7 +416,7 @@ function SelectorTrabajador({
         ...equipo.map((w) => ({
           valor: w.id,
           etiqueta: w.nombre,
-          subtitulo: nombreZona(w.zonaHoraria),
+          subtitulo: w.zonaHoraria ? nombreZona(w.zonaHoraria) : undefined,
           inicialesAvatar: iniciales(w.nombre),
           colorAvatar: colorAvatarDe(w.id),
         })),

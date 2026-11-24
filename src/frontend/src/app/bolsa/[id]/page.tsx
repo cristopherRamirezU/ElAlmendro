@@ -1,7 +1,10 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { Actividad, api, ErrorApi } from '@/lib/api';
+import { Actividad, api, ErrorApi, Usuario } from '@/lib/api';
+import { guardarCacheSesion, leerCacheSesion } from '@/lib/cacheSesion';
+import { aplicarColorMarcaEnDocumento, useColorPrimario } from '@/lib/color';
+import { useAplicarTemaFondo, useTemaFondo } from '@/lib/tema';
 import { avisarCambioDeTesoro } from '@/lib/tesoro';
 import { EsqueletoPanelTarea } from '@/components/ui/Esqueleto';
 import ContenidoBolsa from '@/components/tesoro/ContenidoBolsa';
@@ -20,6 +23,14 @@ export default function PaginaBolsa({ params }: { params: Promise<{ id: string }
   const [error, setError] = useState<string | null>(null);
   const [soloReloj, setSoloReloj] = useState(false);
 
+  const colorPrimario = useColorPrimario();
+  const temaFondo = useTemaFondo();
+  useAplicarTemaFondo(temaFondo);
+
+  useEffect(() => {
+    aplicarColorMarcaEnDocumento(document, colorPrimario);
+  }, [colorPrimario]);
+
   /** Encoge la ventana hasta dejar solo el cronometro, y al reves. */
   function cambiarTamano(reloj: boolean) {
     setSoloReloj(reloj);
@@ -31,6 +42,16 @@ export default function PaginaBolsa({ params }: { params: Promise<{ id: string }
   }
 
   useEffect(() => {
+    if (!leerCacheSesion()?.usuario) {
+      api
+        .get<Usuario>('/auth/yo')
+        .then((u) => {
+          const actual = leerCacheSesion();
+          guardarCacheSesion({ usuario: u, jornada: actual?.jornada ?? null });
+        })
+        .catch(() => undefined);
+    }
+
     api
       .get<Actividad>(`/actividades/${id}`)
       .then((a) => setTitulo(a.titulo))
@@ -45,8 +66,8 @@ export default function PaginaBolsa({ params }: { params: Promise<{ id: string }
 
   if (error) {
     return (
-      <main className="tf-ventana-aparte grid min-h-screen place-items-center p-6 text-center">
-        <p className="text-sm text-slate-400">{error}</p>
+      <main className="tf-ventana-aparte grid min-h-screen place-items-center p-6 text-center text-[var(--tf-texto)]">
+        <p className="text-sm text-[var(--tf-texto-tenue)]">{error}</p>
       </main>
     );
   }
@@ -62,7 +83,7 @@ export default function PaginaBolsa({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <main className="tf-ventana-aparte flex h-screen flex-col text-slate-100">
+    <main className="tf-ventana-aparte flex h-screen flex-col text-[var(--tf-texto)]">
       <ContenidoBolsa
         bolsaId={id}
         titulo={titulo}
@@ -72,7 +93,7 @@ export default function PaginaBolsa({ params }: { params: Promise<{ id: string }
             onClick={() => cambiarTamano(!soloReloj)}
             title={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
             aria-label={soloReloj ? 'Ver la tarea completa' : 'Dejar solo el cronómetro'}
-            className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+            className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
           >
             {soloReloj ? '⤢' : '—'}
           </button>

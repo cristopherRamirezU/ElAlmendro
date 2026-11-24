@@ -510,4 +510,25 @@ describe('UsuariosService', () => {
       });
     });
   });
+
+  describe('trabajadores', () => {
+    it('incluye id, nombre y zonaHoraria en los trabajadores activos', async () => {
+      prisma.usuario.findMany.mockResolvedValueOnce([
+        { id: 'u-1', nombreCompleto: 'Ana Perez', zonaHoraria: 'America/Santiago' },
+        { id: 'u-2', nombreCompleto: 'Luis Soto', zonaHoraria: 'America/Bogota' },
+      ] as never);
+
+      const res = await servicio.trabajadores(ADMIN);
+
+      expect(prisma.usuario.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          select: { id: true, nombreCompleto: true, zonaHoraria: true },
+        }),
+      );
+      expect(res).toEqual([
+        { id: 'u-1', nombre: 'Ana Perez', zonaHoraria: 'America/Santiago' },
+        { id: 'u-2', nombre: 'Luis Soto', zonaHoraria: 'America/Bogota' },
+      ]);
+    });
+  });
 });

@@ -49,6 +49,7 @@ import {
 import { precalentarRutas } from '@/lib/precalentar';
 import { limpiarBolsaAbierta } from '@/lib/tesoro';
 import {
+  aplicarColorMarcaEnDocumento,
   colorConAlfa,
   COLOR_PRIMARIO_DEFECTO,
   colorRgb,
@@ -281,13 +282,8 @@ export default function Marco({
     temaFondo === 'claro-nube' && textoPrimario === '#0f172a' ? '#0f172a' : colorPrimario;
 
   useEffect(() => {
-    const root = document.documentElement.style;
-    root.setProperty('--color-primario', colorPrimario);
-    root.setProperty('--color-primario-2', colorSecundario);
-    root.setProperty('--tf-primario-rgb', colorRgb(colorPrimario));
-    root.setProperty('--tf-primario-2-rgb', colorRgb(colorSecundario));
-    root.setProperty('--tf-texto-primario', textoPrimario);
-  }, [colorPrimario, colorSecundario, textoPrimario]);
+    aplicarColorMarcaEnDocumento(document, colorPrimario);
+  }, [colorPrimario]);
 
   useEffect(() => {
     let vigente = true;

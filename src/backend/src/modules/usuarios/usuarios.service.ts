@@ -581,9 +581,13 @@ export class UsuariosService {
         activo: true,
         ...(soloId ? { id: soloId } : {}),
       },
-      select: { id: true, nombreCompleto: true },
+      select: { id: true, nombreCompleto: true, zonaHoraria: true },
       orderBy: { nombreCompleto: 'asc' },
     });
-    return filas.map((f) => ({ id: f.id, nombre: f.nombreCompleto }));
+    return filas.map((f) => ({
+      id: f.id,
+      nombre: f.nombreCompleto,
+      zonaHoraria: f.zonaHoraria,
+    }));
   }
 }

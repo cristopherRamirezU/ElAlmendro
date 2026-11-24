@@ -62,7 +62,7 @@ const CABECERAS_SEGURIDAD = [
     // El microfono solo para el propio sitio: los comentarios de voz de las
     // tareas lo usan. Un iframe ajeno sigue sin acceso.
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()',
+    value: 'camera=(), microphone=(self), geolocation=(), payment=(), usb=()',
   },
 ];
 

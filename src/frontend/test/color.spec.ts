@@ -1,4 +1,5 @@
 import {
+  aplicarColorMarcaEnDocumento,
   colorConAlfa,
   colorRgb,
   colorSecundarioDeMarca,
@@ -40,5 +41,24 @@ describe('Utilidades de color y contraste WCAG', () => {
     for (const muestra of ['#0ea5e9', '#f59e0b', '#eab308', '#10b981', '#8b5cf6', '#f43f5e', '#475569']) {
       expect(colorSecundarioDeMarca(muestra)).toMatch(/^#[0-9a-f]{6}$/);
     }
+  });
+
+  it('aplicarColorMarcaEnDocumento inyecta todas las variables CSS de marca en un Document', () => {
+    const vars = new Map<string, string>();
+    const docMock = {
+      documentElement: {
+        style: {
+          setProperty: (clave: string, valor: string) => vars.set(clave, valor),
+        },
+      },
+    } as unknown as Document;
+
+    aplicarColorMarcaEnDocumento(docMock, '#10b981');
+
+    expect(vars.get('--color-primario')).toBe('#10b981');
+    expect(vars.get('--color-primario-2')).toMatch(/^#[0-9a-f]{6}$/);
+    expect(vars.get('--tf-primario-rgb')).toBe('16, 185, 129');
+    expect(vars.get('--tf-primario-2-rgb')).toBeTruthy();
+    expect(vars.get('--tf-texto-primario')).toBe('#ffffff');
   });
 });
