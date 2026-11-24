@@ -945,11 +945,11 @@ function Nodos() {
         </p>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] backdrop-blur">
-        {/* En pantallas angostas la barra se acomoda en varias filas en vez de cortarse. */}
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[var(--tf-borde)] px-4 py-2">
+      <div className="flex flex-col gap-2.5">
+        {/* Barra de controles FUERA y ARRIBA del mapa: deja el lienzo 100% libre y alinea con el botón flotante */}
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]">
           <h2
-            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)] transition-[padding] duration-200 md:pl-[var(--tf-sangria-izq-barra,0px)]`}
+            className={`${fuenteTitulo.className} min-w-0 truncate text-lg font-bold tracking-[-0.02em] text-[var(--tf-texto)]`}
             title={nombreProyecto ?? undefined}
           >
             {nombreProyecto}
@@ -959,7 +959,7 @@ function Nodos() {
               <button
                 onClick={() => setVerDerivaciones(true)}
                 title="Traspasos de responsable, con su motivo y su fecha"
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)]"
+                className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
               >
                 <span aria-hidden>⇄</span>
                 Derivaciones
@@ -974,10 +974,10 @@ function Nodos() {
                 aria-pressed={editando}
                 onClick={alternarEdicion}
                 title="Arrastra las tareas y déjalas donde quieras"
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition ${
+                className={`flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs transition ${
                   editando
                     ? 'border-amber-500/50 bg-amber-500/20 font-semibold text-[var(--tf-acento-ambar)]'
-                    : 'border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
+                    : 'border-[var(--tf-borde)] bg-[var(--tf-superficie)] text-[var(--tf-texto-tenue)] hover:border-[var(--tf-borde-fuerte)] hover:text-[var(--tf-texto)]'
                 }`}
               >
                 <span aria-hidden>✥</span>
@@ -990,7 +990,7 @@ function Nodos() {
                   onClick={deshacer}
                   disabled={historial.length === 0}
                   title="Deshacer el último movimiento (Ctrl+Z)"
-                  className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span aria-hidden>↶</span>
                   Deshacer
@@ -999,13 +999,13 @@ function Nodos() {
                   onClick={restablecer}
                   disabled={!hayMovidos}
                   title="Devolver todos los nodos al acomodo automático en esta orientación"
-                  className="rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="h-9 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Restablecer
                 </button>
               </>
             )}
-            <div className="flex rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-0.5" role="radiogroup">
+            <div className="flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5" role="radiogroup">
               {ORIENTACIONES.map((o) => (
                 <button
                   key={o.valor}
@@ -1013,7 +1013,7 @@ function Nodos() {
                   aria-checked={orientacion === o.valor}
                   title={o.titulo}
                   onClick={() => cambiarOrientacion(o.valor)}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs transition ${
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition ${
                     orientacion === o.valor
                       ? 'bg-sky-500/20 font-semibold text-[var(--tf-acento-azul)]'
                       : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -1026,7 +1026,9 @@ function Nodos() {
             </div>
           </div>
         </div>
-        {lineaSeleccionada && (
+
+        <section className="overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] backdrop-blur">
+          {lineaSeleccionada && (
           <div
             role="group"
             aria-label="Bordes de la línea seleccionada"
@@ -1151,7 +1153,8 @@ function Nodos() {
             <Controls showInteractive={false} />
           </ReactFlow>
         </CajaMapa>
-      </section>
+        </section>
+      </div>
 
       {/* Detalle de la tarea elegida, en una ventana emergente sobre el mapa. */}
       {tareaSeleccionada && (

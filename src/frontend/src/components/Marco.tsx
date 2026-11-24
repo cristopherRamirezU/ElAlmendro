@@ -399,7 +399,7 @@ export default function Marco({
             '--tf-primario-rgb': colorRgb(colorPrimario),
             '--tf-primario-2-rgb': colorRgb(colorSecundario),
             '--tf-texto-primario': textoPrimario,
-            '--tf-sangria-izq-barra': controlesEnSidebar && barraOculta ? '6.5rem' : '0px',
+            '--tf-sangria-izq-barra': controlesEnSidebar && barraOculta ? '6.25rem' : '0px',
           } as React.CSSProperties
         }
       >
@@ -419,7 +419,7 @@ export default function Marco({
                 ? 'Mostrar barra lateral (En jornada activa)'
                 : 'Mostrar barra lateral (Fuera de jornada)'
             }
-            className="fixed left-3 top-3 z-40 hidden items-center gap-2 rounded-full border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)]/92 px-2.5 py-1.5 text-[var(--tf-texto-tenue)] shadow-lg backdrop-blur-md transition hover:border-[var(--color-primario)] hover:text-[var(--tf-texto)] md:inline-flex"
+            className="fixed left-4 top-3 z-40 hidden h-9 items-center gap-2 rounded-full border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)]/95 px-2.5 text-[var(--tf-texto-tenue)] shadow-lg backdrop-blur-md transition hover:border-[var(--color-primario)] hover:text-[var(--tf-texto)] md:inline-flex"
           >
             <LogoTimeFlow tamano={20} className="h-5 w-5 shrink-0" />
             <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
@@ -428,7 +428,9 @@ export default function Marco({
               )}
               <span
                 className={`relative inline-flex h-2 w-2 rounded-full ${
-                  jornada ? 'bg-emerald-500' : 'bg-slate-400'
+                  jornada
+                    ? 'bg-emerald-500 ring-4 ring-emerald-500/20'
+                    : 'bg-slate-400 ring-4 ring-slate-400/15'
                 }`}
               />
             </span>

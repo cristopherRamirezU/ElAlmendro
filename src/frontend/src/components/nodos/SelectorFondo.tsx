@@ -98,7 +98,7 @@ export default function SelectorFondo({
         aria-haspopup="listbox"
         aria-expanded={abierto}
         title="Elegir el fondo de tu mapa"
-        className="flex items-center gap-1.5 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-2.5 py-1 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)]"
+        className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)]"
       >
         <span
           aria-hidden

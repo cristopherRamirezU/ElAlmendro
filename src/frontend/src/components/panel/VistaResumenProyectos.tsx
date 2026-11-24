@@ -125,21 +125,21 @@ export default function VistaResumenProyectos({
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar proyecto…"
-              className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] py-2 pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
+              className="h-9 w-full rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
             />
             {busqueda && (
               <button
                 type="button"
                 onClick={() => setBusqueda('')}
                 aria-label="Limpiar búsqueda"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]"
               >
                 <X size={13} aria-hidden />
               </button>
             )}
           </div>
 
-          <div className="inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
+          <div className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs">
             {(
               [
                 { id: 'todos', label: 'Todos' },
@@ -151,7 +151,7 @@ export default function VistaResumenProyectos({
                 key={f.id}
                 type="button"
                 onClick={() => setFiltro(f.id)}
-                className={`rounded-lg px-3 py-1.5 transition ${
+                className={`rounded-full px-3.5 py-1.5 transition ${
                   filtro === f.id
                     ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
                     : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -170,7 +170,7 @@ export default function VistaResumenProyectos({
               type="button"
               onClick={onCrear}
               style={{ backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }}
-              className="tf-shimmer-cta inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold shadow-sm transition hover:brightness-110"
+              className="tf-shimmer-cta inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold shadow-sm transition hover:brightness-110"
             >
               <Plus size={14} aria-hidden />
               <span>Nuevo proyecto</span>

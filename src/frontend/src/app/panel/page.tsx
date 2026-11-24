@@ -123,7 +123,7 @@ export default function Panel() {
     <div
       role="group"
       aria-label="Modo de visualización de proyectos"
-      className="inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
+      className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs"
     >
       {(
         [
@@ -143,7 +143,7 @@ export default function Panel() {
                 ? { backgroundColor: colorPrimario, color: 'var(--tf-texto-primario)' }
                 : undefined
             }
-            className={`rounded-lg px-3 py-1.5 font-medium transition ${
+            className={`rounded-full px-3.5 py-1.5 font-medium transition ${
               activo
                 ? 'shadow-sm'
                 : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -163,7 +163,7 @@ export default function Panel() {
       titulo={tituloVista}
       tituloOculto
       controlesEnSidebar
-      compacto={vistaPanel === 'constelacion' && !esTrabajador}
+      compacto
     >
       {aviso && (
         <p

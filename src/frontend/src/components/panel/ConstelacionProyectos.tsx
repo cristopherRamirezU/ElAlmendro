@@ -308,21 +308,21 @@ export default function ConstelacionProyectos({
                 }}
                 placeholder="Buscar proyecto…"
                 autoComplete="off"
-                className="w-full rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] py-2 pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
+                className="h-9 w-full rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] pl-8 pr-8 text-xs text-[var(--tf-texto)] outline-none transition placeholder:text-[var(--tf-texto-suave)] focus:border-[var(--color-primario)] [&::-webkit-search-cancel-button]:hidden"
               />
               {busqueda && (
                 <button
                   type="button"
                   onClick={() => setBusqueda('')}
                   aria-label="Limpiar búsqueda"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] transition-colors hover:text-[var(--tf-texto)]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-[var(--tf-texto-tenue)] transition-colors hover:text-[var(--tf-texto)]"
                 >
                   <X size={13} aria-hidden />
                 </button>
               )}
             </label>
             {buscado && (
-              <p aria-live="polite" className="mt-1 pl-1 text-[11px] text-[var(--tf-texto-tenue)]">
+              <p aria-live="polite" className="mt-1 pl-3 text-[11px] text-[var(--tf-texto-tenue)]">
                 {coincidentes.length === 0
                   ? 'Sin resultados en esta pestaña'
                   : `${coincidentes.length} de ${enPestana.length} ${enPestana.length === 1 ? 'proyecto' : 'proyectos'}`}
@@ -334,7 +334,7 @@ export default function ConstelacionProyectos({
             ref={filtros}
             role="group"
             aria-label="Filtrar proyectos"
-            className="inline-flex rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs transition-opacity duration-300"
+            className="inline-flex h-9 items-center rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-0.5 text-xs transition-opacity duration-300"
           >
             {FILTROS.map((f) => {
               const activo = filtro === f.valor;
@@ -344,7 +344,7 @@ export default function ConstelacionProyectos({
                   type="button"
                   aria-pressed={activo}
                   onClick={() => setFiltro(f.valor)}
-                  className={`rounded-lg px-3 py-1.5 transition ${
+                  className={`rounded-full px-3.5 py-1.5 transition ${
                     activo
                       ? 'bg-[var(--tf-hover)] font-semibold text-[var(--tf-texto)]'
                       : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
@@ -366,7 +366,7 @@ export default function ConstelacionProyectos({
               aria-haspopup="menu"
               aria-expanded={eligiendoFondo}
               onClick={() => setEligiendoFondo((v) => !v)}
-              className="flex max-w-[12rem] items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] py-2 pl-3 pr-2.5 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)] sm:max-w-none"
+              className="flex h-9 max-w-[12rem] items-center gap-2 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie)] pl-3.5 pr-3 text-xs font-medium text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)] sm:max-w-none"
             >
               <Palette size={14} aria-hidden className="shrink-0 text-[var(--tf-texto-tenue)]" />
               <span className="truncate">{DATOS_FONDO[fondo].nombre}</span>
