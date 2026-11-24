@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Lock, Trash2, Unlock } from 'lucide-react';
 import { Actividad, api, Evidencia, ErrorApi, Sesion } from '@/lib/api';
 import { duracion } from '@/lib/formato';
 import { PERMISOS } from '@/lib/rbac';
@@ -117,7 +117,7 @@ export default function PanelTarea({
       disabled={!actividad}
       title="Abrir la tarea en su ventana aparte, con sus objetivos, siempre visible"
       aria-label="Abrir en ventana aparte"
-      className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+      className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-40"
     >
       ⤢
     </button>
@@ -127,11 +127,11 @@ export default function PanelTarea({
     return (
       <Modal titulo="Cargando tarea…" ancho="lg" claseVentana="tf-ventana-tarea" onCerrar={onCerrar} acciones={botonAbrirAparte}>
         {aviso ? (
-          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
             {aviso}
           </p>
         ) : (
-          <p className="py-10 text-center text-sm text-slate-500">Cargando tarea…</p>
+          <p className="py-10 text-center text-sm text-[var(--tf-texto-suave)]">Cargando tarea…</p>
         )}
       </Modal>
     );
@@ -141,6 +141,7 @@ export default function PanelTarea({
   const corriendo = enEstaTarea && sesion?.estado === 'ACTIVA';
   const pausada = enEstaTarea && !corriendo;
   const terminada = actividad.estado === 'COMPLETADA';
+  const bloqueadaPorOrden = Boolean(actividad.bloqueadaPorOrden);
   // Solo el responsable (o quien gestiona) puede echar a andar el cronometro.
   const puedeCronometrar = actividad.responsable?.id === usuarioActual?.id || puedeGestionar;
   // El servidor exige respaldo para cerrar como completada; aqui se avisa
@@ -171,15 +172,17 @@ export default function PanelTarea({
           onClick: () => accion(() => api.post(`/sesiones/${sesion!.id}/reanudar`)),
         }
       : {
-          texto: terminada ? 'Tarea terminada' : 'Comenzar',
+          texto: terminada ? 'Tarea terminada' : bloqueadaPorOrden ? 'Bloqueada' : 'Comenzar',
           titulo: terminada
             ? 'La tarea ya está terminada'
-            : sesion
-              ? `Tienes otra sesión abierta en «${sesion.actividad.titulo}»`
-              : !puedeCronometrar
-                ? 'El cronómetro está reservado para el responsable de la tarea'
-                : 'Comenzar a cronometrar esta tarea',
-          deshabilitado: terminada || Boolean(sesion) || !puedeCronometrar,
+            : bloqueadaPorOrden
+              ? `Bloqueada por orden secuencial: termina primero «${actividad.prerequisitoTitulo ?? 'la tarea anterior'}»`
+              : sesion
+                ? `Tienes otra sesión abierta en «${sesion.actividad.titulo}»`
+                : !puedeCronometrar
+                  ? 'El cronómetro está reservado para el responsable de la tarea'
+                  : 'Comenzar a cronometrar esta tarea',
+          deshabilitado: terminada || bloqueadaPorOrden || Boolean(sesion) || !puedeCronometrar,
           onClick: () => accion(() => api.post('/sesiones/iniciar', { actividadId })),
         };
 
@@ -198,20 +201,52 @@ export default function PanelTarea({
   return (
     <Modal
       titulo={
-        <span className="text-xl font-medium tracking-[-0.01em] text-white">{actividad.titulo}</span>
+        <span className="text-xl font-medium tracking-[-0.01em] text-[var(--tf-texto)]">{actividad.titulo}</span>
       }
       ancho="lg"
       claseVentana="tf-ventana-tarea"
       onCerrar={onCerrar}
       acciones={
         <>
+          {actividad.puedeGestionarBloqueo && (
+            <button
+              type="button"
+              onClick={() =>
+                accion(() =>
+                  api.patch(`/actividades/${actividadId}/bloqueo-hijas`, {
+                    bloquearOrdenHijas: !actividad.bloquearOrdenHijas,
+                  }),
+                )
+              }
+              aria-pressed={Boolean(actividad.bloquearOrdenHijas)}
+              title={
+                actividad.bloquearOrdenHijas
+                  ? 'Candado activado: las tareas hijas deben completarse en orden. Clic para desactivar.'
+                  : 'Activar candado: exigir orden secuencial para las tareas hijas de esta rama'
+              }
+              className={`inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition ${
+                actividad.bloquearOrdenHijas
+                  ? 'border-amber-500/50 bg-amber-500/20 text-[var(--tf-acento-ambar)] hover:bg-amber-500/30'
+                  : 'border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
+              }`}
+            >
+              {actividad.bloquearOrdenHijas ? (
+                <Lock size={13} aria-hidden />
+              ) : (
+                <Unlock size={13} aria-hidden />
+              )}
+              <span className="hidden sm:inline">
+                {actividad.bloquearOrdenHijas ? 'Candado activo' : 'Orden libre'}
+              </span>
+            </button>
+          )}
           {botonAbrirAparte}
           {puedeEliminarNodo && (
             <button
               onClick={handleEliminarNodo}
               title="Eliminar nodo y subnodos"
               aria-label="Eliminar nodo y subnodos"
-              className="grid h-8 w-8 place-items-center rounded-full border border-white/10 text-rose-400 transition hover:border-rose-500/40 hover:bg-rose-500/10"
+              className="grid h-8 w-8 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-acento-rojo)] transition hover:border-rose-500/40 hover:bg-rose-500/10"
             >
               <Trash2 size={14} aria-hidden />
             </button>
@@ -227,18 +262,41 @@ export default function PanelTarea({
         terminar={terminar}
       />
 
+      {bloqueadaPorOrden && (
+        <div
+          role="status"
+          className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/35 bg-amber-500/12 px-3 py-2 text-xs text-[var(--tf-acento-ambar)]"
+        >
+          <Lock size={14} className="shrink-0 text-[var(--tf-acento-ambar)]" aria-hidden />
+          <span>
+            Bloqueada por orden secuencial: termina primero{' '}
+            <strong>«{actividad.prerequisitoTitulo || 'la tarea anterior'}»</strong> para
+            desbloquear esta tarea.
+          </span>
+        </div>
+      )}
+
+      {actividad.bloquearOrdenHijas && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-[var(--tf-acento-ambar)]">
+          <Lock size={12} className="shrink-0 text-[var(--tf-acento-ambar)]" aria-hidden />
+          <span>
+            Candado secuencial activo sobre {actividad.totalHijas ?? 0} tarea(s) hija(s) de esta rama: se desbloquean en orden.
+          </span>
+        </div>
+      )}
+
       {cerrando && enEstaTarea && (
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-          <p className="mb-2 text-xs font-medium text-slate-300">¿Cómo dejas la tarea?</p>
+        <div className="mt-3 rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
+          <p className="mb-2 text-xs font-medium text-[var(--tf-texto-tenue)]">¿Cómo dejas la tarea?</p>
           <textarea
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             rows={2}
             placeholder="Nota de cierre (obligatoria si queda inconclusa)"
-            className="mb-2 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-[#7f9dff]"
+            className="mb-2 w-full rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-[#7f9dff]"
           />
           {!hayRespaldo && (
-            <p className="mb-2 rounded-lg border border-[#7f9dff]/30 bg-[#3f6bff]/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-[#c9d4ff]">
+            <p className="mb-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-[11px] leading-relaxed text-[var(--tf-acento-azul)]">
               Para darla por completada sube primero una evidencia del trabajo hecho: después del cierre ya no se
               aceptan archivos.
             </p>
@@ -285,19 +343,19 @@ export default function PanelTarea({
       )}
 
       {!sesion && !puedeCronometrar && !terminada && (
-        <p className="mt-3 text-center text-[11px] text-[#8fa0d0]">
+        <p className="mt-3 text-center text-[11px] text-[var(--tf-texto-tenue)]">
           El cronómetro está reservado para {actividad.responsable?.nombreCompleto}. Puedes ver los comentarios y
           las evidencias.
         </p>
       )}
       {sesion && !enEstaTarea && (
-        <p className="mt-3 text-center text-[11px] text-[#8fa0d0]">
+        <p className="mt-3 text-center text-[11px] text-[var(--tf-texto-tenue)]">
           Tienes otra sesión abierta en «{sesion.actividad.titulo}». Ciérrala para cronometrar esta tarea.
         </p>
       )}
 
       {aviso && (
-        <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+        <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
           {aviso}
         </p>
       )}

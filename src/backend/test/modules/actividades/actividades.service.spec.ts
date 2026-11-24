@@ -681,4 +681,79 @@ describe('ActividadesService', () => {
       expect(prisma.miembroProyecto.create).not.toHaveBeenCalled();
     });
   });
+
+  describe('bloqueo secuencial de tareas hijas', () => {
+    const GESTOR = {
+      ...ACTOR,
+      id: 'sup-1',
+      rol: 'SUPERVISOR',
+      permisos: ['nodos:editar', 'actividades:gestionar'],
+    } as UsuarioActual;
+
+    it('activa el candado secuencial en el nodo padre y registra auditoría', async () => {
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce({
+          id: 'padre-1',
+          bloquearOrdenHijas: false,
+          proyecto: { organizacionId: 'org-1' },
+        } as never)
+        .mockResolvedValueOnce({
+          id: 'padre-1',
+          bloquearOrdenHijas: true,
+          actividadPadreId: null,
+          proyecto: { nombre: 'P' },
+          subtareas: [],
+          responsable: { id: 'sup-1', nombreCompleto: 'Sup' },
+          comentarios: [],
+          audiosComentario: [],
+          _count: { hijas: 2 },
+        } as never);
+      prisma.$queryRaw.mockResolvedValue([] as never);
+
+      const res = await servicio.actualizarBloqueoHijas('padre-1', GESTOR, {
+        bloquearOrdenHijas: true,
+      });
+
+      expect(prisma.actividad.update).toHaveBeenCalledWith({
+        where: { id: 'padre-1' },
+        data: { bloquearOrdenHijas: true },
+      });
+      expect(prisma.registroAuditoria.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            accion: 'ACTIVIDAD_BLOQUEO_SECUENCIAL',
+            entidadId: 'padre-1',
+          }),
+        }),
+      );
+      expect(res.bloquearOrdenHijas).toBe(true);
+      expect(res.totalHijas).toBe(2);
+    });
+
+    it('bloquea iniciar o completar la segunda hija mientras la primera no está COMPLETADA', async () => {
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce({ id: 'padre-1', bloquearOrdenHijas: true } as never);
+      prisma.actividad.findMany.mockResolvedValueOnce([
+        { id: 'hija-1', titulo: 'Paso 1', estado: 'PENDIENTE' },
+        { id: 'hija-2', titulo: 'Paso 2', estado: 'PENDIENTE' },
+      ] as never);
+
+      await expect(
+        servicio.exigirDesbloqueadaPorSecuencia('hija-2', 'padre-1'),
+      ).rejects.toThrow(/Paso 1/);
+    });
+
+    it('desbloquea la segunda hija cuando la primera ya fue COMPLETADA', async () => {
+      prisma.actividad.findFirst
+        .mockResolvedValueOnce({ id: 'padre-1', bloquearOrdenHijas: true } as never);
+      prisma.actividad.findMany.mockResolvedValueOnce([
+        { id: 'hija-1', titulo: 'Paso 1', estado: 'COMPLETADA' },
+        { id: 'hija-2', titulo: 'Paso 2', estado: 'PENDIENTE' },
+      ] as never);
+
+      await expect(
+        servicio.exigirDesbloqueadaPorSecuencia('hija-2', 'padre-1'),
+      ).resolves.toBeUndefined();
+    });
+  });
 });

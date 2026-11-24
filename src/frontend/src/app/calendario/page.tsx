@@ -84,6 +84,7 @@ function Calendario() {
   const [foco, setFoco] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [prefs, setPrefs] = useState<PreferenciasCalendario>(PREFERENCIAS_CALENDARIO_DEFECTO);
+  const [soloAlertas, setSoloAlertas] = useState(false);
 
   useEffect(() => {
     setPrefs(leerPreferenciasCalendario());
@@ -265,19 +266,40 @@ function Calendario() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
+      <section className="tf-card-pro tf-enter rounded-2xl p-5">
         {prefs.mostrarResumenMes && (
-          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-400">
-            <span>
-              Total del mes: <strong className="font-mono text-white">{duracion(totalMes)}</strong>
-            </span>
-            <span>
-              Días con trabajo: <strong className="text-white">{diasConTrabajo}</strong>
-            </span>
+          <div className="mb-4 flex flex-wrap items-center gap-2.5 text-xs">
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-hover)] px-3 py-1.5 text-[var(--tf-texto-tenue)]">
+              <span>Total del mes</span>
+              <strong className="tf-display font-mono text-sm font-bold text-[var(--tf-texto)]">
+                {duracion(totalMes)}
+              </strong>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-hover)] px-3 py-1.5 text-[var(--tf-texto-tenue)]">
+              <span>Días con trabajo</span>
+              <strong className="tf-display font-mono text-sm font-bold text-[var(--tf-texto)]">
+                {diasConTrabajo}
+              </strong>
+            </div>
             {alertasMes > 0 && (
-              <span className="text-amber-400">
-                ▲ <strong>{alertasMes}</strong> punto(s) por revisar
-              </span>
+              <button
+                type="button"
+                aria-pressed={soloAlertas}
+                onClick={() => setSoloAlertas((v) => !v)}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 font-medium transition ${
+                  soloAlertas
+                    ? 'border-amber-500/50 bg-amber-500/20 text-amber-300'
+                    : 'border-[var(--tf-borde)] bg-[var(--tf-hover)] text-amber-400 hover:border-amber-500/40'
+                }`}
+              >
+                <span className="h-2 w-2 rounded-full bg-amber-400" />
+                <span>
+                  <strong>{alertasMes}</strong> por revisar
+                </span>
+                <span className="text-[10px] opacity-75">
+                  {soloAlertas ? '(Filtro activo)' : '(Filtrar)'}
+                </span>
+              </button>
             )}
           </div>
         )}
@@ -289,6 +311,7 @@ function Calendario() {
             seleccionado={diaAbierto}
             onDia={(fecha) => navegar({ dia: fecha })}
             prefs={prefs}
+            soloAlertas={soloAlertas}
           />
         )}
 
@@ -362,7 +385,7 @@ function SelectorTrabajador({
       value={valor ?? ''}
       onChange={(e) => onCambio(e.target.value || null)}
       aria-label="Filtrar por trabajador"
-      className="rounded-xl border border-white/15 bg-slate-900 px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-sky-400"
+      className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-sky-400"
     >
       <option value="">Todo el equipo</option>
       {equipo.map((w) => (

@@ -68,7 +68,7 @@ export default function ComentariosTarea({
       <div className="mb-2 flex items-center justify-between">
         <h3
           id={`comentarios-${actividad.id}`}
-          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8fa0d0]"
+          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--tf-texto-tenue)]"
         >
           Comentarios
         </h3>
@@ -76,7 +76,7 @@ export default function ComentariosTarea({
           <button
             ref={botonEditar}
             onClick={abrir}
-            className="text-[11px] font-semibold text-[#9fb4ff] hover:text-white"
+            className="text-[11px] font-semibold text-[var(--tf-acento-azul)] hover:opacity-80"
           >
             {actividad.descripcion ? '✎ Editar' : '+ Agregar'}
           </button>
@@ -84,7 +84,7 @@ export default function ComentariosTarea({
       </div>
 
       {editando ? (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-3">
           <textarea
             autoFocus
             value={texto}
@@ -103,13 +103,13 @@ export default function ComentariosTarea({
             maxLength={LARGO_MAXIMO}
             aria-label="Comentarios de la tarea"
             placeholder="Qué hay que hacer, criterios de término, enlaces útiles…"
-            className="w-full resize-y rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs leading-relaxed text-white placeholder-slate-500 outline-none focus:border-[#7f9dff]"
+            className="w-full resize-y rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-xs leading-relaxed text-[var(--tf-texto)] placeholder:text-[var(--tf-texto-suave)] outline-none focus:border-[#7f9dff]"
           />
-          <p className="mb-2 mt-1 text-right text-[10px] tabular-nums text-slate-500">
+          <p className="mb-2 mt-1 text-right text-[10px] tabular-nums text-[var(--tf-texto-suave)]">
             {texto.length} / {LARGO_MAXIMO}
           </p>
           {aviso && (
-            <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-rose-300">
+            <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2.5 py-1.5 text-[11px] text-[var(--tf-acento-rojo)]">
               {aviso}
             </p>
           )}
@@ -124,18 +124,18 @@ export default function ComentariosTarea({
             <button
               onClick={cancelar}
               disabled={guardando}
-              className="flex-1 rounded-lg border border-white/15 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-[var(--tf-borde)] py-2 text-xs font-semibold text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-50"
             >
               Cancelar
             </button>
           </div>
         </div>
       ) : actividad.descripcion ? (
-        <p className="min-h-28 whitespace-pre-wrap break-words tf-vidrio rounded-2xl px-4 py-3 text-sm leading-relaxed text-slate-200">
+        <p className="min-h-28 whitespace-pre-wrap break-words tf-vidrio rounded-2xl px-4 py-3 text-sm leading-relaxed text-[var(--tf-texto)]">
           {actividad.descripcion}
         </p>
       ) : audios.length === 0 ? (
-        <p className="grid min-h-28 place-items-center rounded-2xl border border-dashed border-white/15 p-3 text-center text-xs text-slate-500">
+        <p className="grid min-h-28 place-items-center rounded-2xl border border-dashed border-[var(--tf-borde-fuerte)] p-3 text-center text-xs text-[var(--tf-texto-suave)]">
           Sin comentarios.
         </p>
       ) : null}
@@ -219,7 +219,7 @@ function ComentariosDeVoz({
               type="button"
               onClick={() => quitar(a)}
               disabled={borrando === a.id}
-              className="flex items-center gap-1 self-end text-[10px] font-semibold text-slate-500 hover:text-rose-300 disabled:opacity-50"
+              className="flex items-center gap-1 self-end text-[10px] font-semibold text-[var(--tf-texto-suave)] hover:text-[var(--tf-acento-rojo)] disabled:opacity-50"
             >
               <Trash2 size={11} aria-hidden /> {borrando === a.id ? 'Quitando…' : 'Quitar'}
             </button>
@@ -234,9 +234,9 @@ function ComentariosDeVoz({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400 opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
             </span>
-            <span className="flex-1 text-xs text-rose-200">
+            <span className="flex-1 text-xs text-[var(--tf-acento-rojo)]">
               Grabando… <span className="tabular-nums">{minutosSegundos(segundos)}</span>
-              <span className="text-rose-300/60"> / {minutosSegundos(GRABACION_MAXIMA_SEGUNDOS)}</span>
+              <span className="opacity-70"> / {minutosSegundos(GRABACION_MAXIMA_SEGUNDOS)}</span>
             </span>
             <button
               type="button"
@@ -262,7 +262,7 @@ function ComentariosDeVoz({
                 type="button"
                 onClick={limpiar}
                 disabled={enviando}
-                className="flex items-center justify-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 rounded-lg border border-[var(--tf-borde)] px-3 py-2 text-xs font-semibold text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-50"
               >
                 <Trash2 size={13} aria-hidden /> Descartar
               </button>
@@ -273,7 +273,7 @@ function ComentariosDeVoz({
             type="button"
             onClick={iniciar}
             disabled={estado === 'pidiendo'}
-            className="flex items-center justify-center gap-1.5 rounded-lg border border-white/15 px-3 py-2 text-[11px] font-semibold text-slate-200 transition hover:bg-white/5 disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 rounded-lg border border-[var(--tf-borde)] px-3 py-2 text-[11px] font-semibold text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)] disabled:opacity-50"
           >
             <Mic size={13} aria-hidden />
             {estado === 'pidiendo' ? 'Pidiendo micrófono…' : 'Grabar comentario de voz'}
@@ -281,7 +281,7 @@ function ComentariosDeVoz({
         ))}
 
       {(error || aviso) && (
-        <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-200">
+        <p role="alert" className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-[var(--tf-acento-ambar)]">
           {error ?? aviso}
         </p>
       )}

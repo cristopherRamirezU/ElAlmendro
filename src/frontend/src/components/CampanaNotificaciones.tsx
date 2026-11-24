@@ -113,10 +113,10 @@ export default function CampanaNotificaciones() {
         <div
           role="dialog"
           aria-label="Centro de notificaciones"
-          className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-white/15 bg-slate-900/95 shadow-2xl backdrop-blur"
+          className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-2xl backdrop-blur"
         >
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+          <div className="flex items-center justify-between border-b border-[var(--tf-borde)] px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">
               Notificaciones
             </span>
             {noLeidas > 0 && (
@@ -132,11 +132,11 @@ export default function CampanaNotificaciones() {
           </div>
 
           {items.length === 0 ? (
-            <p className="p-6 text-center text-xs text-slate-500">
+            <p className="p-6 text-center text-xs text-[var(--tf-texto-suave)]">
               No tienes notificaciones recientes.
             </p>
           ) : (
-            <ul className="max-h-80 divide-y divide-white/5 overflow-y-auto">
+            <ul className="max-h-80 divide-y divide-[var(--tf-borde)] overflow-y-auto">
               {items.map((n) => {
                 const sinLeer = !n.leidaEn;
                 return (
@@ -144,20 +144,20 @@ export default function CampanaNotificaciones() {
                     <button
                       type="button"
                       onClick={() => abrirNotificacion(n)}
-                      className={`flex w-full flex-col gap-0.5 px-4 py-3 text-left transition hover:bg-white/5 ${
-                        sinLeer ? 'bg-sky-500/[0.06]' : ''
+                      className={`flex w-full flex-col gap-0.5 px-4 py-3 text-left transition hover:bg-[var(--tf-hover)] ${
+                        sinLeer ? 'bg-sky-500/[0.08]' : ''
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                        <span className="flex items-center gap-1.5 text-xs font-semibold text-[var(--tf-texto)]">
                           {sinLeer && <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />}
                           {n.titulo}
                         </span>
-                        <span className="shrink-0 text-[10px] text-slate-500">
+                        <span className="shrink-0 text-[10px] text-[var(--tf-texto-suave)]">
                           {diaRelativo(n.creadoEn)} · {hora(n.creadoEn)}
                         </span>
                       </div>
-                      <p className="text-[11px] leading-relaxed text-slate-300">{n.mensaje}</p>
+                      <p className="text-[11px] leading-relaxed text-[var(--tf-texto-tenue)]">{n.mensaje}</p>
                     </button>
                   </li>
                 );

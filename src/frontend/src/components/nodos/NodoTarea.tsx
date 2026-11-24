@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react';
+import { Lock } from 'lucide-react';
 import { ALTO_NODO, ANCHO_NODO, type Orientacion } from '@/lib/mapaMental';
 import { porcentajeLlenado } from '@/components/tesoro/llenado';
 import { disposicionNodo, type Ancla } from './orientacion';
@@ -46,6 +47,10 @@ export interface DatosNodoTarea {
   recibiendoExtremo?: boolean;
   /** Durante la entrada al mapa: segundos que espera antes de brotar. */
   retrasoEntrada?: number;
+  bloquearOrdenHijas?: boolean;
+  bloqueadaPorOrden?: boolean;
+  prerequisitoTitulo?: string | null;
+  ordenEnRama?: number | null;
   onAlternar: () => void;
   onAgregarHija?: (titulo: string) => void;
   [clave: string]: unknown;
@@ -64,7 +69,7 @@ export default function NodoTarea({ id, data }: NodeProps) {
   // terminar, React Flow vuelve a medir sus manillas.
   const actualizarManillas = useUpdateNodeInternals();
   const disposicion = disposicionNodo(d.orientacion);
-  const fase = faseDeTarea(d.estado);
+  const fase = d.bloqueadaPorOrden ? FASES.BLOQUEADA : faseDeTarea(d.estado);
   const porcentaje = porcentajeLlenado(d.llenado ?? 0);
   const entrando = d.retrasoEntrada !== undefined;
   const [agregando, setAgregando] = useState(false);
@@ -94,11 +99,32 @@ export default function NodoTarea({ id, data }: NodeProps) {
       <Manillas nodoId={id} anclas={d.anclas} recibiendo={d.recibiendoExtremo} />
 
       <div
-        className="tf-tarea relative flex h-full w-full items-center gap-2 overflow-hidden rounded-xl pb-[3px] pl-2 pr-3"
+        className={`tf-tarea relative flex h-full w-full items-center gap-2 overflow-hidden rounded-xl pb-[3px] pl-2 pr-3 ${
+          d.bloqueadaPorOrden ? 'opacity-80' : ''
+        }`}
         style={{ '--c': fase.rgb } as React.CSSProperties}
       >
         <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
-          <div className="flex min-w-0 items-center gap-2" title={d.titulo}>
+          <div
+            className="flex min-w-0 items-center gap-1.5"
+            title={
+              d.bloqueadaPorOrden
+                ? `Bloqueada: termina primero «${d.prerequisitoTitulo || 'la tarea anterior'}»`
+                : d.titulo
+            }
+          >
+            {d.ordenEnRama && (
+              <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 font-mono text-[9px] font-bold text-slate-300">
+                #{d.ordenEnRama}
+              </span>
+            )}
+            {(d.bloqueadaPorOrden || d.bloquearOrdenHijas) && (
+              <Lock
+                size={12}
+                aria-hidden
+                className={`shrink-0 ${d.bloqueadaPorOrden ? 'text-rose-400' : 'text-amber-400'}`}
+              />
+            )}
             <span className="truncate text-xs font-bold text-white">{d.titulo}</span>
           </div>
 

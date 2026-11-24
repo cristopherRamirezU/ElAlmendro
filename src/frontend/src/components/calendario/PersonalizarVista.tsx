@@ -78,8 +78,8 @@ export default function PersonalizarVista({
         aria-haspopup="dialog"
         className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm transition ${
           abierto || personalizada
-            ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
-            : 'border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)]'
+            ? 'border-sky-500/40 bg-sky-500/15 text-[var(--tf-acento-azul)]'
+            : 'border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]'
         }`}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
@@ -93,17 +93,17 @@ export default function PersonalizarVista({
         <div
           role="dialog"
           aria-label="Personalizar vista del calendario"
-          className="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-white/15 bg-slate-900/95 p-4 text-left shadow-2xl backdrop-blur"
+          className="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] p-4 text-left text-[var(--tf-texto)] shadow-2xl backdrop-blur"
         >
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-300">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">
               Estilo de grilla
             </h3>
             {personalizada && (
               <button
                 type="button"
                 onClick={onRestablecer}
-                className="text-[11px] font-medium text-sky-400 transition hover:text-sky-300"
+                className="text-[11px] font-semibold text-[var(--tf-acento-azul)] transition hover:opacity-80"
               >
                 Restablecer vista
               </button>
@@ -113,7 +113,7 @@ export default function PersonalizarVista({
           <div
             role="radiogroup"
             aria-label="Estilo visual del calendario"
-            className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-slate-950/60 p-1"
+            className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-1"
           >
             {(
               [
@@ -131,8 +131,8 @@ export default function PersonalizarVista({
                   onClick={() => cambiarEstilo(opcion.valor)}
                   className={`rounded-lg px-2.5 py-1.5 text-xs font-medium transition ${
                     activo
-                      ? 'bg-sky-500/20 text-sky-200 ring-1 ring-sky-400/40'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-sky-500/18 text-[var(--tf-acento-azul)] ring-1 ring-sky-500/40'
+                      : 'text-[var(--tf-texto-tenue)] hover:text-[var(--tf-texto)]'
                   }`}
                 >
                   {opcion.texto}
@@ -142,7 +142,7 @@ export default function PersonalizarVista({
           </div>
 
           <div className="mb-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tf-texto-suave)]">
               Grilla del mes
             </p>
             <div className="flex flex-col gap-1.5">
@@ -159,8 +159,8 @@ export default function PersonalizarVista({
             </div>
           </div>
 
-          <div className="border-t border-white/10 pt-3">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          <div className="border-t border-[var(--tf-borde)] pt-3">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tf-texto-suave)]">
               Detalle del día
             </p>
             <div className="flex flex-col gap-1.5">
@@ -198,7 +198,7 @@ function Interruptor({
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1.5 py-1 text-xs text-slate-300 transition hover:bg-white/5"
+      className="flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1.5 py-1 text-xs text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
     >
       <span>{etiqueta}</span>
       <input
@@ -207,7 +207,7 @@ function Interruptor({
         type="checkbox"
         checked={activo}
         onChange={(e) => onCambio(e.target.checked)}
-        className="h-4 w-4 shrink-0 cursor-pointer rounded border-white/20 bg-slate-950 accent-sky-400"
+        className="h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--tf-borde-fuerte)] bg-[var(--tf-input)] accent-sky-500"
       />
     </label>
   );

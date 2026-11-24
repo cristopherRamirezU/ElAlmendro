@@ -80,26 +80,26 @@ export default function LineaTiempo({
           <div key={w.id} className="flex items-center gap-2">
             {mostrarNombres && (
               <span
-                className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sky-500/15 text-[9px] font-bold text-sky-300"
+                className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sky-500/15 text-[9px] font-bold text-[var(--tf-acento-azul)]"
                 title={w.nombre}
               >
                 {iniciales(w.nombre)}
               </span>
             )}
 
-            <div className="relative h-7 min-w-0 flex-1 overflow-hidden rounded bg-white/5">
+            <div className="relative h-7 min-w-0 flex-1 overflow-hidden rounded bg-[var(--tf-hover)]">
               {lineas.map((i) => (
                 <span
                   key={i}
                   aria-hidden
-                  className="absolute inset-y-0 w-px bg-white/10"
+                  className="absolute inset-y-0 w-px bg-[var(--tf-borde)]"
                   style={{ left: `${(i / ancho) * 100}%` }}
                 />
               ))}
 
               {jornada && (
                 <span
-                  className="absolute inset-y-1 rounded bg-white/15"
+                  className="absolute inset-y-1 rounded bg-[var(--tf-borde-fuerte)]"
                   style={jornada}
                   title={`Jornada: ${hora(w.jornada!.inicioEn, zona)}${
                     w.jornada!.terminoEn ? ` – ${hora(w.jornada!.terminoEn, zona)}` : ' – sin cerrar'

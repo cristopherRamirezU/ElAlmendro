@@ -30,19 +30,19 @@ export interface PreguntaFrecuente {
 export const ETIQUETAS_ROL: Record<Rol, { nombre: string; clase: string }> = {
   TRABAJADOR: {
     nombre: 'Trabajador',
-    clase: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+    clase: 'border-sky-500/30 bg-sky-500/12 text-[var(--tf-acento-azul)]',
   },
   SUPERVISOR: {
     nombre: 'Supervisor',
-    clase: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+    clase: 'border-amber-500/30 bg-amber-500/12 text-[var(--tf-acento-ambar)]',
   },
   ADMINISTRADOR: {
     nombre: 'Administrador',
-    clase: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    clase: 'border-emerald-500/30 bg-emerald-500/12 text-[var(--tf-acento-verde)]',
   },
   SUPER_ADMIN: {
     nombre: 'SuperAdmin',
-    clase: 'border-violet-500/30 bg-violet-500/10 text-violet-300',
+    clase: 'border-violet-500/30 bg-violet-500/12 text-[var(--tf-acento-violeta)]',
   },
 };
 

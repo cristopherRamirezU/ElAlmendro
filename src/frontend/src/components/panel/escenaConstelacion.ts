@@ -342,8 +342,14 @@ function acomodar(proyectos: ProyectoEscena[], W: number, H: number) {
   return mejor!;
 }
 
-/** Fondos que se pueden elegir para la constelacion. */
+/** Fondos claros disponibles para el mapa de proyectos. */
+export const FONDOS_CLAROS = ['lienzo-claro', 'cuadricula-clara', 'bruma-clara'] as const;
+
+/** Fondos que se pueden elegir para el mapa de proyectos (claros y oscuros). */
 export const FONDOS = [
+  'lienzo-claro',
+  'cuadricula-clara',
+  'bruma-clara',
   'nebulosa',
   'aurora',
   'orion',
@@ -359,6 +365,11 @@ export const FONDOS = [
   'estrellas',
 ] as const;
 export type Fondo = (typeof FONDOS)[number];
+
+/** Indica si el estilo del mapa usa superficie y tipografia claras. */
+export function esFondoClaro(f: Fondo): boolean {
+  return (FONDOS_CLAROS as readonly string[]).includes(f);
+}
 
 /** Numero pseudoaleatorio repetible: el mismo fondo sale igual en cada visita. */
 function azar(semilla: number) {
@@ -409,7 +420,51 @@ function crearFondo(tipo: Fondo, W: number, H: number, dpr: number, fuente: stri
   g.scale(dpr, dpr);
   const lado = Math.max(W, H);
 
-  if (tipo === 'nebulosa') {
+  if (tipo === 'lienzo-claro') {
+    g.fillStyle = '#f2f7fd';
+    g.fillRect(0, 0, W, H);
+    nube(g, W, H, W * 0.25, H * 0.3, lado * 0.52, '56,189,248', 0.16);
+    nube(g, W, H, W * 0.78, H * 0.72, lado * 0.46, '99,102,241', 0.14);
+    nube(g, W, H, W * 0.65, H * 0.22, lado * 0.35, '16,185,129', 0.10);
+  } else if (tipo === 'cuadricula-clara') {
+    g.fillStyle = '#f6f9fe';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(79,70,229,0.065)';
+    g.lineWidth = 1;
+    const paso = 56;
+    g.beginPath();
+    for (let x = (W / 2) % paso; x < W; x += paso) {
+      g.moveTo(Math.round(x) + 0.5, 0);
+      g.lineTo(Math.round(x) + 0.5, H);
+    }
+    for (let y = (H / 2) % paso; y < H; y += paso) {
+      g.moveTo(0, Math.round(y) + 0.5);
+      g.lineTo(W, Math.round(y) + 0.5);
+    }
+    g.stroke();
+    g.strokeStyle = 'rgba(79,70,229,0.11)';
+    for (const f of [0.16, 0.3, 0.46]) {
+      g.beginPath();
+      g.arc(W / 2, H / 2, lado * f, 0, TAU);
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(71,85,105,0.55)';
+    g.font = `500 10px ${fuente}`;
+    g.textBaseline = 'top';
+    g.fillText('MAPA · 04h 12m', 14, H - 24);
+    g.textAlign = 'right';
+    g.fillText('VISTA ORBITAL', W - 14, H - 24);
+    nube(g, W, H, W * 0.5, H * 0.5, lado * 0.42, '59,130,246', 0.08);
+  } else if (tipo === 'bruma-clara') {
+    const cielo = g.createLinearGradient(0, 0, W, H);
+    cielo.addColorStop(0, '#f8faff');
+    cielo.addColorStop(1, '#edf4ff');
+    g.fillStyle = cielo;
+    g.fillRect(0, 0, W, H);
+    nube(g, W, H, W * 0.2, H * 0.25, lado * 0.45, '139,92,246', 0.12);
+    nube(g, W, H, W * 0.78, H * 0.32, lado * 0.42, '14,165,233', 0.12);
+    nube(g, W, H, W * 0.48, H * 0.82, lado * 0.42, '52,211,153', 0.09);
+  } else if (tipo === 'nebulosa') {
     nube(g, W, H, W * 0.28, H * 0.34, lado * 0.5, '91,60,196', 0.32);
     nube(g, W, H, W * 0.76, H * 0.7, lado * 0.48, '26,127,168', 0.26);
     nube(g, W, H, W * 0.62, H * 0.18, lado * 0.32, '194,66,126', 0.16);
@@ -1193,6 +1248,7 @@ export class EscenaConstelacion {
     // ---------------------------------------------------------- dibujo
     const ctx = this.ctx;
     const dpr = this.dpr;
+    const claro = esFondoClaro(this.fondoActual);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     // Fondo: casi quieto, deriva unos pocos px y apenas se acerca con el
@@ -1205,7 +1261,9 @@ export class EscenaConstelacion {
     for (const s of this.estrellas) {
       const [sx, sy] = this.aPantalla(s.x * W, s.y * H);
       const k = 1 / (1 + eZoom * 0.5);
-      ctx.fillStyle = `rgba(190,205,255,${0.18 + 0.08 * Math.sin(this.t * 0.25 + s.p)})`;
+      ctx.fillStyle = claro
+        ? `rgba(99,102,241,${0.1 + 0.05 * Math.sin(this.t * 0.25 + s.p)})`
+        : `rgba(190,205,255,${0.18 + 0.08 * Math.sin(this.t * 0.25 + s.p)})`;
       ctx.beginPath();
       ctx.arc((sx - W / 2) * k + W / 2, (sy - H / 2) * k + H / 2, s.r, 0, TAU);
       ctx.fill();
@@ -1224,7 +1282,9 @@ export class EscenaConstelacion {
     g.translate(-this.fx, -this.fy);
 
     this.dibujarAnillos(g, S, eFondo);
-    if (this.fondoActual === 'carta') this.dibujarTrazos(g, cx, cy, nodos, S, eFondo);
+    if (this.fondoActual === 'carta' || this.fondoActual === 'cuadricula-clara') {
+      this.dibujarTrazos(g, cx, cy, nodos, S, eFondo);
+    }
     const fondo = nodos.filter((n) => n.z <= 0 && n !== nodoSel).sort((a, c) => a.z - c.z);
     const frente = nodos.filter((n) => n.z > 0 && n !== nodoSel).sort((a, c) => a.z - c.z);
     for (const n of fondo) this.dibujarCarta(g, n, false, eFondo, S);
@@ -1243,7 +1303,7 @@ export class EscenaConstelacion {
       ctx.restore();
     }
     if (eFondo > 0.02) {
-      ctx.fillStyle = `rgba(3,6,15,${0.4 * eFondo})`;
+      ctx.fillStyle = claro ? `rgba(241,246,254,${0.55 * eFondo})` : `rgba(3,6,15,${0.4 * eFondo})`;
       ctx.fillRect(0, 0, W, H);
       // Con un proyecto enfocado el nucleo nunca se apaga: queda nitido, en
       // su lugar y por encima del resto, con las tareas de ese proyecto encendidas.
@@ -1276,11 +1336,12 @@ export class EscenaConstelacion {
 
   /** Carta estelar: una linea fina de la esfera a cada proyecto, como una constelacion. */
   private dibujarTrazos(g: CanvasRenderingContext2D, cx: number, cy: number, nodos: Nodo[], S: number, e: number) {
+    const claro = esFondoClaro(this.fondoActual);
     g.save();
     g.lineWidth = 0.8 / S;
     for (const n of nodos) {
       const a = (this.visible(n.c.p) ? 0.2 : 0.04) * (1 - e * 0.5) * (1 - this.ab * 0.45);
-      g.strokeStyle = `rgba(159,180,255,${a})`;
+      g.strokeStyle = claro ? `rgba(79,70,229,${a})` : `rgba(159,180,255,${a})`;
       g.beginPath();
       g.moveTo(cx, cy);
       g.lineTo(n.x, n.y);
@@ -1291,6 +1352,7 @@ export class EscenaConstelacion {
 
   /** Anillos punteados; el del grupo filtrado se resalta y el otro se apaga. */
   private dibujarAnillos(g: CanvasRenderingContext2D, S: number, e: number) {
+    const claro = esFondoClaro(this.fondoActual);
     const f = this.filtroActual;
     const cx = this.W / 2;
     const cy = this.H / 2;
@@ -1301,8 +1363,12 @@ export class EscenaConstelacion {
       const resalta = (f === 'proceso' && a.grupo === 0) || (f === 'completados' && a.grupo === 1);
       const apaga = (f === 'proceso' && a.grupo === 1) || (f === 'completados' && a.grupo === 0);
       g.strokeStyle = a.grupo
-        ? `rgba(60,220,170,${(resalta ? 0.32 : apaga ? 0.06 : 0.16) * (1 - e * 0.5)})`
-        : `rgba(110,150,255,${(resalta ? 0.4 : apaga ? 0.06 : 0.2) * (1 - e * 0.5)})`;
+        ? claro
+          ? `rgba(5,150,105,${(resalta ? 0.38 : apaga ? 0.08 : 0.22) * (1 - e * 0.5)})`
+          : `rgba(60,220,170,${(resalta ? 0.32 : apaga ? 0.06 : 0.16) * (1 - e * 0.5)})`
+        : claro
+          ? `rgba(63,107,255,${(resalta ? 0.45 : apaga ? 0.08 : 0.24) * (1 - e * 0.5)})`
+          : `rgba(110,150,255,${(resalta ? 0.4 : apaga ? 0.06 : 0.2) * (1 - e * 0.5)})`;
       g.beginPath();
       g.ellipse(cx, cy, a.rx, a.ry, 0, 0, TAU);
       g.stroke();
@@ -1312,6 +1378,7 @@ export class EscenaConstelacion {
 
   /** Tarjeta de un proyecto: "PROYECTO", nombre, barra de avance y %. */
   private dibujarCarta(g: CanvasRenderingContext2D, n: Nodo, yo: boolean, e: number, S: number) {
+    const claro = esFondoClaro(this.fondoActual);
     const p = n.c.p;
     const sc = n.s;
     if (sc < 0.05) return;
@@ -1334,28 +1401,46 @@ export class EscenaConstelacion {
       g.roundRect(X - 5, Y - 5, w + 10, hh + 10, 14 * sc);
       g.fill();
     }
-    g.fillStyle = `rgba(10,15,34,${0.96 * a})`;
-    g.beginPath();
-    g.roundRect(X, Y, w, hh, 10 * sc);
-    g.fill();
-    g.strokeStyle = yo ? `rgba(130,165,255,${0.3 + 0.4 * e})` : `rgba(110,150,255,${0.25 * a})`;
+    if (claro) {
+      g.save();
+      g.shadowColor = `rgba(15,23,42,${0.1 * a})`;
+      g.shadowBlur = 12 * sc;
+      g.shadowOffsetY = 4 * sc;
+      g.fillStyle = `rgba(255,255,255,${0.96 * a})`;
+      g.beginPath();
+      g.roundRect(X, Y, w, hh, 10 * sc);
+      g.fill();
+      g.restore();
+      g.strokeStyle = yo ? `rgba(63,107,255,${0.45 + 0.35 * e})` : `rgba(99,102,241,${0.26 * a})`;
+    } else {
+      g.fillStyle = `rgba(10,15,34,${0.96 * a})`;
+      g.beginPath();
+      g.roundRect(X, Y, w, hh, 10 * sc);
+      g.fill();
+      g.strokeStyle = yo ? `rgba(130,165,255,${0.3 + 0.4 * e})` : `rgba(110,150,255,${0.25 * a})`;
+    }
     g.lineWidth = (1 / S) * (yo ? 1.2 : 1);
     g.stroke();
-    // Linea de color en el borde inferior: celeste en proceso, verde completado.
-    g.fillStyle = `rgba(${p.completado ? '31,191,134' : '60,200,255'},${0.7 * a})`;
+    // Linea de color en el borde inferior: celeste/indigo en proceso, verde completado.
+    g.fillStyle = claro
+      ? `rgba(${p.completado ? '5,150,105' : '63,107,255'},${0.8 * a})`
+      : `rgba(${p.completado ? '31,191,134' : '60,200,255'},${0.7 * a})`;
     g.fillRect(X + 8 * sc, Y + hh - 1.5, w - 16 * sc, 1.5);
     const tx = X + 13 * sc;
     g.textAlign = 'left';
     g.textBaseline = 'alphabetic';
     const nombre = this.nombreCorto(g, p);
-    g.fillStyle = `rgba(255,255,255,${a})`;
+    g.fillStyle = claro ? `rgba(15,23,42,${a})` : `rgba(255,255,255,${a})`;
     g.font = `500 ${12 * sc}px ${this.fuente}`;
     g.fillText(nombre, tx, Y + 23 * sc);
     const bw = w - 52 * sc;
-    g.fillStyle = `rgba(255,255,255,${0.1 * a})`;
+    g.fillStyle = claro ? `rgba(15,23,42,${0.1 * a})` : `rgba(255,255,255,${0.1 * a})`;
     g.fillRect(tx, Y + 33 * sc, bw, 2.5 * sc);
-    g.fillStyle = p.completado ? `rgba(31,191,134,${a})` : `rgba(255,90,160,${a})`;
+    g.fillStyle = p.completado
+      ? `rgba(${claro ? '16,185,129' : '31,191,134'},${a})`
+      : `rgba(${claro ? '79,70,229' : '255,90,160'},${a})`;
     g.fillRect(tx, Y + 33 * sc, Math.max(p.hechas ? 3 : 0, bw * pr), 2.5 * sc);
+    g.fillStyle = claro ? `rgba(51,65,85,${a})` : `rgba(255,255,255,${a})`;
     g.textAlign = 'right';
     g.font = `500 ${8.5 * sc}px ${this.fuente}`;
     g.fillText(`${Math.round(pr * 100)}%`, X + w - 10 * sc, Y + 36 * sc);
@@ -1468,22 +1553,29 @@ export class EscenaConstelacion {
    * crecen un poco, y las de los demas se apagan.
    */
   private dibujarEsfera(g: CanvasRenderingContext2D, cx: number, cy: number, e: number) {
+    const claro = esFondoClaro(this.fondoActual);
     const foco = this.ultimoFoco ? this.proyectos.findIndex((p) => p.id === this.ultimoFoco) : -1;
     const radio = RADIO_ESFERA * (1 - e * 0.18);
     const lejania = 1 - e * 0.15;
     // Nucleo de luz: un halo amplio y un cuerpo azul violeta con brillo propio
     // (mas claro arriba a la izquierda), asi se ve como esfera aunque haya pocas tareas.
     const halo = g.createRadialGradient(cx, cy, 0, cx, cy, radio * 3.2);
-    halo.addColorStop(0, `rgba(120,140,255,${0.3 * lejania})`);
-    halo.addColorStop(1, 'rgba(120,140,255,0)');
+    halo.addColorStop(0, claro ? `rgba(79,70,229,${0.18 * lejania})` : `rgba(120,140,255,${0.3 * lejania})`);
+    halo.addColorStop(1, claro ? 'rgba(79,70,229,0)' : 'rgba(120,140,255,0)');
     g.fillStyle = halo;
     g.beginPath();
     g.arc(cx, cy, radio * 3.2, 0, TAU);
     g.fill();
     const cuerpo = g.createRadialGradient(cx - radio * 0.26, cy - radio * 0.29, radio * 0.07, cx, cy, radio);
-    cuerpo.addColorStop(0, `rgba(160,175,255,${0.55 * lejania})`);
-    cuerpo.addColorStop(0.6, `rgba(70,80,180,${0.35 * lejania})`);
-    cuerpo.addColorStop(1, `rgba(40,40,120,${0.05 * lejania})`);
+    if (claro) {
+      cuerpo.addColorStop(0, `rgba(129,140,248,${0.42 * lejania})`);
+      cuerpo.addColorStop(0.6, `rgba(79,70,229,${0.28 * lejania})`);
+      cuerpo.addColorStop(1, `rgba(67,56,202,${0.06 * lejania})`);
+    } else {
+      cuerpo.addColorStop(0, `rgba(160,175,255,${0.55 * lejania})`);
+      cuerpo.addColorStop(0.6, `rgba(70,80,180,${0.35 * lejania})`);
+      cuerpo.addColorStop(1, `rgba(40,40,120,${0.05 * lejania})`);
+    }
     g.fillStyle = cuerpo;
     g.beginPath();
     g.arc(cx, cy, radio, 0, TAU);
@@ -1513,15 +1605,25 @@ export class EscenaConstelacion {
         (p && !this.visible(p) ? 0.2 : vacia ? 0.45 : 1) *
         (foco >= 0 ? (delFoco ? 1 + e * 1.2 : 1 - e * 0.55) : 1) *
         (1 + this.ab * 0.3);
-      const color = delFoco && e > 0.02
-        ? k.hecha
-          ? '214,200,255'
-          : '150,130,255'
-        : k.hecha
-          ? p?.completado
-            ? '120,240,200'
-            : '235,240,255'
-          : '110,125,190';
+      const color = claro
+        ? delFoco && e > 0.02
+          ? k.hecha
+            ? '67,56,202'
+            : '129,140,248'
+          : k.hecha
+            ? p?.completado
+              ? '5,150,105'
+              : '67,56,202'
+            : '148,163,184'
+        : delFoco && e > 0.02
+          ? k.hecha
+            ? '214,200,255'
+            : '150,130,255'
+          : k.hecha
+            ? p?.completado
+              ? '120,240,200'
+              : '235,240,255'
+            : '110,125,190';
       const r = (k.hecha ? 1.5 : 1.15) * (0.6 + 0.5 * pz) * (delFoco ? 1 + e * 0.45 : 1);
       g.fillStyle = `rgba(${color},${Math.min(1, a)})`;
       g.beginPath();
@@ -1532,6 +1634,7 @@ export class EscenaConstelacion {
 
   /** Bajo el nucleo, con un proyecto enfocado: su nombre y cuantas tareas lleva. */
   private dibujarEtiqueta(g: CanvasRenderingContext2D, cx: number, cy: number, e: number) {
+    const claro = esFondoClaro(this.fondoActual);
     const lx = cx;
     const ly = cy + RADIO_ESFERA + 26;
     const enfocado = this.ultimoFoco ? this.proyectos.find((p) => p.id === this.ultimoFoco) : undefined;
@@ -1540,12 +1643,12 @@ export class EscenaConstelacion {
     if (enfocado && lt > 0.02) {
       g.save();
       g.globalAlpha = lt;
-      g.font = `400 13px ${this.fuente}`;
+      g.font = `500 13px ${this.fuente}`;
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      g.shadowColor = 'rgba(5,9,20,.9)';
+      g.shadowColor = claro ? 'rgba(255,255,255,0.95)' : 'rgba(5,9,20,.9)';
       g.shadowBlur = 10;
-      g.fillStyle = 'rgba(214,200,255,1)';
+      g.fillStyle = claro ? 'rgba(15,23,42,1)' : 'rgba(214,200,255,1)';
       g.fillText(`${enfocado.nombre} · ${enfocado.hechas} de ${enfocado.total} ${enfocado.total === 1 ? 'tarea' : 'tareas'}`, lx, ly);
       g.restore();
     }

@@ -168,15 +168,15 @@ export default function ZonaEvidencias({
           id={`evidencias-${actividadId}`}
           ref={titulo}
           tabIndex={-1}
-          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8fa0d0] outline-none"
+          className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--tf-texto-tenue)] outline-none"
         >
           Evidencias
         </p>
-        <span className="text-[11px] tabular-nums text-[#8fa0d0]">{evidencias.length}</span>
+        <span className="text-[11px] tabular-nums text-[var(--tf-texto-tenue)]">{evidencias.length}</span>
       </div>
 
       {aviso && (
-        <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+        <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
           {aviso}
         </p>
       )}
@@ -192,7 +192,7 @@ export default function ZonaEvidencias({
         (elegido ? (
           // ------------------------------- vista previa, antes de subir
           <div className="tf-vidrio overflow-hidden rounded-2xl">
-            <div className="relative grid h-40 place-items-center overflow-hidden bg-[#0d1328]">
+            <div className="relative grid h-40 place-items-center overflow-hidden bg-[var(--tf-superficie-2)]">
               {elegido.imagen ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -211,11 +211,11 @@ export default function ZonaEvidencias({
                   <audio src={elegido.audio} controls className="w-full" />
                 </div>
               ) : elegido.texto !== null ? (
-                <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-words p-3 text-left text-[10px] leading-relaxed text-slate-300">
+                <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-words p-3 text-left text-[10px] leading-relaxed text-[var(--tf-texto)]">
                   {elegido.texto}
                 </pre>
               ) : (
-                <div className="flex flex-col items-center gap-2 text-[#9fb4ff]">
+                <div className="flex flex-col items-center gap-2 text-[var(--tf-acento-azul)]">
                   <FileText size={34} aria-hidden />
                   <span className="text-[11px] uppercase tracking-[0.18em]">
                     {elegido.archivo.type === 'application/pdf'
@@ -224,15 +224,15 @@ export default function ZonaEvidencias({
                   </span>
                 </div>
               )}
-              <span className="absolute left-2.5 top-2.5 rounded-full bg-[#0a0f22]/85 px-2.5 py-0.5 text-[10px] text-[#c9d4ff]">
+              <span className="absolute left-2.5 top-2.5 rounded-full border border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)]/90 px-2.5 py-0.5 text-[10px] font-medium text-[var(--tf-texto)]">
                 Vista previa
               </span>
             </div>
             <div className="px-4 py-3">
-              <p className="truncate text-sm text-white" title={elegido.archivo.name}>
+              <p className="truncate text-sm text-[var(--tf-texto)]" title={elegido.archivo.name}>
                 {elegido.archivo.name}
               </p>
-              <p className="mb-3 mt-0.5 text-[11px] text-slate-500">
+              <p className="mb-3 mt-0.5 text-[11px] text-[var(--tf-texto-suave)]">
                 {tamano(elegido.archivo.size)}
                 {elegido.medidas && ` · ${elegido.medidas}`}
               </p>
@@ -249,7 +249,7 @@ export default function ZonaEvidencias({
                   type="button"
                   onClick={() => input.current?.click()}
                   disabled={subiendo}
-                  className="rounded-xl border border-white/15 px-3.5 text-xs text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+                  className="rounded-xl border border-[var(--tf-borde)] px-3.5 text-xs text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-50"
                 >
                   Cambiar
                 </button>
@@ -257,7 +257,7 @@ export default function ZonaEvidencias({
                   type="button"
                   onClick={() => setElegido(null)}
                   disabled={subiendo}
-                  className="rounded-xl border border-white/15 px-3.5 text-xs text-rose-300 transition hover:bg-rose-500/10 disabled:opacity-50"
+                  className="rounded-xl border border-[var(--tf-borde)] px-3.5 text-xs text-[var(--tf-acento-rojo)] transition hover:bg-rose-500/10 disabled:opacity-50"
                 >
                   Quitar
                 </button>
@@ -278,13 +278,13 @@ export default function ZonaEvidencias({
               elegir(e.dataTransfer.files?.[0]);
             }}
             className={`flex min-h-44 flex-col items-center justify-center gap-2.5 rounded-2xl border-[1.5px] border-dashed p-5 text-center transition-colors ${
-              arrastrando ? 'border-white/60 bg-white/10' : 'border-white/30 bg-white/[0.04]'
+              arrastrando ? 'border-sky-400 bg-sky-500/10' : 'border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-2)]'
             }`}
           >
             <span className="tf-boton-vidrio grid h-12 w-12 place-items-center rounded-2xl text-white">
               <Upload size={20} aria-hidden />
             </span>
-            <p className="text-[13px] text-white">{arrastrando ? 'Suelta el archivo aquí' : 'Arrastra un archivo aquí'}</p>
+            <p className="text-[13px] font-medium text-[var(--tf-texto)]">{arrastrando ? 'Suelta el archivo aquí' : 'Arrastra un archivo aquí'}</p>
             <button
               type="button"
               onClick={() => input.current?.click()}
@@ -292,14 +292,14 @@ export default function ZonaEvidencias({
             >
               Elegir archivo
             </button>
-            <p className="text-[10px] text-slate-500">Imagen, PDF o documento · hasta {TAMANO_MAXIMO_MB} MB</p>
+            <p className="text-[10px] text-[var(--tf-texto-suave)]">Imagen, PDF o documento · hasta {TAMANO_MAXIMO_MB} MB</p>
           </div>
         ))}
 
       {/* ------------------------------- archivos ya subidos */}
       {evidencias.length === 0 ? (
         terminada && (
-          <p className="rounded-xl border border-dashed border-white/15 p-4 text-center text-xs text-slate-500">
+          <p className="rounded-xl border border-dashed border-[var(--tf-borde-fuerte)] p-4 text-center text-xs text-[var(--tf-texto-suave)]">
             Tarea completada sin archivos adjuntos.
           </p>
         )
@@ -317,7 +317,7 @@ export default function ZonaEvidencias({
                   cancelarEliminar(ev.id);
                 }}
               >
-                <p className="mb-2 text-rose-200">
+                <p className="mb-2 text-[var(--tf-acento-rojo)]">
                   ¿Eliminar <span className="break-all font-semibold">{ev.nombreArchivo}</span>? No se puede deshacer.
                 </p>
                 <div className="flex gap-2">
@@ -332,7 +332,7 @@ export default function ZonaEvidencias({
                     autoFocus
                     onClick={() => cancelarEliminar(ev.id)}
                     disabled={eliminando}
-                    className="flex-1 rounded-lg border border-white/15 py-1.5 font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
+                    className="flex-1 rounded-lg border border-[var(--tf-borde)] py-1.5 font-semibold text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-50"
                   >
                     Cancelar
                   </button>
@@ -344,9 +344,9 @@ export default function ZonaEvidencias({
                   type="button"
                   onClick={() => setViendo(ev)}
                   title="Previsualizar archivo"
-                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-xs text-slate-200 transition hover:bg-white/[0.07]"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-3 py-2 text-left text-xs text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
                 >
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[rgba(127,157,255,0.14)] text-[#9fb4ff]">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-sky-500/12 text-[var(--tf-acento-azul)]">
                     {ev.tipoMime.startsWith('image/') ? (
                       <ImageIcon size={14} aria-hidden />
                     ) : ev.tipoMime === 'application/pdf' ? (
@@ -356,15 +356,15 @@ export default function ZonaEvidencias({
                     )}
                   </span>
                   <span className="truncate">{ev.nombreArchivo}</span>
-                  <span className="ml-auto shrink-0 text-[10px] text-slate-500">{tamano(ev.tamanoBytes)}</span>
-                  <Eye size={13} className="shrink-0 text-slate-400" aria-hidden />
+                  <span className="ml-auto shrink-0 text-[10px] text-[var(--tf-texto-suave)]">{tamano(ev.tamanoBytes)}</span>
+                  <Eye size={13} className="shrink-0 text-[var(--tf-texto-tenue)]" aria-hidden />
                 </button>
                 <a
                   href={`${URL_API}/evidencias/${ev.id}/descargar`}
                   download
                   aria-label={`Descargar ${ev.nombreArchivo}`}
                   title="Descargar archivo"
-                  className="grid w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-slate-400 transition hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-300"
+                  className="grid w-9 shrink-0 place-items-center rounded-xl border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-[var(--tf-acento-azul)]"
                 >
                   <Download size={14} aria-hidden />
                 </a>
@@ -377,7 +377,7 @@ export default function ZonaEvidencias({
                     data-eliminar-adjunto={ev.id}
                     aria-label={`Eliminar ${ev.nombreArchivo}`}
                     title="Eliminar archivo"
-                    className="grid w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-slate-400 transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-300"
+                    className="grid w-9 shrink-0 place-items-center rounded-xl border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-[var(--tf-acento-rojo)]"
                   >
                     <Trash2 size={14} aria-hidden />
                   </button>

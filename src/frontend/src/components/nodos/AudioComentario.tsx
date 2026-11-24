@@ -66,18 +66,18 @@ export function ReproductorLocal({
   etiqueta?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[#9fb4ff]">
+    <div className="flex flex-col gap-1.5 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-3 py-2">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--tf-acento-azul)]">
         <Mic size={13} aria-hidden />
         {etiqueta}
-        {segundos ? <span className="font-normal tabular-nums text-slate-400">· {minutosSegundos(segundos)}</span> : null}
+        {segundos ? <span className="font-normal tabular-nums text-[var(--tf-texto-tenue)]">· {minutosSegundos(segundos)}</span> : null}
       </p>
       {fallo ? (
-        <p className="text-[11px] text-rose-300">No se pudo cargar el audio.</p>
+        <p className="text-[11px] text-[var(--tf-acento-rojo)]">No se pudo cargar el audio.</p>
       ) : url ? (
         <audio controls preload="metadata" src={url} className="h-9 w-full" aria-label={etiqueta} />
       ) : (
-        <div className="h-9 w-full animate-pulse rounded-full bg-white/10" aria-label="Cargando audio" />
+        <div className="h-9 w-full animate-pulse rounded-full bg-[var(--tf-hover)]" aria-label="Cargando audio" />
       )}
     </div>
   );

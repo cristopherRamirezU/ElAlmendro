@@ -266,9 +266,11 @@ model Actividad {
   posicionNodo     Json?
   // Bordes que alguien fijo a mano para la linea que llega a esta tarea (desde
   // su padre o desde el nodo principal), por orientacion. Nulo = automatico.
-  ladosLinea       Json?
-  orden            Int             @default(0)
-  creadoEn         DateTime        @default(now()) @db.Timestamptz(3)
+  ladosLinea         Json?
+  orden              Int             @default(0)
+  // Candado opcional: cuando es true, las tareas hijas directas deben completarse en orden secuencial.
+  bloquearOrdenHijas Boolean         @default(false)
+  creadoEn           DateTime        @default(now()) @db.Timestamptz(3)
   actualizadoEn    DateTime        @updatedAt @db.Timestamptz(3)
   // Momento en que la bolsa se guardo en el cofre. Vuelve a null si se saca
   // para seguir trabajandola. Con creadoEn, delimita la barra del Gantt.

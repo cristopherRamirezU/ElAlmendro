@@ -68,29 +68,29 @@ export default function ChatFlotante({ yoId }: { yoId: string }) {
   return (
     <section
       aria-label="Chat del equipo"
-      className={`fixed bottom-0 right-4 z-30 flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-t-xl border border-b-0 border-white/10 bg-slate-900 shadow-2xl ${
+      className={`fixed bottom-0 right-4 z-30 flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-t-xl border border-b-0 border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-2xl ${
         abierto ? 'h-[min(32rem,calc(100dvh-5rem))] w-[22rem]' : 'w-64'
       }`}
     >
-      <div className="flex shrink-0 items-center border-b border-white/10">
+      <div className="flex shrink-0 items-center border-b border-[var(--tf-borde)]">
         <button
           type="button"
           onClick={() => setEstado((e) => ({ ...e, abierto: !e.abierto }))}
           aria-expanded={abierto}
           title={abierto ? 'Plegar el chat' : 'Desplegar el chat'}
-          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left transition hover:bg-white/5"
+          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left transition hover:bg-[var(--tf-hover)]"
         >
-          <MessageCircle size={16} className="shrink-0 text-slate-300" aria-hidden />
-          <span className="flex-1 truncate text-sm font-semibold text-white">Chat</span>
+          <MessageCircle size={16} className="shrink-0 text-[var(--tf-texto-tenue)]" aria-hidden />
+          <span className="flex-1 truncate text-sm font-semibold text-[var(--tf-texto)]">Chat</span>
           {noLeidos > 0 && (
             <span className="grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
               {noLeidos > 99 ? '99+' : noLeidos}
             </span>
           )}
           {abierto ? (
-            <ChevronDown size={16} className="shrink-0 text-slate-400" aria-hidden />
+            <ChevronDown size={16} className="shrink-0 text-[var(--tf-texto-tenue)]" aria-hidden />
           ) : (
-            <ChevronUp size={16} className="shrink-0 text-slate-400" aria-hidden />
+            <ChevronUp size={16} className="shrink-0 text-[var(--tf-texto-tenue)]" aria-hidden />
           )}
         </button>
         {abierto && (
@@ -98,7 +98,7 @@ export default function ChatFlotante({ yoId }: { yoId: string }) {
             href={seleccion && seleccion !== CANAL_GENERAL ? `/chat?con=${seleccion}` : '/chat'}
             title="Abrir en Chat del equipo"
             aria-label="Abrir en Chat del equipo"
-            className="grid h-10 w-10 shrink-0 place-items-center text-slate-400 transition hover:bg-white/5 hover:text-white"
+            className="grid h-10 w-10 shrink-0 place-items-center text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
           >
             <Maximize2 size={14} aria-hidden />
           </Link>
@@ -108,12 +108,12 @@ export default function ChatFlotante({ yoId }: { yoId: string }) {
       {abierto && (
         <>
           {sala.aviso && (
-            <p role="alert" className="shrink-0 bg-rose-500/10 px-3 py-1.5 text-[11px] text-rose-300">
+            <p role="alert" className="shrink-0 bg-rose-500/10 px-3 py-1.5 text-[11px] text-[var(--tf-acento-rojo)]">
               {sala.aviso}
             </p>
           )}
           {!sala.conectado && (
-            <p className="shrink-0 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-300">
+            <p className="shrink-0 bg-amber-500/10 px-3 py-1.5 text-[11px] text-[var(--tf-acento-ambar)]">
               Reconectando… los mensajes que envies igual quedan guardados.
             </p>
           )}
@@ -145,7 +145,7 @@ export default function ChatFlotante({ yoId }: { yoId: string }) {
                 onBorrador={(texto) => borradores.set(claveBorrador, texto)}
               />
             ) : (
-              <p className="grid flex-1 place-items-center text-xs text-slate-500">Cargando…</p>
+              <p className="grid flex-1 place-items-center text-xs text-[var(--tf-texto-suave)]">Cargando…</p>
             )}
           </div>
         </>

@@ -96,10 +96,10 @@ export default function Conversacion({
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-[var(--tf-borde)] px-4 py-3">
         <button
           onClick={onVolver}
-          className={`grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-white/5 ${siempreVolver ? '' : 'md:hidden'}`}
+          className={`grid h-8 w-8 place-items-center rounded-lg text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] ${siempreVolver ? '' : 'md:hidden'}`}
           title="Volver a la lista"
         >
           ‹
@@ -121,21 +121,21 @@ export default function Conversacion({
               className="h-9 w-9 text-xs font-bold"
             />
             <span
-              className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-slate-900 ${
-                contacto.enLinea ? 'bg-emerald-400' : 'bg-slate-600'
+              className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-[var(--tf-superficie-solida)] ${
+                contacto.enLinea ? 'bg-emerald-500' : 'bg-slate-400'
               }`}
             />
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-white">
+          <p className="truncate text-sm font-semibold text-[var(--tf-texto)]">
             {esGeneral ? 'Canal general' : contacto.nombreCompleto}
           </p>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-[var(--tf-texto-tenue)]">
             {esGeneral ? (
               `${totalEnLinea} compañero${totalEnLinea === 1 ? '' : 's'} en línea`
             ) : contacto.enLinea ? (
-              <span className="text-emerald-300">En línea</span>
+              <span className="text-[var(--tf-acento-verde)]">En línea</span>
             ) : (
               'Desconectado · recibirá el mensaje al volver'
             )}
@@ -150,7 +150,7 @@ export default function Conversacion({
             <button
               onClick={onCargarAnteriores}
               disabled={cargando}
-              className="rounded-full border border-white/10 px-3 py-1 text-[11px] text-slate-400 hover:bg-white/5 disabled:opacity-50"
+              className="rounded-full border border-[var(--tf-borde)] px-3 py-1 text-[11px] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-hover)] disabled:opacity-50"
             >
               {cargando ? 'Cargando…' : 'Ver mensajes anteriores'}
             </button>
@@ -159,7 +159,7 @@ export default function Conversacion({
 
         {mensajes.length === 0 && !cargando && (
           <div className="grid h-full place-items-center text-center">
-            <p className="max-w-xs text-xs text-slate-500">
+            <p className="max-w-xs text-xs text-[var(--tf-texto-suave)]">
               {esGeneral
                 ? 'Aún no hay mensajes en el canal general. Escribe el primero.'
                 : `Esta es tu conversación privada con ${contacto.nombreCompleto}. Solo ustedes dos la ven.`}
@@ -175,7 +175,7 @@ export default function Conversacion({
           return (
             <div key={m.id}>
               {cambiaDia && (
-                <p className="my-3 text-center text-[10px] font-medium uppercase tracking-wider text-slate-500">
+                <p className="my-3 text-center text-[10px] font-medium uppercase tracking-wider text-[var(--tf-texto-suave)]">
                   {diaRelativo(m.creadoEn)}
                 </p>
               )}
@@ -206,12 +206,14 @@ export default function Conversacion({
                   <div
                     style={propio ? { backgroundColor: colorPrimario } : undefined}
                     className={`whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm leading-snug ${
-                      propio ? 'rounded-br-md text-white' : 'rounded-bl-md bg-white/10 text-slate-100'
+                      propio
+                        ? 'rounded-br-md text-white'
+                        : 'rounded-bl-md border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] text-[var(--tf-texto)]'
                     }`}
                   >
                     {m.cuerpo}
                   </div>
-                  <span className="mt-0.5 flex items-center gap-1 px-1 text-[10px] text-slate-500">
+                  <span className="mt-0.5 flex items-center gap-1 px-1 text-[10px] text-[var(--tf-texto-suave)]">
                     {hora(m.creadoEn)}
                     {propio && !esGeneral && (
                       <span
@@ -229,7 +231,7 @@ export default function Conversacion({
         })}
 
         {nombreEscribiendo && (
-          <p className="mt-2 px-1 text-[11px] italic text-slate-400">
+          <p className="mt-2 px-1 text-[11px] italic text-[var(--tf-texto-tenue)]">
             {esGeneral ? `${nombreEscribiendo} está escribiendo…` : 'Está escribiendo…'}
           </p>
         )}
@@ -240,7 +242,7 @@ export default function Conversacion({
           e.preventDefault();
           enviar();
         }}
-        className="flex items-end gap-2 border-t border-white/10 p-3"
+        className="flex items-end gap-2 border-t border-[var(--tf-borde)] p-3"
       >
         <textarea
           id="mensaje-chat"
@@ -257,7 +259,7 @@ export default function Conversacion({
           rows={1}
           maxLength={2000}
           placeholder={esGeneral ? 'Mensaje para todo el equipo…' : `Mensaje para ${contacto.nombreCompleto}…`}
-          className="max-h-32 min-h-[2.5rem] flex-1 resize-none rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-sky-500/50"
+          className="max-h-32 min-h-[2.5rem] flex-1 resize-none rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-2 text-sm text-[var(--tf-texto)] outline-none placeholder:text-[var(--tf-texto-suave)] focus:border-sky-500/50"
         />
         <button
           type="submit"

@@ -131,7 +131,7 @@ export default function CartaGantt({
               aria-label="Filtrar por proyecto"
               value={filtroProyecto}
               onChange={(e) => setFiltroProyecto(e.target.value)}
-              className="rounded-xl border border-white/15 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-sky-400"
+              className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-xs text-[var(--tf-texto)] outline-none focus:border-sky-400"
             >
               <option value="">Todos los proyectos ({proyectos.length})</option>
               {proyectos.map((p) => (
@@ -148,7 +148,7 @@ export default function CartaGantt({
             aria-label="Filtrar por estado"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className="rounded-xl border border-white/15 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-sky-400"
+            className="rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-xs text-[var(--tf-texto)] outline-none focus:border-sky-400"
           >
             <option value="TODAS">Todos los estados</option>
             <option value="EN_PROGRESO">En progreso</option>
@@ -158,7 +158,7 @@ export default function CartaGantt({
 
           <label
             htmlFor="gantt-solo-activas"
-            className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-300 transition hover:bg-white/[0.06]"
+            className="flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-hover)] px-3 py-1.5 text-xs text-[var(--tf-texto)] transition hover:border-[var(--tf-borde-fuerte)]"
           >
             <input
               id="gantt-solo-activas"
@@ -166,7 +166,7 @@ export default function CartaGantt({
               type="checkbox"
               checked={soloActivas}
               onChange={(e) => setSoloActivas(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-white/20 bg-slate-950 accent-sky-400"
+              className="h-3.5 w-3.5 rounded border-[var(--tf-borde-fuerte)] bg-[var(--tf-input)] accent-sky-500"
             />
             <span>Solo con actividad en el período</span>
           </label>
@@ -178,11 +178,11 @@ export default function CartaGantt({
               type="button"
               onClick={() => setInicioVentana((v) => Math.max(0, v - PASO_VENTANA))}
               disabled={inicioVentana === 0}
-              className="rounded-lg border border-white/15 px-2.5 py-1 text-slate-300 transition hover:bg-white/5 disabled:opacity-35"
+              className="rounded-lg border border-[var(--tf-borde)] px-2.5 py-1 text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-35"
             >
               ‹ Anterior
             </button>
-            <span className="font-mono text-[11px] text-slate-400">
+            <span className="font-mono text-[11px] text-[var(--tf-texto-tenue)]">
               {primeroVentana.slice(5)} a {ultimoVentana.slice(5)}
             </span>
             <button
@@ -191,7 +191,7 @@ export default function CartaGantt({
                 setInicioVentana((v) => Math.min(maxInicioVentana, v + PASO_VENTANA))
               }
               disabled={inicioVentana >= maxInicioVentana}
-              className="rounded-lg border border-white/15 px-2.5 py-1 text-slate-300 transition hover:bg-white/5 disabled:opacity-35"
+              className="rounded-lg border border-[var(--tf-borde)] px-2.5 py-1 text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)] disabled:opacity-35"
             >
               Siguiente ›
             </button>
@@ -200,18 +200,18 @@ export default function CartaGantt({
       </div>
 
       {filtradas.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-white/15 py-10 text-center text-xs text-slate-500">
+        <p className="rounded-xl border border-dashed border-[var(--tf-borde-fuerte)] py-10 text-center text-xs text-[var(--tf-texto-suave)]">
           Ninguna actividad coincide con los filtros seleccionados.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10 bg-slate-950/50">
+        <div className="overflow-x-auto rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)]">
           <div className="min-w-max">
             {/* Cabecera diaria */}
             <div
-              className="grid border-b border-white/10 bg-slate-900/95"
+              className="grid border-b border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)]"
               style={{ gridTemplateColumns: columnas }}
             >
-              <div className="sticky left-0 z-20 flex items-center border-r border-white/10 bg-slate-900 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <div className="sticky left-0 z-20 flex items-center border-r border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--tf-texto-tenue)]">
                 Tarea ({filtradas.length})
               </div>
               {diasVentana.map((fecha) => {
@@ -221,12 +221,12 @@ export default function CartaGantt({
                 return (
                   <div
                     key={fecha}
-                    className={`border-r border-white/5 px-1 py-1.5 text-center last:border-r-0 ${
+                    className={`border-r border-[var(--tf-borde)] px-1 py-1.5 text-center last:border-r-0 ${
                       esHoy
-                        ? 'bg-sky-500/15 text-sky-300'
+                        ? 'bg-sky-500/15 text-[var(--tf-acento-azul)]'
                         : esFinde
-                          ? 'bg-white/[0.02] text-slate-500'
-                          : 'text-slate-400'
+                          ? 'bg-[var(--tf-hover)] text-[var(--tf-texto-suave)]'
+                          : 'text-[var(--tf-texto-tenue)]'
                     }`}
                   >
                     <span className="block font-mono text-[10px] font-semibold leading-tight">
@@ -277,30 +277,30 @@ export default function CartaGantt({
               const limiteClave = t.fechaLimite ? claveLocal(t.fechaLimite, zona) : null;
 
               return (
-                <div key={t.id} className="border-b border-white/5 last:border-b-0">
+                <div key={t.id} className="border-b border-[var(--tf-borde)] last:border-b-0">
                   <div className="grid items-stretch" style={{ gridTemplateColumns: columnas }}>
                     {/* Columna fija izquierda */}
                     <button
                       type="button"
                       onClick={() => setSeleccionada((prev) => (prev === t.id ? null : t.id))}
                       aria-expanded={abierta}
-                      className={`sticky left-0 z-10 flex flex-col justify-center border-r border-white/10 px-3 py-2 text-left transition ${
-                        abierta ? 'bg-slate-800' : 'bg-slate-900/95 hover:bg-slate-800/80'
+                      className={`sticky left-0 z-10 flex flex-col justify-center border-r border-[var(--tf-borde)] px-3 py-2 text-left transition ${
+                        abierta ? 'bg-[var(--tf-superficie-2)]' : 'bg-[var(--tf-superficie-solida)] hover:bg-[var(--tf-hover)]'
                       }`}
                     >
                       <span className="flex items-center gap-1.5">
                         <span className={`h-2 w-2 shrink-0 rounded-full ${estado.punto}`} />
-                        <span className="truncate text-xs font-medium text-white" title={t.titulo}>
+                        <span className="truncate text-xs font-medium text-[var(--tf-texto)]" title={t.titulo}>
                           {t.titulo}
                         </span>
                       </span>
-                      <span className="mt-0.5 flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                      <span className="mt-0.5 flex items-center justify-between gap-2 text-[10px] text-[var(--tf-texto-tenue)]">
                         <span className="truncate">
                           {t.proyectoNombre}
                           {t.responsableNombre ? ` · ${t.responsableNombre}` : ''}
                         </span>
                         {t.segundosPeriodo > 0 && (
-                          <span className="shrink-0 font-mono text-sky-300">
+                          <span className="shrink-0 font-mono font-semibold text-[var(--tf-acento-azul)]">
                             {duracion(t.segundosPeriodo)}
                           </span>
                         )}
@@ -345,11 +345,11 @@ export default function CartaGantt({
                                   ? `${t.titulo} · Fecha límite (${fechaLarga(fecha)})`
                                   : undefined
                             }
-                            className={`relative z-[2] flex h-11 items-center justify-center border-r border-white/5 last:border-r-0 ${
+                            className={`relative z-[2] flex h-11 items-center justify-center border-r border-[var(--tf-borde)] last:border-r-0 ${
                               esHoy
                                 ? 'bg-sky-500/10'
                                 : esFinde
-                                  ? 'bg-white/[0.015]'
+                                  ? 'bg-[var(--tf-hover)]'
                                   : ''
                             }`}
                           >
@@ -362,7 +362,7 @@ export default function CartaGantt({
                             )}
                             {esLimite && (
                               <span
-                                className="absolute right-1 top-0.5 text-[10px] leading-none text-rose-400"
+                                className="absolute right-1 top-0.5 text-[10px] leading-none text-rose-500"
                                 aria-label="Fecha límite"
                               >
                                 ◆
@@ -376,7 +376,7 @@ export default function CartaGantt({
 
                   {/* Ficha desplegable de la tarea seleccionada */}
                   {abierta && (
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-slate-900/90 px-4 py-2.5 text-xs text-slate-300">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] px-4 py-2.5 text-xs text-[var(--tf-texto-tenue)]">
                       <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
                         <span>
                           Estado:{' '}
@@ -386,32 +386,32 @@ export default function CartaGantt({
                         </span>
                         <span>
                           Responsable:{' '}
-                          <strong className="font-medium text-white">
+                          <strong className="font-medium text-[var(--tf-texto)]">
                             {t.responsableNombre ?? 'Sin asignar'}
                           </strong>
                         </span>
                         <span>
                           Creada:{' '}
-                          <span className="font-mono text-slate-200">
+                          <span className="font-mono text-[var(--tf-texto)]">
                             {formatearFechaCorta(t.creadoEn, zona)}
                           </span>
                         </span>
                         <span>
                           Inicio real:{' '}
-                          <span className="font-mono text-slate-200">
+                          <span className="font-mono text-[var(--tf-texto)]">
                             {formatearFechaCorta(t.inicioTrabajoEn, zona)}
                           </span>
                         </span>
                         <span>
                           Límite:{' '}
-                          <span className="font-mono text-slate-200">
+                          <span className="font-mono text-[var(--tf-texto)]">
                             {formatearFechaCorta(t.fechaLimite, zona)}
                           </span>
                         </span>
                         {t.completadaEn && (
                           <span>
                             Completada:{' '}
-                            <span className="font-mono text-emerald-300">
+                            <span className="font-mono text-[var(--tf-acento-verde)]">
                               {formatearFechaCorta(t.completadaEn, zona)}
                             </span>
                           </span>
@@ -420,7 +420,7 @@ export default function CartaGantt({
 
                       <Link
                         href={`/nodos?proyectoId=${encodeURIComponent(t.proyectoId)}`}
-                        className="rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-medium text-sky-300 transition hover:bg-sky-500/20"
+                        className="rounded-lg border border-sky-500/35 bg-sky-500/12 px-2.5 py-1 text-[11px] font-semibold text-[var(--tf-acento-azul)] transition hover:bg-sky-500/20"
                       >
                         Abrir en Nodos →
                       </Link>
@@ -434,7 +434,7 @@ export default function CartaGantt({
       )}
 
       {/* Leyenda */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-slate-400">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[var(--tf-texto-tenue)]">
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-5 rounded border border-amber-400/60 bg-amber-500/35" />
           Duración de tarea

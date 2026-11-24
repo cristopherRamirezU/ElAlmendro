@@ -65,10 +65,10 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
-        className={`tf-modal-entra flex max-h-[90vh] w-full ${ANCHOS[ancho]} flex-col overflow-hidden rounded-3xl border border-white/10 ${claseVentana ?? 'bg-slate-900'} shadow-2xl`}
+        className={`tf-modal-entra flex max-h-[90vh] w-full ${ANCHOS[ancho]} flex-col overflow-hidden rounded-3xl border border-[var(--tf-borde-fuerte)] ${claseVentana ?? 'bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)]'} shadow-2xl`}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-white/10 px-6 py-4">
-          <h2 id={idTitulo} className="min-w-0 text-lg font-bold leading-snug text-white">
+        <div className="flex items-start justify-between gap-3 border-b border-[var(--tf-borde)] px-6 py-4">
+          <h2 id={idTitulo} className="min-w-0 text-lg font-bold leading-snug text-[var(--tf-texto)]">
             {titulo}
           </h2>
           <div className="flex shrink-0 items-center gap-2">
@@ -77,7 +77,7 @@ export default function Modal({
               ref={botonCerrar}
               onClick={onCerrar}
               aria-label="Cerrar"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
             >
               ×
             </button>

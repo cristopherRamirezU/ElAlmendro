@@ -124,31 +124,31 @@ export default function VisorEvidencia({
         <a
           href={urlDescarga}
           download
-          className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/35 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-sky-200 transition hover:bg-sky-500/25"
+          className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/35 bg-sky-500/15 px-3 py-1.5 text-xs font-semibold text-[var(--tf-acento-azul)] transition hover:bg-sky-500/25"
         >
           <Download size={13} aria-hidden />
           <span>Descargar</span>
         </a>
       }
     >
-      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--tf-texto-tenue)]">
         <span>Subido por: {evidencia.subidaPor.nombreCompleto}</span>
         <span>Tamaño: {tamanoLegible(evidencia.tamanoBytes)}</span>
         {medidas && <span>Resolución: {medidas}</span>}
       </div>
 
       {cargando ? (
-        <div className="grid h-64 place-items-center rounded-2xl border border-white/10 bg-slate-950/60 text-sm text-slate-400">
+        <div className="grid h-64 place-items-center rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] text-sm text-[var(--tf-texto-tenue)]">
           Cargando previsualización…
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-rose-500/25 bg-rose-500/10 p-8 text-center">
-          <p className="text-sm text-rose-200">{error}</p>
+          <p className="text-sm text-[var(--tf-acento-rojo)]">{error}</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={cargar}
-              className="rounded-xl border border-white/15 px-3.5 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10"
+              className="rounded-xl border border-[var(--tf-borde-fuerte)] px-3.5 py-1.5 text-xs font-medium text-[var(--tf-texto)] transition hover:bg-[var(--tf-hover)]"
             >
               Reintentar
             </button>
@@ -163,7 +163,7 @@ export default function VisorEvidencia({
           </div>
         </div>
       ) : tipo === 'imagen' && blobUrl ? (
-        <div className="grid max-h-[65vh] place-items-center overflow-hidden rounded-2xl border border-white/10 bg-slate-950 p-2">
+        <div className="grid max-h-[65vh] place-items-center overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={blobUrl}
@@ -179,28 +179,28 @@ export default function VisorEvidencia({
         <iframe
           src={blobUrl}
           title={evidencia.nombreArchivo}
-          className="h-[65vh] w-full rounded-2xl border border-white/10 bg-white"
+          className="h-[65vh] w-full rounded-2xl border border-[var(--tf-borde)] bg-white"
         />
       ) : tipo === 'audio' && blobUrl ? (
-        <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-slate-950/70 p-8">
-          <p className="text-xs text-slate-400">Reproducción directa de audio</p>
+        <div className="flex flex-col items-center gap-4 rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-8">
+          <p className="text-xs text-[var(--tf-texto-tenue)]">Reproducción directa de audio</p>
           <audio src={blobUrl} controls className="w-full max-w-md" />
         </div>
       ) : tipo === 'video' && blobUrl ? (
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black">
+        <div className="overflow-hidden rounded-2xl border border-[var(--tf-borde)] bg-black">
           <video src={blobUrl} controls className="max-h-[65vh] w-full" />
         </div>
       ) : tipo === 'texto' && texto !== null ? (
-        <pre className="max-h-[65vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-white/10 bg-slate-950 p-4 font-mono text-xs leading-relaxed text-slate-200">
+        <pre className="max-h-[65vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-4 font-mono text-xs leading-relaxed text-[var(--tf-texto)]">
           {texto}
         </pre>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-slate-950/40 p-10 text-center">
-          <FileText size={36} className="text-slate-400" aria-hidden />
-          <p className="text-sm font-medium text-white">
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-2)] p-10 text-center">
+          <FileText size={36} className="text-[var(--tf-texto-tenue)]" aria-hidden />
+          <p className="text-sm font-medium text-[var(--tf-texto)]">
             Este formato no admite vista previa en el navegador
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-[var(--tf-texto-tenue)]">
             Tipo: <span className="font-mono">{evidencia.tipoMime}</span> ·{' '}
             {tamanoLegible(evidencia.tamanoBytes)}
           </p>

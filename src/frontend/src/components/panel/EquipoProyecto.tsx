@@ -90,7 +90,7 @@ export default function EquipoProyecto({
           <span
             key={m.id}
             title={`${m.nombre} · ${rol(m)}`}
-            className={`grid h-7 w-7 place-items-center rounded-full border-2 border-slate-900 text-[10px] font-semibold text-white ${
+            className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--tf-superficie-solida)] text-[10px] font-semibold text-white ${
               i > 0 ? '-ml-2' : ''
             } ${m.activo ? '' : 'opacity-50'}`}
             style={{ background: colorDe(m.id) }}
@@ -105,9 +105,9 @@ export default function EquipoProyecto({
             aria-expanded={abierto}
             aria-label={puedeGestionar ? 'Ver y gestionar el equipo' : 'Ver el equipo'}
             title={puedeGestionar ? 'Equipo: agregar o quitar personas' : 'Ver el equipo'}
-            className={`grid h-7 w-7 place-items-center rounded-full border-2 border-slate-900 text-sm leading-none transition ${
+            className={`grid h-7 w-7 place-items-center rounded-full border-2 border-[var(--tf-superficie-solida)] text-sm leading-none transition ${
               miembros.length > 0 ? '-ml-2' : ''
-            } ${abierto ? 'bg-[#3f6bff] text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+            } ${abierto ? 'bg-[#3f6bff] text-white' : 'bg-[var(--tf-hover)] text-[var(--tf-texto-tenue)] hover:bg-[var(--tf-borde)] hover:text-[var(--tf-texto)]'}`}
           >
             {puedeGestionar ? '+' : '…'}
           </button>
@@ -117,14 +117,14 @@ export default function EquipoProyecto({
 
       {/* El detalle del equipo se despliega debajo, a todo lo ancho de la ventana. */}
       {abierto && (
-        <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/60 p-2">
+        <div className="mt-3 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] p-2">
           {aviso && (
-            <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+            <p role="alert" className="mb-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
               {aviso}
             </p>
           )}
           {miembros.length === 0 ? (
-            <p className="p-2 text-center text-xs text-slate-500">Nadie asignado todavía.</p>
+            <p className="p-2 text-center text-xs text-[var(--tf-texto-suave)]">Nadie asignado todavía.</p>
           ) : (
             <ul className="flex flex-col">
               {miembros.map((m) => (
@@ -135,8 +135,8 @@ export default function EquipoProyecto({
                   >
                     {iniciales(m.nombre)}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-white">{m.nombre}</span>
-                  <span className="text-[11px] text-slate-400">{rol(m)}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-[var(--tf-texto)]">{m.nombre}</span>
+                  <span className="text-[11px] text-[var(--tf-texto-tenue)]">{rol(m)}</span>
                   {puedeGestionar && m.rolEnProyecto !== 'LIDER' && (
                     <button
                       onClick={() =>
@@ -144,7 +144,7 @@ export default function EquipoProyecto({
                       }
                       disabled={ocupado}
                       aria-label={`Quitar a ${m.nombre}`}
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-white/10 text-xs text-slate-400 transition hover:border-rose-400/40 hover:text-rose-300 disabled:opacity-50"
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-[var(--tf-borde)] text-xs text-[var(--tf-texto-tenue)] transition hover:border-rose-400/40 hover:text-[var(--tf-acento-rojo)] disabled:opacity-50"
                     >
                       ×
                     </button>
@@ -154,12 +154,12 @@ export default function EquipoProyecto({
             </ul>
           )}
           {puedeGestionar && (
-            <div className="mt-1 flex gap-2 border-t border-white/10 px-1 pt-2">
+            <div className="mt-1 flex gap-2 border-t border-[var(--tf-borde)] px-1 pt-2">
               <select
                 value={elegido}
                 onChange={(e) => setElegido(e.target.value)}
                 disabled={ocupado || disponibles.length === 0}
-                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-1.5 text-sm text-white outline-none focus:border-[#7f9dff]/60 disabled:opacity-50"
+                className="min-w-0 flex-1 rounded-lg border border-[var(--tf-borde)] bg-[var(--tf-input)] px-3 py-1.5 text-sm text-[var(--tf-texto)] outline-none focus:border-[#7f9dff]/60 disabled:opacity-50"
               >
                 <option value="">{disponibles.length === 0 ? 'Todo el equipo ya está asignado' : 'Agregar persona…'}</option>
                 {disponibles.map((p) => (

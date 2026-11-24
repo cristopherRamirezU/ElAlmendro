@@ -54,13 +54,13 @@ export default function ContadorTarea({
     <div className={`${fuenteEscena.className} tf-contador flex items-center ${compacto ? 'gap-2 px-3 py-2.5' : 'gap-4 px-5 py-4'}`}>
       <div className="min-w-0 flex-1">
         <p
-          className={`${compacto ? 'text-[28px]' : reloj(segundos).length > 8 ? 'text-[32px]' : 'text-[40px]'} font-light leading-none tracking-[-0.02em] text-white tabular-nums`}
+          className={`${compacto ? 'text-[28px]' : reloj(segundos).length > 8 ? 'text-[32px]' : 'text-[40px]'} font-light leading-none tracking-[-0.02em] text-[var(--tf-texto)] tabular-nums`}
           role="timer"
           aria-label={`Tiempo de la sesión: ${reloj(segundos)}`}
         >
           {reloj(segundos)}
         </p>
-        <p className={`${compacto ? 'mt-1' : 'mt-2'} truncate text-[11px] text-[#a5b2dc]`}>{detalle}</p>
+        <p className={`${compacto ? 'mt-1' : 'mt-2'} truncate text-[11px] text-[var(--tf-texto-tenue)]`}>{detalle}</p>
       </div>
       <button
         type="button"
@@ -68,7 +68,7 @@ export default function ContadorTarea({
         disabled={terminar.deshabilitado}
         title={terminar.titulo}
         aria-label={terminar.texto}
-        className={`grid ${compacto ? 'h-9 w-9' : 'h-11 w-11'} shrink-0 place-items-center rounded-full border border-white/15 bg-white/[0.08] text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-35`}
+        className={`grid ${compacto ? 'h-9 w-9' : 'h-11 w-11'} shrink-0 place-items-center rounded-full border border-[var(--tf-borde-fuerte)] bg-[var(--tf-hover)] text-[var(--tf-texto)] transition hover:bg-[var(--tf-borde)] disabled:cursor-not-allowed disabled:opacity-35`}
       >
         <Square size={12} fill="currentColor" aria-hidden />
       </button>

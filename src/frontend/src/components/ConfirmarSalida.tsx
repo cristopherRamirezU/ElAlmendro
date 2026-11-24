@@ -103,7 +103,7 @@ export default function ConfirmarSalida({
         className="w-full max-w-sm rounded-2xl border border-[var(--tf-borde)] bg-[var(--tf-superficie)] p-6 text-[var(--tf-texto)] shadow-2xl"
       >
         <div className="mb-4 flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-500/15 text-amber-300" aria-hidden>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-500/15 text-[var(--tf-acento-ambar)]" aria-hidden>
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="9" />
               <path strokeLinecap="round" d="M12 7v5l3 2" />
@@ -118,12 +118,12 @@ export default function ConfirmarSalida({
         </p>
 
         {error && (
-          <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
+          <div role="alert" className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-[var(--tf-acento-rojo)]">
             <p>{error}</p>
             {onIrATarea && (
               <button
                 onClick={onIrATarea}
-                className="mt-2 rounded-lg bg-rose-500/20 px-2.5 py-1 font-semibold text-rose-100 transition hover:bg-rose-500/35"
+                className="mt-2 rounded-lg bg-rose-500/20 px-2.5 py-1 font-semibold text-[var(--tf-texto)] transition hover:bg-rose-500/35"
               >
                 Ir a la tarea{tituloTarea ? ` «${tituloTarea}»` : ''} →
               </button>

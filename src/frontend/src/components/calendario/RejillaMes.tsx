@@ -44,12 +44,14 @@ export default function RejillaMes({
   seleccionado,
   onDia,
   prefs = PREFERENCIAS_CALENDARIO_DEFECTO,
+  soloAlertas = false,
 }: {
   mes: DateTime;
   dias: DiaResumen[];
   seleccionado: string | null;
   onDia: (fecha: string) => void;
   prefs?: PreferenciasCalendario;
+  soloAlertas?: boolean;
 }) {
   const porFecha = new Map(dias.map((d) => [d.fecha, d]));
   const esLimpio = prefs.estiloCelda === 'limpio';
@@ -63,7 +65,7 @@ export default function RejillaMes({
     <div>
       <div className={`mb-1 grid gap-1.5 ${columnas}`}>
         {cabeceras.map((d) => (
-          <div key={d} className="pb-1 text-center text-[11px] font-medium text-slate-400">
+          <div key={d} className="pb-1 text-center text-[11px] font-medium uppercase tracking-wider text-[var(--tf-texto-suave)]">
             {d}
           </div>
         ))}
@@ -81,7 +83,7 @@ export default function RejillaMes({
               <div
                 key={celda.fecha}
                 aria-hidden
-                className="min-h-20 rounded-lg border border-transparent p-2 text-xs text-slate-700"
+                className="min-h-20 rounded-xl border border-transparent p-2 text-xs text-[var(--tf-texto-suave)] opacity-35"
               >
                 {celda.numero}
               </div>
@@ -89,6 +91,7 @@ export default function RejillaMes({
           }
 
           const alertas = dato?.alertas.total ?? 0;
+          const atenuadoPorAlerta = soloAlertas && alertas === 0;
           const proporcion =
             dato && dato.segundosPresencia > 0
               ? Math.min(1, dato.segundosImputados / dato.segundosPresencia)
@@ -96,12 +99,12 @@ export default function RejillaMes({
 
           const claseSuperficie = esLimpio
             ? activo
-              ? `border border-white/10 border-l-[3px] ${bordeLimpio(horas)} bg-slate-800/75 text-slate-100 hover:border-sky-400/50 hover:bg-slate-800`
-              : 'border border-white/5 bg-white/[0.02] text-slate-600'
+              ? `border border-[var(--tf-borde)] border-l-[3px] ${bordeLimpio(horas)} bg-[var(--tf-superficie-2)] text-[var(--tf-texto)] hover:border-sky-400/50`
+              : 'border border-[var(--tf-borde)] bg-[var(--tf-hover)] text-[var(--tf-texto-suave)] opacity-65'
             : `${escala.clase} ${
                 activo
                   ? 'border border-transparent hover:ring-2 hover:ring-sky-400/50'
-                  : 'border border-dashed border-white/10'
+                  : 'border border-dashed border-[var(--tf-borde)]'
               }`;
 
           return (
@@ -111,28 +114,29 @@ export default function RejillaMes({
               onClick={() => activo && onDia(celda.fecha)}
               disabled={!activo}
               aria-label={etiqueta(celda.fecha, dato)}
-              className={`min-h-20 rounded-lg p-2 text-left transition ${claseSuperficie} ${
+              className={`min-h-20 rounded-xl p-2.5 text-left transition ${claseSuperficie} ${
                 activo ? 'cursor-pointer' : 'cursor-default'
-              } ${seleccionado === celda.fecha ? 'ring-2 ring-sky-400' : ''}`}
+              } ${atenuadoPorAlerta ? 'opacity-25' : ''} ${seleccionado === celda.fecha ? 'ring-2 ring-sky-400' : ''}`}
             >
-              <span className="flex items-start gap-1">
+              <span className="flex items-center gap-1">
                 <span
-                  className={`text-xs font-semibold ${
-                    celda.hoy ? 'rounded bg-orange-500 px-1.5 text-white' : ''
+                  className={`font-mono text-xs font-semibold ${
+                    celda.hoy ? 'rounded-md bg-orange-500 px-1.5 py-0.5 text-white' : ''
                   }`}
                 >
                   {celda.numero}
                 </span>
                 {prefs.mostrarAlertas && alertas > 0 && (
                   <span
-                    className={`ml-auto rounded px-1 text-[10px] font-bold ${
+                    className={`ml-auto inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
                       esLimpio
-                        ? 'border border-amber-500/30 bg-amber-500/15 text-amber-300'
+                        ? 'bg-amber-500/15 text-amber-400'
                         : 'bg-amber-400 text-amber-950'
                     }`}
                     title={`${alertas} punto(s) por revisar`}
                   >
-                    ▲{alertas}
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                    {alertas}
                   </span>
                 )}
               </span>
@@ -140,7 +144,7 @@ export default function RejillaMes({
               {activo && dato ? (
                 <>
                   {prefs.mostrarHoras && (
-                    <span className="mt-1.5 block font-mono text-[13px] font-semibold leading-tight">
+                    <span className="tf-display mt-2 block font-mono text-sm font-bold leading-tight">
                       {horasBreves(dato.segundosImputados)}
                     </span>
                   )}
@@ -151,13 +155,13 @@ export default function RejillaMes({
                   )}
                   {prefs.mostrarBarraAvance && proporcion > 0 && (
                     <span
-                      className={`mt-1.5 block h-1 w-full overflow-hidden rounded-full ${
-                        esLimpio ? 'bg-white/10' : 'bg-black/15'
+                      className={`mt-2 block h-1 w-full overflow-hidden rounded-full ${
+                        esLimpio ? 'bg-[var(--tf-borde)]' : 'bg-black/15'
                       }`}
                     >
                       <span
-                        className={`block h-full rounded-full ${
-                          esLimpio ? 'bg-emerald-400/80' : 'bg-current opacity-70'
+                        className={`tf-bar-grow block h-full rounded-full ${
+                          esLimpio ? 'bg-emerald-400/85' : 'bg-current opacity-70'
                         }`}
                         style={{ width: `${proporcion * 100}%` }}
                       />
@@ -166,7 +170,7 @@ export default function RejillaMes({
                 </>
               ) : (
                 !esLimpio && (
-                  <span className="mt-1 block text-[10px] leading-tight text-slate-600">
+                  <span className="mt-1 block text-[10px] leading-tight text-[var(--tf-texto-suave)]">
                     sin registro
                   </span>
                 )
@@ -176,8 +180,8 @@ export default function RejillaMes({
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/10 pt-3 text-[11px] text-slate-400">
-        <span className="font-medium text-slate-300">Horas por persona:</span>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[var(--tf-borde)] pt-3 text-[11px] text-[var(--tf-texto-tenue)]">
+        <span className="font-medium text-[var(--tf-texto)]">Horas por persona:</span>
         {esLimpio ? (
           BANDAS_LIMPIAS.map((b) => (
             <span key={b.etiqueta} className="flex items-center gap-1.5">

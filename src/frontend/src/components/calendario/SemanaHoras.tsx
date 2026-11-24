@@ -53,13 +53,13 @@ export default function SemanaHoras({
                 onClick={() => conRegistro && onDia(dia.fecha)}
                 disabled={!conRegistro}
                 className={`w-24 shrink-0 rounded-lg px-2 py-1 text-left transition ${
-                  conRegistro ? 'hover:bg-white/5' : 'cursor-default'
+                  conRegistro ? 'hover:bg-[var(--tf-hover)]' : 'cursor-default'
                 }`}
               >
-                <span className="block text-xs font-semibold text-slate-200 first-letter:uppercase">
+                <span className="block text-xs font-semibold text-[var(--tf-texto)] first-letter:uppercase">
                   {d.toFormat('ccc d', { locale: 'es' })}
                 </span>
-                <span className="block font-mono text-[10px] text-slate-500">
+                <span className="block font-mono text-[10px] text-[var(--tf-texto-suave)]">
                   {conRegistro ? duracion(dia.resumen.segundosImputados) : 'sin registro'}
                 </span>
               </button>
@@ -77,9 +77,9 @@ export default function SemanaHoras({
         })}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/10 pt-3 text-[11px] text-slate-400">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[var(--tf-borde)] pt-3 text-[11px] text-[var(--tf-texto-tenue)]">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-4 rounded-sm bg-white/15" /> jornada
+          <span className="h-2.5 w-4 rounded-sm bg-[var(--tf-borde-fuerte)]" /> jornada
         </span>
         <span className="flex items-center gap-1.5">
           <span className="h-2.5 w-4 rounded-sm bg-emerald-500" /> sesion cerrada

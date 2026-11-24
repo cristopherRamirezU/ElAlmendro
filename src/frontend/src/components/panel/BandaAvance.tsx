@@ -59,9 +59,9 @@ export default function BandaAvance({
   return (
     <section className={`${fuenteEscena.className} tf-banda-avance rounded-2xl p-5`}>
       <div className="mb-3.5 flex items-center justify-between gap-4">
-        <p className="text-[34px] font-light leading-none tracking-[-0.02em] text-white">
+        <p className="text-[34px] font-light leading-none tracking-[-0.02em] text-[var(--tf-texto)]">
           {porcentaje}
-          <span className="ml-0.5 text-base text-[#9fb0e0]">%</span>
+          <span className="ml-0.5 text-base text-[var(--tf-texto-tenue)]">%</span>
         </p>
         <button type="button" onClick={onIrAlMapa} className="tf-boton-marca rounded-xl px-5 py-2.5 text-xs font-medium text-white">
           {textoMapa}
