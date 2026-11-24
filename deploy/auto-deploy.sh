@@ -72,6 +72,15 @@ case "${1:-}" in
   *) echo "argumento desconocido: $1"; exit 1 ;;
 esac
 
+# Candado exclusivo: impide que GitHub Actions y el timer de systemd ejecuten
+# dos despliegues (git reset + npm ci) al mismo tiempo sobre /var/www/timeflow.
+CANDADO="$HOME/.timeflow-autodeploy.lock"
+exec 9>"$CANDADO"
+if ! flock -w 900 9; then
+  echo "Otro despliegue sigue activo tras 15 minutos; se omite esta pasada." >&2
+  exit 1
+fi
+
 git fetch --quiet origin "$RAMA"
 LOCAL="$(git rev-parse HEAD)"
 REMOTO="$(git rev-parse "origin/$RAMA")"
@@ -92,7 +101,7 @@ git log --oneline "$LOCAL..$REMOTO" | sed 's/^/  /'
 # reproduce lo que hay en GitHub. El .env no esta versionado, asi que no se toca.
 git reset --hard --quiet "origin/$RAMA"
 
-if bash deploy/update.sh; then
+if bash deploy/update.sh 9>&-; then
   rm -f "$ESTADO"
   echo "Despliegue de ${REMOTO:0:7} terminado."
 else

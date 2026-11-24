@@ -43,7 +43,9 @@ fi
 echo "== [1/7] npm ci"
 # --include=dev: con NODE_ENV=production npm omitiria las devDependencies, y
 # el build las necesita (nest cli, typescript, tailwind, dotenv-cli).
-npm ci --include=dev --no-audit --no-fund
+# SCARF_ANALYTICS=false evita la telemetria del postinstall de @scarf/scarf
+# sin desactivar scripts necesarios (argon2, prisma).
+SCARF_ANALYTICS=false npm ci --include=dev --no-audit --no-fund
 
 echo "== [2/7] prisma generate + build"
 npm run db:generate
