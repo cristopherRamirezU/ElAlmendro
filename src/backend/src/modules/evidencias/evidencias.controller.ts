@@ -23,7 +23,11 @@ import { SubirEvidenciaDto } from './dto/subir-evidencia.dto';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
 import { ErroresSubidaFilter } from './errores-subida.filter';
-import { limpiarTipoMime, OPCIONES_SUBIDA } from './limites-subida';
+import {
+  esMimePrevisualizableSeguro,
+  limpiarTipoMime,
+  OPCIONES_SUBIDA,
+} from './limites-subida';
 
 @ApiTags('evidencias')
 @UseGuards(JwtAuthGuard)
@@ -53,6 +57,29 @@ export class EvidenciasController {
     return this.evidencias.eliminar(u, id);
   }
 
+  @Get(':id/vista')
+  async ver(
+    @Usuario() u: UsuarioActual,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { flujo, evidencia } = await this.evidencias.obtenerParaDescarga(u, id);
+    const mime = limpiarTipoMime(evidencia.tipoMime);
+    const seguroInline = esMimePrevisualizableSeguro(mime);
+    res.set({
+      'Content-Type': mime,
+      // Solo abre inline formatos inocuos; HTML, SVG o binarios siguen yendo como descarga.
+      'Content-Disposition': disposition(
+        seguroInline ? 'inline' : 'attachment',
+        evidencia.nombreArchivo,
+      ),
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'private, no-store',
+    });
+    return new StreamableFile(flujo);
+  }
+
   @Get(':id/descargar')
   async descargar(
     @Usuario() u: UsuarioActual,
@@ -64,7 +91,7 @@ export class EvidenciasController {
       'Content-Type': limpiarTipoMime(evidencia.tipoMime),
       // Siempre como descarga, nunca abierto dentro de la app: un HTML o SVG
       // subido no puede ejecutar scripts con la sesion de quien lo abre.
-      'Content-Disposition': dispositionDescarga(evidencia.nombreArchivo),
+      'Content-Disposition': disposition('attachment', evidencia.nombreArchivo),
       'Content-Security-Policy': "default-src 'none'; sandbox",
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'private, no-store',
@@ -77,7 +104,7 @@ export class EvidenciasController {
  * Content-Disposition con el nombre original: version ASCII para
  * navegadores antiguos y `filename*` (RFC 5987) con el nombre real en UTF-8.
  */
-function dispositionDescarga(nombre: string): string {
+function disposition(tipo: 'attachment' | 'inline', nombre: string): string {
   const ascii = nombre.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/["\\]/g, '') || 'archivo';
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nombre).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+  return `${tipo}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(nombre).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
 }

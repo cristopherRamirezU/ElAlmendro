@@ -78,3 +78,26 @@ export interface Derivacion {
   deUsuario: { nombreCompleto: string };
   aUsuario: { nombreCompleto: string };
 }
+
+export interface DiaTrabajadoGantt {
+  dia: string;
+  segundos: number;
+}
+
+export interface TareaGantt {
+  id: string;
+  titulo: string;
+  estado: string;
+  prioridad: string;
+  proyectoId: string;
+  proyectoNombre: string;
+  organizacionNombre?: string | null;
+  responsableNombre?: string | null;
+  creadoEn: string;
+  inicioTrabajoEn: string | null;
+  ultimoTrabajoEn: string | null;
+  fechaLimite: string | null;
+  completadaEn: string | null;
+  segundosPeriodo: number;
+  diasTrabajados: DiaTrabajadoGantt[];
+}

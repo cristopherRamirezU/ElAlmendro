@@ -300,6 +300,17 @@ export class UsuariosService {
     }
 
     if (dto.activo !== undefined) {
+      if (dto.activo === true && !existente.activo && existente.organizacionId) {
+        const org = await this.prisma.organizacion.findUnique({
+          where: { id: existente.organizacionId },
+          include: { _count: { select: { usuarios: { where: { activo: true } } } } },
+        });
+        if (org && org._count.usuarios >= org.maxUsuarios) {
+          throw new BadRequestException(
+            `Has alcanzado el límite máximo de ${org.maxUsuarios} usuarios permitidos en tu plan SaaS. Contacta al administrador para aumentar la capacidad.`,
+          );
+        }
+      }
       data.activo = dto.activo;
     }
 
@@ -465,17 +476,40 @@ export class UsuariosService {
       }
     }
 
-    // Comprobar si tiene historial protegido
-    const [tieneSesiones, tieneEvidencias, tieneAuditoria, tieneJornadas, tieneActividades, tieneProyectos] = await Promise.all([
+    // Comprobar si tiene historial protegido (incluye tareas/proyectos eliminados
+    // logicamente y relaciones sin cascada como comentarios, audios o derivaciones).
+    const [
+      tieneSesiones,
+      tieneEvidencias,
+      tieneAuditoria,
+      tieneJornadas,
+      tieneActividades,
+      tieneProyectos,
+      tieneComentarios,
+      tieneAudios,
+      tieneDerivaciones,
+    ] = await Promise.all([
       this.prisma.sesionTrabajo.count({ where: { usuarioId: id } }),
       this.prisma.evidencia.count({ where: { subidaPorId: id } }),
       this.prisma.registroAuditoria.count({ where: { actorId: id } }),
       this.prisma.jornada.count({ where: { usuarioId: id } }),
-      this.prisma.actividad.count({ where: { responsableId: id, eliminadoEn: null } }),
-      this.prisma.proyecto.count({ where: { propietarioId: id, eliminadoEn: null } }),
+      this.prisma.actividad.count({ where: { responsableId: id } }),
+      this.prisma.proyecto.count({ where: { propietarioId: id } }),
+      this.prisma.comentario.count({ where: { autorId: id } }),
+      this.prisma.audioComentario.count({ where: { autorId: id } }),
+      this.prisma.derivacion.count({ where: { OR: [{ deUsuarioId: id }, { aUsuarioId: id }] } }),
     ]);
 
-    const tieneHistorial = tieneSesiones > 0 || tieneEvidencias > 0 || tieneAuditoria > 0 || tieneJornadas > 0 || tieneActividades > 0 || tieneProyectos > 0;
+    const tieneHistorial =
+      tieneSesiones > 0 ||
+      tieneEvidencias > 0 ||
+      tieneAuditoria > 0 ||
+      tieneJornadas > 0 ||
+      tieneActividades > 0 ||
+      tieneProyectos > 0 ||
+      tieneComentarios > 0 ||
+      tieneAudios > 0 ||
+      tieneDerivaciones > 0;
 
     if (tieneHistorial) {
       // Soft-delete
@@ -543,7 +577,7 @@ export class UsuariosService {
     const filas = await this.prisma.usuario.findMany({
       where: {
         ...filtroOrganizacion(actor),
-        rol: { in: ['TRABAJADOR', 'SUPERVISOR'] as any },
+        rol: { in: ['TRABAJADOR', 'SUPERVISOR', 'ADMINISTRADOR'] as any },
         activo: true,
         ...(soloId ? { id: soloId } : {}),
       },

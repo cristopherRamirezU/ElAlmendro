@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, ErrorApi, Usuario } from '@/lib/api';
 import { guardarCacheSesion, limpiarCacheSesion } from '@/lib/cacheSesion';
@@ -73,7 +74,7 @@ export default function Login() {
 
       {/* En el celular la marca se compacta para que el formulario quede a la vista. */}
       <section className="relative flex min-w-0 flex-[999_1_520px] flex-col gap-7 px-6 pb-0 pt-10 sm:px-[6vw] sm:pb-4 lg:py-16">
-        <div className="lg-sube flex items-center gap-4 sm:gap-5">
+        <Link href="/" className="lg-sube flex w-fit items-center gap-4 no-underline sm:gap-5" title="Volver al inicio de TimeFlow">
           <LogoTimeFlow tamano={88} className="h-14 w-14 sm:h-[88px] sm:w-[88px]" />
           <div>
             <p className="text-4xl font-extrabold leading-none tracking-[-0.04em] text-[#f4f7ff] sm:text-6xl">
@@ -81,7 +82,7 @@ export default function Login() {
             </p>
             <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.4em] text-[#8ea0c4] sm:text-xs">Ideas en movimiento</p>
           </div>
-        </div>
+        </Link>
         <p className="lg-sube-2 hidden max-w-[420px] text-xl leading-relaxed text-[#c7d2ea] sm:block">
           Organiza tus ideas, conecta tus tareas y avanza sin límites.
         </p>
@@ -187,9 +188,24 @@ export default function Login() {
               </button>
             </form>
 
-            <p className="border-t border-white/10 pt-[18px] text-center text-[13px] text-[#7f8db0]">
-              ¿Primera vez? Pide tu acceso al administrador de tu equipo.
-            </p>
+            <div className="flex flex-col gap-2 border-t border-white/10 pt-[18px] text-center text-[13px] text-[#7f8db0]">
+              <p>
+                ¿Empresa nueva?{' '}
+                <Link href="/registro" className="font-semibold text-[#7dd3fc] hover:text-[#bae6fd]">
+                  Crea tu cuenta gratis
+                </Link>
+              </p>
+              <p className="text-xs text-[#647496]">
+                ¿Trabajas en un equipo? Pide tu acceso al administrador ·{' '}
+                <Link href="/terminos" className="hover:text-[#b6c2e2]">
+                  Términos
+                </Link>{' '}
+                ·{' '}
+                <Link href="/privacidad" className="hover:text-[#b6c2e2]">
+                  Privacidad
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </section>

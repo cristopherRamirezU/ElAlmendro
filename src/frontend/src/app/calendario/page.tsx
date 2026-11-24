@@ -9,9 +9,16 @@ import RejillaMes from '@/components/calendario/RejillaMes';
 import MatrizTrabajadores from '@/components/calendario/MatrizTrabajadores';
 import SemanaHoras from '@/components/calendario/SemanaHoras';
 import PanelDia from '@/components/calendario/PanelDia';
+import PersonalizarVista from '@/components/calendario/PersonalizarVista';
 import { api, ErrorApi } from '@/lib/api';
 import { esAdministrador, useSesion } from '@/lib/sesion';
 import { duracion, fechaLarga } from '@/lib/formato';
+import {
+  guardarPreferenciasCalendario,
+  leerPreferenciasCalendario,
+  PREFERENCIAS_CALENDARIO_DEFECTO,
+  PreferenciasCalendario,
+} from '@/lib/preferencias-calendario';
 import {
   Detalle,
   DiaDetalle,
@@ -76,6 +83,24 @@ function Calendario() {
   const [cargandoDia, setCargandoDia] = useState(false);
   const [foco, setFoco] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<PreferenciasCalendario>(PREFERENCIAS_CALENDARIO_DEFECTO);
+
+  useEffect(() => {
+    setPrefs(leerPreferenciasCalendario());
+  }, []);
+
+  const actualizarPrefs = useCallback((parcial: Partial<PreferenciasCalendario>) => {
+    setPrefs((actual) => {
+      const siguiente = { ...actual, ...parcial };
+      guardarPreferenciasCalendario(siguiente);
+      return siguiente;
+    });
+  }, []);
+
+  const restablecerPrefs = useCallback(() => {
+    setPrefs(PREFERENCIAS_CALENDARIO_DEFECTO);
+    guardarPreferenciasCalendario(PREFERENCIAS_CALENDARIO_DEFECTO);
+  }, []);
 
   /** Reescribe la URL conservando lo que no cambia. */
   const navegar = useCallback(
@@ -174,13 +199,19 @@ function Calendario() {
     <Marco
       activo="/calendario"
       titulo="Calendario"
-      subtitulo="Actividad registrada por dia"
+      subtitulo="Actividad registrada por día"
       acciones={
         <div className="flex flex-wrap items-center gap-2">
           <SelectorTrabajador
             equipo={equipo}
             valor={trabajador}
             onCambio={(id) => navegar({ trabajador: id })}
+          />
+
+          <PersonalizarVista
+            prefs={prefs}
+            onCambio={actualizarPrefs}
+            onRestablecer={restablecerPrefs}
           />
 
           <div className="flex overflow-hidden rounded-xl border border-[var(--tf-borde)]">
@@ -235,19 +266,21 @@ function Calendario() {
       )}
 
       <section className="rounded-2xl border border-white/10 bg-slate-900 p-5 backdrop-blur">
-        <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-400">
-          <span>
-            Total del mes: <strong className="font-mono text-white">{duracion(totalMes)}</strong>
-          </span>
-          <span>
-            Dias con trabajo: <strong className="text-white">{diasConTrabajo}</strong>
-          </span>
-          {alertasMes > 0 && (
-            <span className="text-amber-400">
-              ▲ <strong>{alertasMes}</strong> punto(s) por revisar
+        {prefs.mostrarResumenMes && (
+          <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-400">
+            <span>
+              Total del mes: <strong className="font-mono text-white">{duracion(totalMes)}</strong>
             </span>
-          )}
-        </div>
+            <span>
+              Días con trabajo: <strong className="text-white">{diasConTrabajo}</strong>
+            </span>
+            {alertasMes > 0 && (
+              <span className="text-amber-400">
+                ▲ <strong>{alertasMes}</strong> punto(s) por revisar
+              </span>
+            )}
+          </div>
+        )}
 
         {vista === 'rejilla' && (
           <RejillaMes
@@ -255,6 +288,7 @@ function Calendario() {
             dias={resumen?.dias ?? []}
             seleccionado={diaAbierto}
             onDia={(fecha) => navegar({ dia: fecha })}
+            prefs={prefs}
           />
         )}
 
@@ -288,7 +322,7 @@ function Calendario() {
         titulo={diaAbierto ? fechaLarga(diaAbierto) : ''}
         subtitulo={
           detalle
-            ? `${detalle.resumen.sesiones} sesion(es) · ${detalle.resumen.conRegistro} trabajador(es) con registro`
+            ? `${detalle.resumen.sesiones} sesión(es) · ${detalle.resumen.conRegistro} trabajador(es) con registro`
             : undefined
         }
         onCerrar={() => {
@@ -296,7 +330,7 @@ function Calendario() {
           navegar({ dia: null });
         }}
       >
-        <PanelDia dia={detalle} cargando={cargandoDia} foco={foco} onFoco={setFoco} />
+        <PanelDia dia={detalle} cargando={cargandoDia} foco={foco} onFoco={setFoco} prefs={prefs} />
       </Drawer>
     </Marco>
   );
@@ -323,6 +357,8 @@ function SelectorTrabajador({
 
   return (
     <select
+      id="filtro-trabajador-calendario"
+      name="trabajadorId"
       value={valor ?? ''}
       onChange={(e) => onCambio(e.target.value || null)}
       aria-label="Filtrar por trabajador"

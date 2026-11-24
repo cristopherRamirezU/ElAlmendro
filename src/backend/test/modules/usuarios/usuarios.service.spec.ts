@@ -258,6 +258,19 @@ describe('UsuariosService', () => {
       expect(datos).not.toHaveProperty('versionSesion');
     });
 
+    it('rechaza reactivar un usuario si la organizacion alcanzo el tope maxUsuarios', async () => {
+      prisma.usuario.findFirst.mockResolvedValue(usuario({ activo: false }) as never);
+      prisma.organizacion.findUnique.mockResolvedValue({
+        maxUsuarios: 10,
+        _count: { usuarios: 10 },
+      } as never);
+
+      await expect(
+        servicio.actualizar(ADMIN, 'usuario-9', { activo: true } as never),
+      ).rejects.toThrow(/límite máximo/i);
+      expect(prisma.usuario.update).not.toHaveBeenCalled();
+    });
+
     it('deja rastro de auditoria con el valor anterior y el nuevo', async () => {
       prisma.usuario.findFirst.mockResolvedValue(usuario() as never);
       prisma.usuario.update.mockResolvedValue(
@@ -445,6 +458,9 @@ describe('UsuariosService', () => {
         prisma.jornada.count,
         prisma.actividad.count,
         prisma.proyecto.count,
+        prisma.comentario.count,
+        prisma.audioComentario.count,
+        prisma.derivacion.count,
       ]) {
         contador.mockResolvedValue(0 as never);
       }
@@ -455,6 +471,32 @@ describe('UsuariosService', () => {
         where: { id: 'usuario-9' },
       });
       expect(prisma.usuario.update).not.toHaveBeenCalled();
+    });
+
+    it('CON comentarios, audios, derivaciones o tareas eliminadas: hace soft-delete y no hard-delete', async () => {
+      prisma.usuario.findFirst.mockResolvedValue(usuario() as never);
+      for (const contador of [
+        prisma.sesionTrabajo.count,
+        prisma.evidencia.count,
+        prisma.registroAuditoria.count,
+        prisma.jornada.count,
+        prisma.actividad.count,
+        prisma.proyecto.count,
+        prisma.comentario.count,
+        prisma.derivacion.count,
+      ]) {
+        contador.mockResolvedValue(0 as never);
+      }
+      prisma.audioComentario.count.mockResolvedValue(1 as never);
+
+      const res = await servicio.desactivar(ADMIN, 'usuario-9');
+
+      expect(res.eliminadoPermanente).toBe(false);
+      expect(prisma.usuario.delete).not.toHaveBeenCalled();
+      expect(prisma.usuario.update).toHaveBeenCalledWith({
+        where: { id: 'usuario-9' },
+        data: { activo: false, versionSesion: { increment: 1 } },
+      });
     });
 
     it('revoca los tokens de refresco en ambos casos', async () => {

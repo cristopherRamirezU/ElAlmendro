@@ -37,11 +37,8 @@ function ContenidoUsuarios() {
 
   // Al estar dentro de Marco, sesionActual ya viene resuelto desde ContextoSesion.Provider
   const esAdmin = sesionActual?.rol === 'ADMINISTRADOR' || sesionActual?.rol === 'SUPER_ADMIN';
-  const puedeVer =
-    esAdmin || (sesionActual?.permisos?.includes(PERMISOS.USUARIOS_VER) ?? false);
-  const puedeGestionar =
-    esAdmin ||
-    (sesionActual?.permisos?.includes(PERMISOS.USUARIOS_GESTIONAR) ?? false);
+  const puedeVer = sesionActual?.permisos?.includes(PERMISOS.USUARIOS_VER) ?? false;
+  const puedeGestionar = sesionActual?.permisos?.includes(PERMISOS.USUARIOS_GESTIONAR) ?? false;
 
   const [usuarios, setUsuarios] = useState<UsuarioItem[]>([]);
   const [rolesCatalogo, setRolesCatalogo] = useState<RolCatalogoItem[]>([]);
@@ -250,8 +247,11 @@ function ContenidoUsuarios() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
           <input
+            id="buscar-usuario"
+            name="buscarUsuario"
             type="text"
             placeholder="Buscar por nombre o correo…"
+            aria-label="Buscar usuario por nombre o correo"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             className="w-full bg-transparent outline-none placeholder:text-slate-500"
@@ -265,6 +265,8 @@ function ContenidoUsuarios() {
 
         <div className="flex flex-wrap items-center gap-2.5">
           <select
+            id="filtro-rol-usuarios"
+            name="filtroRol"
             value={filtroRol}
             onChange={(e) => setFiltroRol(e.target.value)}
             aria-label="Filtrar por rol"
@@ -277,6 +279,8 @@ function ContenidoUsuarios() {
           </select>
 
           <select
+            id="filtro-estado-usuarios"
+            name="filtroEstado"
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
             aria-label="Filtrar por estado"

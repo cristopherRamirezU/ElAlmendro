@@ -99,17 +99,22 @@ directamente sigue viendo solo sus propios registros.
 
 | Modulo | Estado |
 |---|---|
-| `auth` | Implementado |
+| `auth` | Implementado (JWT `httpOnly`, `versionSesion`, fotos de perfil y zona horaria) |
 | `jornada` | Implementado |
-| `actividades` | Implementado |
-| `sesiones` | Implementado |
-| `reportes` | Implementado |
-| `nodos` | Implementado (solo lectura) |
+| `actividades` | Implementado (nodos, subtareas, derivaciones, instrucciones y comentarios de voz) |
+| `sesiones` | Implementado (incluye `@Cron` de autocierre al superar umbral) |
+| `reportes` | Implementado (registro, por actividad, Carta Gantt diaria y exportacion CSV/XLSX/PDF) |
+| `calendario` | Implementado (Mes, Matriz, Semana y vista personalizable por capas) |
+| `nodos` | Implementado (lectura, modo edicion, lineas y gamificacion) |
 | `dashboard` | Implementado |
-| `usuarios` | Pendiente |
-| `evidencias` | Pendiente |
-| `historial` | Pendiente (la bitacora ya se escribe) |
-| `notificaciones` | Pendiente |
+| `usuarios` | Implementado (RBAC 4 roles + permisos extra granulares) |
+| `proyectos` | Implementado (cuotas, miembros y borrado logico en cascada) |
+| `evidencias` | Implementado (MinIO/S3, SHA-256, visor inline seguro y borrado logico) |
+| `chat` | Implementado (Socket.IO aislado por organizacion) |
+| `organizaciones` | Implementado (Multi-SaaS, planes y personalizacion) |
+| `registro` | Implementado (alta publica plan Basico) |
+| `historial` | Implementado (US-08, bitacora filtrable y paginada por organizacion) |
+| `notificaciones` | Implementado (Socket.IO por usuario ante asignaciones, audios y autocierres) |
 
 Ante cualquier discrepancia entre estos documentos y el repositorio, prevalece
 el repositorio.

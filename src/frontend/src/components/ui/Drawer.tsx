@@ -35,13 +35,17 @@ export default function Drawer({
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onCerrar} aria-hidden />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        onClick={onCerrar}
+        aria-hidden
+      />
 
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className="relative z-10 flex h-full w-full max-w-[560px] flex-col border-l border-white/10 bg-slate-900 shadow-xl"
+        className="relative z-10 flex h-full w-full max-w-[480px] flex-col border-l border-white/10 bg-slate-900 shadow-xl"
       >
         <header className="flex items-start gap-3 border-b border-white/10 px-5 py-4">
           <div className="min-w-0">

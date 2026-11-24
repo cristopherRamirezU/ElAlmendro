@@ -6,14 +6,17 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../infra/prisma/prisma.service';
 import { AlmacenamientoService } from '../../infra/almacenamiento/almacenamiento.service';
 import { UsuarioActual } from '../../common/usuario-actual.decorator';
+import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { filtroActividadOrganizacion } from '../../common/organizacion';
 import { ErroresSubidaFilter } from '../evidencias/errores-subida.filter';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 export const AUDIO_MAXIMO_MB = 10;
 /** Tope de duracion de un comentario de voz (el navegador corta la grabacion ahi). */
@@ -41,6 +44,8 @@ const FIRMAS: { tipo: string; coincide: (b: Buffer) => boolean }[] = [
 
 /** Datos de la tarea que deciden quien graba y quien borra. */
 interface Tarea {
+  titulo: string;
+  proyectoId: string;
   creadoPorId: string | null;
   responsableId: string;
   proyecto: { organizacionId: string };
@@ -83,6 +88,8 @@ export class AudioComentarioService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly almacenamiento: AlmacenamientoService,
+    private readonly limites: LimiteIntentosService,
+    @Optional() private readonly notificaciones?: NotificacionesService,
   ) {}
 
   /** Lista de la tarea, de la mas antigua a la mas nueva, con lo que cada quien puede hacer. */
@@ -103,6 +110,7 @@ export class AudioComentarioService {
     if (!archivo?.buffer?.length) throw new BadRequestException('Adjunta la grabacion.');
     const tipo = FIRMAS.find((f) => f.coincide(archivo.buffer))?.tipo;
     if (!tipo) throw new BadRequestException('El audio debe ser una grabacion WebM, MP4 u Ogg.');
+    this.limites.consumir(`subida:${u.id}`, REGLAS.subidaArchivos);
 
     const segundos = Math.round(Number(segundosCrudos));
     const duracion =
@@ -111,25 +119,45 @@ export class AudioComentarioService {
     const claveObjeto = `audios-comentario/${id}/${randomUUID()}`;
     await this.almacenamiento.subir(claveObjeto, archivo.buffer, tipo);
 
-    const audio = await this.prisma.$transaction(async (tx) => {
-      const nuevo = await tx.audioComentario.create({
-        data: { actividadId: id, autorId: u.id, claveObjeto, tipoMime: tipo, segundos: duracion },
-        select: SELECCION,
+    try {
+      const audio = await this.prisma.$transaction(async (tx) => {
+        const nuevo = await tx.audioComentario.create({
+          data: { actividadId: id, autorId: u.id, claveObjeto, tipoMime: tipo, segundos: duracion },
+          select: SELECCION,
+        });
+        await tx.registroAuditoria.create({
+          data: {
+            actorId: u.id,
+            organizacionId: tarea.proyecto.organizacionId,
+            accion: 'ACTIVIDAD_AUDIO_AGREGADO',
+            tipoEntidad: 'Actividad',
+            entidadId: id,
+            valorNuevo: { audioId: nuevo.id, segundos: duracion },
+          },
+        });
+        return nuevo;
       });
-      await tx.registroAuditoria.create({
-        data: {
-          actorId: u.id,
-          organizacionId: tarea.proyecto.organizacionId,
-          accion: 'ACTIVIDAD_AUDIO_AGREGADO',
-          tipoEntidad: 'Actividad',
-          entidadId: id,
-          valorNuevo: { audioId: nuevo.id, segundos: duracion },
-        },
-      });
-      return nuevo;
-    });
 
-    return { ...audio, puedeEliminar: true };
+      const destinatarios = new Set<string>();
+      if (tarea.responsableId !== u.id) destinatarios.add(tarea.responsableId);
+      if (tarea.creadoPorId && tarea.creadoPorId !== u.id) destinatarios.add(tarea.creadoPorId);
+      for (const destinatarioId of destinatarios) {
+        await this.notificaciones?.crear({
+          usuarioId: destinatarioId,
+          organizacionId: tarea.proyecto.organizacionId,
+          tipo: 'AUDIO_NODO',
+          titulo: 'Nuevo comentario de voz',
+          mensaje: `${u.nombreCompleto} grabó un audio en «${tarea.titulo}».`,
+          enlace: `/nodos?proyectoId=${tarea.proyectoId}&tarea=${id}&abrir=1`,
+          entidadId: id,
+        });
+      }
+
+      return { ...audio, puedeEliminar: true };
+    } catch (error) {
+      await this.borrarArchivo(claveObjeto);
+      throw error;
+    }
   }
 
   async quitar(id: string, audioId: string, u: UsuarioActual) {
@@ -178,7 +206,13 @@ export class AudioComentarioService {
   private async tarea(id: string, u: UsuarioActual): Promise<Tarea> {
     const tarea = await this.prisma.actividad.findFirst({
       where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
-      select: { creadoPorId: true, responsableId: true, proyecto: { select: { organizacionId: true } } },
+      select: {
+        titulo: true,
+        proyectoId: true,
+        creadoPorId: true,
+        responsableId: true,
+        proyecto: { select: { organizacionId: true } },
+      },
     });
     if (!tarea) throw new NotFoundException('La actividad no existe.');
     return tarea;

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { FileText, ImageIcon, Paperclip, Trash2, Upload } from 'lucide-react';
+import { Download, Eye, FileText, ImageIcon, Paperclip, Trash2, Upload } from 'lucide-react';
 import { api, ErrorApi, Evidencia, URL_API } from '@/lib/api';
+import VisorEvidencia from './VisorEvidencia';
 
 /** Debe calzar con el limite del servidor (evidencias/limites-subida.ts). */
 const TAMANO_MAXIMO_MB = 25;
@@ -18,8 +19,10 @@ function tamano(bytes: number) {
 /** Un archivo elegido y su vista previa, todavia sin subir. */
 interface Elegido {
   archivo: File;
-  /** URL local de la imagen (se libera al cambiarla o al salir). */
+  /** URL local de imagen, audio o video (se libera al cambiarla o al salir). */
   imagen: string | null;
+  audio: string | null;
+  video: string | null;
   /** Comienzo del texto, si es un archivo de texto. */
   texto: string | null;
   /** Dimensiones de la imagen, una vez cargada. */
@@ -55,16 +58,17 @@ export default function ZonaEvidencias({
   // Adjunto que se esta por eliminar: la fila pide confirmacion ahi mismo.
   const [porEliminar, setPorEliminar] = useState<string | null>(null);
   const [eliminando, setEliminando] = useState(false);
+  const [viendo, setViendo] = useState<Evidencia | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const titulo = useRef<HTMLParagraphElement>(null);
 
-  // La URL local de la imagen se libera al cambiarla o al cerrar el panel.
+  // La URL local del archivo elegido se libera al cambiarlo o al cerrar el panel.
   useEffect(() => {
-    const url = elegido?.imagen;
+    const urls = [elegido?.imagen, elegido?.audio, elegido?.video].filter(Boolean) as string[];
     return () => {
-      if (url) URL.revokeObjectURL(url);
+      for (const u of urls) URL.revokeObjectURL(u);
     };
-  }, [elegido?.imagen]);
+  }, [elegido?.imagen, elegido?.audio, elegido?.video]);
 
   const recargarLista = () => api.get<Evidencia[]>(`/evidencias?actividadId=${actividadId}`);
 
@@ -77,10 +81,28 @@ export default function ZonaEvidencias({
       setAviso(`«${archivo.name}» pesa ${tamano(archivo.size)}: el límite es de ${TAMANO_MAXIMO_MB} MB.`);
       return;
     }
-    const esImagen = archivo.type.startsWith('image/');
-    const nuevo: Elegido = { archivo, imagen: esImagen ? URL.createObjectURL(archivo) : null, texto: null, medidas: null };
+    const esImagen = archivo.type.startsWith('image/') && archivo.type !== 'image/svg+xml';
+    const esAudio = archivo.type.startsWith('audio/');
+    const esVideo = archivo.type.startsWith('video/');
+    const nuevo: Elegido = {
+      archivo,
+      imagen: esImagen ? URL.createObjectURL(archivo) : null,
+      audio: esAudio ? URL.createObjectURL(archivo) : null,
+      video: esVideo ? URL.createObjectURL(archivo) : null,
+      texto: null,
+      medidas: null,
+    };
     setElegido(nuevo);
-    if (!esImagen && (archivo.type.startsWith('text/') || /\.(txt|md|csv|json)$/i.test(archivo.name))) {
+    if (
+      !esImagen &&
+      !esAudio &&
+      !esVideo &&
+      (archivo.type === 'text/plain' ||
+        archivo.type === 'text/csv' ||
+        archivo.type === 'text/markdown' ||
+        archivo.type === 'application/json' ||
+        /\.(txt|md|csv|json|log)$/i.test(archivo.name))
+    ) {
       archivo
         .slice(0, LARGO_VISTA_TEXTO)
         .text()
@@ -182,6 +204,12 @@ export default function ZonaEvidencias({
                     setElegido((x) => (x && x.imagen === elegido.imagen ? { ...x, medidas: `${an} × ${al}` } : x));
                   }}
                 />
+              ) : elegido.video ? (
+                <video src={elegido.video} controls className="h-full w-full object-contain" />
+              ) : elegido.audio ? (
+                <div className="w-full px-4">
+                  <audio src={elegido.audio} controls className="w-full" />
+                </div>
               ) : elegido.texto !== null ? (
                 <pre className="h-full w-full overflow-hidden whitespace-pre-wrap break-words p-3 text-left text-[10px] leading-relaxed text-slate-300">
                   {elegido.texto}
@@ -190,7 +218,9 @@ export default function ZonaEvidencias({
                 <div className="flex flex-col items-center gap-2 text-[#9fb4ff]">
                   <FileText size={34} aria-hidden />
                   <span className="text-[11px] uppercase tracking-[0.18em]">
-                    {elegido.archivo.name.split('.').pop()?.slice(0, 6) || 'archivo'}
+                    {elegido.archivo.type === 'application/pdf'
+                      ? 'PDF'
+                      : elegido.archivo.name.split('.').pop()?.slice(0, 6) || 'archivo'}
                   </span>
                 </div>
               )}
@@ -310,11 +340,11 @@ export default function ZonaEvidencias({
               </li>
             ) : (
               <li key={ev.id} className="flex items-stretch gap-1.5">
-                <a
-                  href={`${URL_API}/evidencias/${ev.id}/descargar`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-slate-200 transition hover:bg-white/[0.07]"
+                <button
+                  type="button"
+                  onClick={() => setViendo(ev)}
+                  title="Previsualizar archivo"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-left text-xs text-slate-200 transition hover:bg-white/[0.07]"
                 >
                   <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[rgba(127,157,255,0.14)] text-[#9fb4ff]">
                     {ev.tipoMime.startsWith('image/') ? (
@@ -327,6 +357,16 @@ export default function ZonaEvidencias({
                   </span>
                   <span className="truncate">{ev.nombreArchivo}</span>
                   <span className="ml-auto shrink-0 text-[10px] text-slate-500">{tamano(ev.tamanoBytes)}</span>
+                  <Eye size={13} className="shrink-0 text-slate-400" aria-hidden />
+                </button>
+                <a
+                  href={`${URL_API}/evidencias/${ev.id}/descargar`}
+                  download
+                  aria-label={`Descargar ${ev.nombreArchivo}`}
+                  title="Descargar archivo"
+                  className="grid w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-slate-400 transition hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-300"
+                >
+                  <Download size={14} aria-hidden />
                 </a>
                 {ev.puedeEliminar && !terminada && (
                   <button
@@ -347,6 +387,8 @@ export default function ZonaEvidencias({
           )}
         </ul>
       )}
+
+      {viendo && <VisorEvidencia evidencia={viendo} onCerrar={() => setViendo(null)} />}
     </section>
   );
 }

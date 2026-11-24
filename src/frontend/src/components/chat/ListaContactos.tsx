@@ -57,13 +57,16 @@ export default function ListaContactos({
           <h2 className="font-bold text-white">Conversaciones</h2>
           <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            {totalEnLinea} en linea
+            {totalEnLinea} en línea
           </span>
         </div>
         <input
+          id="buscar-contacto-chat"
+          name="buscarContacto"
+          aria-label="Buscar compañero"
           value={filtro}
           onChange={(e) => setFiltro(e.target.value)}
-          placeholder="Buscar companero…"
+          placeholder="Buscar compañero…"
           className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-white outline-none placeholder:text-slate-500 focus:border-sky-500/50"
         />
       </div>
@@ -97,20 +100,20 @@ export default function ListaContactos({
               </span>
               <span className="block truncate text-[11px] text-slate-400">
                 {ultimoGeneral
-                  ? `${ultimoGeneral.propio ? 'Tu: ' : ''}${ultimoGeneral.cuerpo}`
-                  : 'Todo el equipo conversa aqui'}
+                  ? `${ultimoGeneral.propio ? 'Tú: ' : ''}${ultimoGeneral.cuerpo}`
+                  : 'Todo el equipo conversa aquí'}
               </span>
             </span>
           </button>
         )}
 
-        <Grupo titulo="En linea" cantidad={enLinea.length} vacio="Nadie mas conectado por ahora.">
+        <Grupo titulo="En línea" cantidad={enLinea.length} vacio="Nadie más conectado por ahora.">
           {enLinea.map((c) => (
             <FilaContacto key={c.id} contacto={c} activo={seleccion === c.id} onElegir={onElegir} />
           ))}
         </Grupo>
 
-        <Grupo titulo="Desconectados" cantidad={desconectados.length} vacio="Todo el equipo esta en linea.">
+        <Grupo titulo="Desconectados" cantidad={desconectados.length} vacio="Todo el equipo está en línea.">
           {desconectados.map((c) => (
             <FilaContacto key={c.id} contacto={c} activo={seleccion === c.id} onElegir={onElegir} />
           ))}
@@ -175,31 +178,31 @@ function FilaContacto({
           }
           className={`h-9 w-9 text-xs font-bold ${c.enLinea ? '' : 'bg-white/5 text-slate-400'}`}
         />
-        <span
-          className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-slate-900 ${
-            c.enLinea ? 'bg-emerald-400' : 'bg-slate-600'
-          }`}
-          title={c.enLinea ? 'En linea' : 'Desconectado'}
-        />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline justify-between gap-2">
           <span
-            style={activo && c.noLeidos === 0 ? { color: colorPrimario } : undefined}
-            className={`truncate text-sm ${c.noLeidos > 0 ? 'font-bold text-white' : activo ? 'font-semibold' : 'font-medium text-slate-200'}`}
-          >
-            {c.nombreCompleto}
-          </span>
-          {c.ultimoMensaje && (
-            <span className="shrink-0 text-[10px] text-slate-500">{hora(c.ultimoMensaje.creadoEn)}</span>
-          )}
+            className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-slate-900 ${
+              c.enLinea ? 'bg-emerald-400' : 'bg-slate-600'
+            }`}
+            title={c.enLinea ? 'En línea' : 'Desconectado'}
+          />
         </span>
-        <span className="flex items-center justify-between gap-2">
-          <span className={`truncate text-[11px] ${c.noLeidos > 0 ? 'text-slate-200' : 'text-slate-500'}`}>
-            {c.ultimoMensaje
-              ? `${c.ultimoMensaje.propio ? 'Tu: ' : ''}${c.ultimoMensaje.cuerpo}`
-              : (ROL_TEXTO[c.rol] ?? c.rol)}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-baseline justify-between gap-2">
+            <span
+              style={activo && c.noLeidos === 0 ? { color: colorPrimario } : undefined}
+              className={`truncate text-sm ${c.noLeidos > 0 ? 'font-bold text-white' : activo ? 'font-semibold' : 'font-medium text-slate-200'}`}
+            >
+              {c.nombreCompleto}
+            </span>
+            {c.ultimoMensaje && (
+              <span className="shrink-0 text-[10px] text-slate-500">{hora(c.ultimoMensaje.creadoEn)}</span>
+            )}
           </span>
+          <span className="flex items-center justify-between gap-2">
+            <span className={`truncate text-[11px] ${c.noLeidos > 0 ? 'text-slate-200' : 'text-slate-500'}`}>
+              {c.ultimoMensaje
+                ? `${c.ultimoMensaje.propio ? 'Tú: ' : ''}${c.ultimoMensaje.cuerpo}`
+                : (ROL_TEXTO[c.rol] ?? c.rol)}
+            </span>
           {c.noLeidos > 0 && (
             <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
               {c.noLeidos > 99 ? '99+' : c.noLeidos}

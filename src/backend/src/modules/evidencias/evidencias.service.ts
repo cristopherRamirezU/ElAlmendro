@@ -86,26 +86,31 @@ export class EvidenciasService {
     await this.almacenamiento.subir(clave, archivo.buffer, tipoMime);
 
     // Quien lo acaba de subir siempre puede eliminarlo (la tarea sigue abierta).
-    const evidencia = await this.prisma.evidencia.create({
-      data: {
-        actividadId,
-        subidaPorId: u.id,
-        claveObjeto: clave,
-        nombreArchivo,
-        tipoMime,
-        tamanoBytes: archivo.size,
-        sha256,
-      },
-      select: {
-        id: true,
-        nombreArchivo: true,
-        tipoMime: true,
-        tamanoBytes: true,
-        subidaEn: true,
-        subidaPor: { select: { nombreCompleto: true } },
-      },
-    });
-    return { ...evidencia, puedeEliminar: true };
+    try {
+      const evidencia = await this.prisma.evidencia.create({
+        data: {
+          actividadId,
+          subidaPorId: u.id,
+          claveObjeto: clave,
+          nombreArchivo,
+          tipoMime,
+          tamanoBytes: archivo.size,
+          sha256,
+        },
+        select: {
+          id: true,
+          nombreArchivo: true,
+          tipoMime: true,
+          tamanoBytes: true,
+          subidaEn: true,
+          subidaPor: { select: { nombreCompleto: true } },
+        },
+      });
+      return { ...evidencia, puedeEliminar: true };
+    } catch (error) {
+      await this.almacenamiento.eliminar(clave).catch(() => undefined);
+      throw error;
+    }
   }
 
   /**

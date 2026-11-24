@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infra/prisma/prisma.service';
@@ -24,6 +25,7 @@ import {
   exigirOrganizacion,
   filtroActividadOrganizacion,
 } from '../../common/organizacion';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 /**
  * Las instrucciones de una tarea (su descripcion) las agrega o edita quien la
@@ -36,7 +38,10 @@ function puedeEditarInstrucciones(u: UsuarioActual, creadoPorId: string | null) 
 /** US-03 y US-04 — consulta de actividades y su tiempo acumulado. */
 @Injectable()
 export class ActividadesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notificaciones?: NotificacionesService,
+  ) {}
 
   /**
    * Actividades del trabajador con el tiempo real acumulado.
@@ -179,8 +184,8 @@ export class ActividadesService {
       select: { orden: true },
     });
 
-    return this.prisma.$transaction(async (tx) => {
-      const creada = await tx.actividad.create({
+    const creada = await this.prisma.$transaction(async (tx) => {
+      const nueva = await tx.actividad.create({
         data: {
           proyectoId: dto.proyectoId,
           titulo: dto.titulo,
@@ -211,8 +216,22 @@ export class ActividadesService {
           });
         }
       }
-      return creada;
+      return nueva;
     });
+
+    if (paraOtraPersona) {
+      await this.notificaciones?.crear({
+        usuarioId: responsableId,
+        organizacionId,
+        tipo: 'TAREA_ASIGNADA',
+        titulo: 'Nueva tarea asignada',
+        mensaje: `${u.nombreCompleto} te asignó «${creada.titulo}».`,
+        enlace: `/nodos?proyectoId=${dto.proyectoId}&tarea=${creada.id}&abrir=1`,
+        entidadId: creada.id,
+      });
+    }
+
+    return creada;
   }
 
   /**
@@ -384,6 +403,7 @@ export class ActividadesService {
       where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
       select: {
         id: true,
+        titulo: true,
         proyectoId: true,
         responsableId: true,
         proyecto: { select: { organizacionId: true } },
@@ -439,6 +459,18 @@ export class ActividadesService {
       });
     });
 
+    if (dto.usuarioId !== u.id) {
+      await this.notificaciones?.crear({
+        usuarioId: dto.usuarioId,
+        organizacionId,
+        tipo: 'TAREA_DERIVADA',
+        titulo: 'Tarea derivada',
+        mensaje: `${u.nombreCompleto} te derivó «${actividad.titulo}»: ${dto.motivo.trim()}`,
+        enlace: `/nodos?proyectoId=${actividad.proyectoId}&tarea=${id}&abrir=1`,
+        entidadId: id,
+      });
+    }
+
     return this.detalle(id, u);
   }
 
@@ -448,6 +480,9 @@ export class ActividadesService {
       where: { id, eliminadoEn: null, ...filtroActividadOrganizacion(u) },
       select: {
         id: true,
+        titulo: true,
+        proyectoId: true,
+        responsableId: true,
         descripcion: true,
         creadoPorId: true,
         proyecto: { select: { organizacionId: true } },
@@ -475,6 +510,18 @@ export class ActividadesService {
         },
       });
     });
+
+    if (actividad.responsableId !== u.id) {
+      await this.notificaciones?.crear({
+        usuarioId: actividad.responsableId,
+        organizacionId: actividad.proyecto.organizacionId,
+        tipo: 'MENSAJE_NODO',
+        titulo: 'Instrucciones actualizadas',
+        mensaje: `${u.nombreCompleto} actualizó las instrucciones en «${actividad.titulo}».`,
+        enlace: `/nodos?proyectoId=${actividad.proyectoId}&tarea=${id}&abrir=1`,
+        entidadId: id,
+      });
+    }
 
     return this.detalle(id, u);
   }

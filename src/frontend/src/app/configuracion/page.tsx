@@ -37,6 +37,7 @@ function ContenidoConfiguracion() {
   const usuario = useSesion();
   const puedeGestionar = useTienePermiso(PERMISOS.CONFIGURACION_GESTIONAR);
 
+  const [orgInfo, setOrgInfo] = useState<OrganizacionMia | null>(null);
   const [color, setColor] = useState(COLOR_PRIMARIO_DEFECTO);
   const [tema, setTema] = useState(TEMA_FONDO_DEFECTO);
   const [cargando, setCargando] = useState(true);
@@ -51,6 +52,7 @@ function ContenidoConfiguracion() {
     api
       .get<OrganizacionMia>('/organizaciones/mia')
       .then((org) => {
+        setOrgInfo(org);
         setColor(org.colorPrimario && HEX_VALIDO.test(org.colorPrimario) ? org.colorPrimario : COLOR_PRIMARIO_DEFECTO);
         setTema(org.temaFondo || TEMA_FONDO_DEFECTO);
       })
@@ -125,7 +127,47 @@ function ContenidoConfiguracion() {
   const colorValido = HEX_VALIDO.test(color);
 
   return (
-    <div className="max-w-2xl">
+    <div className="flex max-w-2xl flex-col gap-5">
+      {orgInfo && (
+        <section className="rounded-2xl border border-white/10 bg-slate-900 p-6 backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-bold text-white">Datos y plan de tu empresa</h2>
+              <p className="mt-0.5 text-xs text-slate-400">Resumen de tu organización y cupos vigentes.</p>
+            </div>
+            {orgInfo.plan && (
+              <span className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-xs font-bold text-sky-300">
+                Plan {orgInfo.plan === 'GRATIS' ? 'Básico' : orgInfo.plan}
+              </span>
+            )}
+          </div>
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-slate-400">Nombre</dt>
+              <dd className="font-medium text-white">{orgInfo.nombre}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-400">RUT</dt>
+              <dd className="font-medium text-white">{orgInfo.rut || 'No registrado'}</dd>
+            </div>
+          </dl>
+          {typeof orgInfo.maxUsuarios === 'number' && typeof orgInfo.maxProyectos === 'number' && (
+            <div className="mt-4 grid gap-4 border-t border-white/10 pt-4 sm:grid-cols-2">
+              <BarraCupo
+                etiqueta="Usuarios activos"
+                actual={orgInfo.totalUsuarios ?? 0}
+                maximo={orgInfo.maxUsuarios}
+              />
+              <BarraCupo
+                etiqueta="Proyectos activos"
+                actual={orgInfo.totalProyectos ?? 0}
+                maximo={orgInfo.maxProyectos}
+              />
+            </div>
+          )}
+        </section>
+      )}
+
       {mensaje && (
         <div
           role="alert"
@@ -267,6 +309,26 @@ function ContenidoConfiguracion() {
           </button>
         </div>
       </section>
+    </div>
+  );
+}
+
+function BarraCupo({ etiqueta, actual, maximo }: { etiqueta: string; actual: number; maximo: number }) {
+  const pct = maximo > 0 ? Math.min(100, Math.round((actual / maximo) * 100)) : 0;
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-xs">
+        <span className="text-slate-400">{etiqueta}</span>
+        <span className="font-mono text-slate-200">
+          {actual} / {maximo}
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+        <div
+          className={`h-full rounded-full ${pct >= 90 ? 'bg-rose-500' : pct >= 70 ? 'bg-amber-500' : 'bg-sky-500'}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
     </div>
   );
 }

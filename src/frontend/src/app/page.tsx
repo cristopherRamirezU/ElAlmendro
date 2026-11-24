@@ -280,7 +280,7 @@ function MapaEjemplo() {
         </svg>
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[linear-gradient(135deg,#0ea5e9,#6366f1)] px-[18px] py-3.5 text-center text-white shadow-[0_0_0_6px_rgba(56,189,248,0.12)]">
           <p className={`${fuenteTitulo.className} m-0 text-[15px] font-bold`}>Sitio web</p>
-          <p className="m-0 mt-0.5 text-xs opacity-90">3 de 4 tareas</p>
+          <p className="m-0 mt-0.5 text-xs opacity-90">2 de 4 tareas</p>
         </div>
         <div className={`${tarjeta} left-[6%] top-[10%] w-[36%] border border-[rgba(52,211,153,0.4)]`}>
           <p className="m-0 text-xs font-semibold">Diseño de inicio</p>

@@ -35,6 +35,9 @@ export class CalendarioService {
    */
   private static readonly MARGEN_PRESENCIA = 90 * 60;
 
+  /** Umbral diario sobre el que la carga imputada requiere revision manual. */
+  private static readonly UMBRAL_HORAS_ANOMALAS = 12 * 3600;
+
   /** Tope de dias por consulta, para que un rango absurdo no castigue al motor. */
   private static readonly MAXIMO_DIAS = 366;
 
@@ -57,7 +60,7 @@ export class CalendarioService {
         equipo AS (
           SELECT u.id, u."nombreCompleto", u."zonaHoraria" AS zona
             FROM usuarios u
-           WHERE u.rol = 'TRABAJADOR'
+           WHERE u.rol IN ('TRABAJADOR', 'SUPERVISOR', 'ADMINISTRADOR')
              AND u.activo = true
              AND u."organizacionId" = ${organizacionId}::uuid
              AND (${filtro}::uuid IS NULL OR u.id = ${filtro}::uuid)
@@ -281,7 +284,7 @@ export class CalendarioService {
     const filas = await this.prisma.usuario.findMany({
       where: {
         organizacionId,
-        rol: 'TRABAJADOR',
+        rol: { in: ['TRABAJADOR', 'SUPERVISOR', 'ADMINISTRADOR'] as any },
         activo: true,
         ...(filtro ? { id: filtro } : {}),
       },
@@ -340,6 +343,7 @@ export class CalendarioService {
       // jornada y horas imputadas. Aqui esa diferencia se vuelve visible.
       presenciaExcesiva:
         presencia > 0 && presencia - imputados > CalendarioService.MARGEN_PRESENCIA,
+      horasExcesivas: imputados > CalendarioService.UMBRAL_HORAS_ANOMALAS,
     };
   }
 
@@ -358,6 +362,7 @@ export class CalendarioService {
             autocerradas: 0,
             inconclusas: 0,
             presenciaExcesiva: 0,
+            horasExcesivas: 0,
             total: 0,
           },
         },
@@ -378,6 +383,7 @@ export class CalendarioService {
       acumulado.alertas.autocerradas += c.autocerradas;
       acumulado.alertas.inconclusas += c.inconclusas;
       if (c.presenciaExcesiva) acumulado.alertas.presenciaExcesiva += 1;
+      if (c.horasExcesivas) acumulado.alertas.horasExcesivas += 1;
     }
 
     return dias.map((fecha) => {
@@ -386,7 +392,8 @@ export class CalendarioService {
         a.alertas.jornadasAbiertas +
         a.alertas.autocerradas +
         a.alertas.inconclusas +
-        a.alertas.presenciaExcesiva;
+        a.alertas.presenciaExcesiva +
+        a.alertas.horasExcesivas;
       return { fecha, ...a };
     });
   }
