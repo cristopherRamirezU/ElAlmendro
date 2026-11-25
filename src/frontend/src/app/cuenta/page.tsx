@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Camera, Check, Eye, EyeOff, Globe, KeyRound, LogOut, MonitorSmartphone, Trash2, X } from 'lucide-react';
 import Marco from '@/components/Marco';
+import RecortadorFotoPerfil from '@/components/cuenta/RecortadorFotoPerfil';
 import Avatar from '@/components/ui/Avatar';
 import SelectorZona from '@/components/ui/SelectorZona';
 import { api, ErrorApi, type Usuario } from '@/lib/api';
@@ -78,9 +79,7 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor?: string | null }) 
 
 // --------------------------------------------------------- foto de perfil
 
-/** Lado de la foto que se sube: sobra para los avatares y pesa pocos KB. */
-const LADO_FOTO = 256;
-/** Tope del archivo original, antes de reducirlo en el navegador. */
+/** Tope del archivo original, antes de encuadrarlo y reducirlo en el navegador. */
 const MAXIMO_ORIGINAL_MB = 15;
 
 /** Actualiza el usuario en la cache de sesion: la cabecera y el chat lo ven al instante. */
@@ -89,54 +88,15 @@ function actualizarUsuarioEnCache(cambios: Partial<Usuario>) {
   if (cache?.usuario) guardarCacheSesion({ ...cache, usuario: { ...cache.usuario, ...cambios } });
 }
 
-/**
- * Recorta al centro y reduce la imagen a un cuadrado de 256 px. Se hace aqui
- * y no en la API: sube un archivo chico y ademas se descarta cualquier dato
- * extra del original (ubicacion GPS de la foto, por ejemplo).
- */
-async function prepararFoto(archivo: File): Promise<Blob> {
-  const url = URL.createObjectURL(archivo);
-  try {
-    const imagen = new Image();
-    imagen.src = url;
-    await imagen.decode();
-    const lado = Math.min(imagen.naturalWidth, imagen.naturalHeight);
-    if (!lado) throw new Error('vacia');
-
-    const lienzo = document.createElement('canvas');
-    lienzo.width = LADO_FOTO;
-    lienzo.height = LADO_FOTO;
-    const g = lienzo.getContext('2d');
-    if (!g) throw new Error('sin canvas');
-    g.imageSmoothingQuality = 'high';
-    g.drawImage(
-      imagen,
-      (imagen.naturalWidth - lado) / 2,
-      (imagen.naturalHeight - lado) / 2,
-      lado,
-      lado,
-      0,
-      0,
-      LADO_FOTO,
-      LADO_FOTO,
-    );
-    // WebP si el navegador sabe generarlo; si no, toBlob entrega PNG, que la API tambien acepta.
-    const blob = await new Promise<Blob | null>((ok) => lienzo.toBlob(ok, 'image/webp', 0.88));
-    if (!blob) throw new Error('sin blob');
-    return blob;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
 function FotoPerfil() {
   const usuario = useSesion();
   const colorPrimario = useColorPrimario();
   const entrada = useRef<HTMLInputElement>(null);
+  const [archivoPendiente, setArchivoPendiente] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [mensaje, setMensaje] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
 
-  async function elegir(e: React.ChangeEvent<HTMLInputElement>) {
+  function elegir(e: React.ChangeEvent<HTMLInputElement>) {
     const archivo = e.target.files?.[0];
     e.target.value = '';
     if (!archivo) return;
@@ -149,22 +109,22 @@ function FotoPerfil() {
       setMensaje({ tipo: 'error', texto: `La imagen no puede superar ${MAXIMO_ORIGINAL_MB} MB.` });
       return;
     }
+    setArchivoPendiente(archivo);
+  }
 
+  async function subirRecorte(foto: Blob) {
     setEnviando(true);
+    setMensaje(null);
     try {
-      let foto: Blob;
-      try {
-        foto = await prepararFoto(archivo);
-      } catch {
-        throw new ErrorApi(400, 'No se pudo leer la imagen. Prueba con una foto JPG o PNG.');
-      }
       const formulario = new FormData();
       formulario.append('foto', foto, 'foto');
       const r = await api.subirArchivo<{ fotoPerfil: string }>('/auth/yo/foto', formulario);
       actualizarUsuarioEnCache({ fotoPerfil: r.fotoPerfil });
+      setArchivoPendiente(null);
       setMensaje({ tipo: 'exito', texto: 'Foto actualizada. Tus compañeros la verán en el chat.' });
     } catch (err) {
       setMensaje({ tipo: 'error', texto: err instanceof ErrorApi ? err.message : 'No se pudo subir la foto.' });
+      setArchivoPendiente(null);
     } finally {
       setEnviando(false);
     }
@@ -190,7 +150,7 @@ function FotoPerfil() {
         <Camera size={18} aria-hidden /> Foto de perfil
       </h2>
       <p className="mt-1 text-sm text-[var(--tf-texto-tenue)]">
-        Aparece en el chat y en la cabecera. Se recorta en cuadrado al centro.
+        Aparece en el chat y en la cabecera. Puedes ajustar y encuadrar tu foto antes de guardarla.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -215,7 +175,8 @@ function FotoPerfil() {
             type="button"
             onClick={() => entrada.current?.click()}
             disabled={enviando}
-            className="rounded-xl bg-[var(--color-primario)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:opacity-40"
+            style={{ color: 'var(--tf-texto-primario)' }}
+            className="rounded-xl bg-[var(--color-primario)] px-4 py-2 text-sm font-semibold transition hover:brightness-110 disabled:opacity-40"
           >
             {enviando ? 'Guardando…' : usuario?.fotoPerfil ? 'Cambiar foto' : 'Subir foto'}
           </button>
@@ -231,6 +192,16 @@ function FotoPerfil() {
           )}
         </div>
       </div>
+
+      {archivoPendiente && (
+        <RecortadorFotoPerfil
+          archivo={archivoPendiente}
+          colorPrimario={colorPrimario}
+          enviando={enviando}
+          onCancelar={() => setArchivoPendiente(null)}
+          onConfirmar={subirRecorte}
+        />
+      )}
 
       {mensaje && <Aviso {...mensaje} />}
     </section>
@@ -316,7 +287,8 @@ function ZonaHoraria() {
         type="button"
         onClick={guardar}
         disabled={enviando || zona === guardada}
-        className="mt-4 rounded-xl bg-[var(--color-primario)] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+        style={{ color: 'var(--tf-texto-primario)' }}
+        className="mt-4 rounded-xl bg-[var(--color-primario)] px-5 py-2.5 text-sm font-semibold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {enviando ? 'Guardando…' : 'Guardar zona horaria'}
       </button>
@@ -478,7 +450,8 @@ function CambiarContrasena() {
           <button
             type="submit"
             disabled={!listo}
-            className="rounded-xl bg-[var(--color-primario)] px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ color: 'var(--tf-texto-primario)' }}
+            className="rounded-xl bg-[var(--color-primario)] px-5 py-2.5 text-sm font-semibold transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {enviando ? 'Guardando…' : 'Cambiar contraseña'}
           </button>

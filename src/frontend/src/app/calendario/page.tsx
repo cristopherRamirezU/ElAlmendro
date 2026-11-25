@@ -361,11 +361,6 @@ function Calendario() {
       <Drawer
         abierto={!!diaAbierto}
         titulo={diaAbierto ? fechaLarga(diaAbierto) : ''}
-        subtitulo={
-          detalle
-            ? `${detalle.resumen.sesiones} sesión(es) · ${detalle.resumen.conRegistro} trabajador(es) con registro`
-            : undefined
-        }
         onCerrar={() => {
           setFoco(null);
           navegar({ dia: null });

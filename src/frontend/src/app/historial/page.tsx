@@ -7,6 +7,7 @@ import Marco from '@/components/Marco';
 import { EsqueletoLista } from '@/components/ui/Esqueleto';
 import { api, ErrorApi } from '@/lib/api';
 import { diaRelativo, etiquetaEntidad, hora, tiempoRelativo } from '@/lib/formato';
+import { construirDetalleHumano, describirAccionHistorial } from '@/lib/historialHumano';
 import { PERMISOS } from '@/lib/rbac';
 import { useTienePermiso } from '@/lib/sesion';
 
@@ -44,29 +45,6 @@ const ENTIDADES = [
   { valor: 'Usuario', texto: 'Usuarios' },
   { valor: 'Organizacion', texto: 'Empresa' },
 ];
-
-const ACCIONES_HUMANAS: Record<string, string> = {
-  INICIO_SESION: 'inició sesión en la plataforma',
-  CIERRE_SESION: 'cerró sesión',
-  ORGANIZACION_COLOR_ACTUALIZADO: 'actualizó la apariencia de la empresa',
-  ACTIVIDAD_CREADA: 'creó una actividad',
-  ACTIVIDAD_REASIGNADA: 'derivó una actividad',
-  ACTIVIDAD_ESTADO_ACTUALIZADO: 'cambió el estado de una actividad',
-  SESION_AUTOCERRADA: 'autocerró una sesión vencida (>10 h)',
-  EVIDENCIA_SUBIDA: 'adjuntó una evidencia',
-  EVIDENCIA_ELIMINADA: 'eliminó una evidencia',
-  USUARIO_CREADO: 'creó un usuario',
-  USUARIO_ACTUALIZADO: 'actualizó un usuario',
-};
-
-function describirAccion(accion: string): string {
-  if (ACCIONES_HUMANAS[accion]) return ACCIONES_HUMANAS[accion];
-  return accion
-    .toLowerCase()
-    .split('_')
-    .map((p, i) => (i === 0 ? p : p))
-    .join(' ');
-}
 
 function extraerColorNuevo(val: unknown): string | null {
   if (val && typeof val === 'object' && 'colorPrimario' in val) {
@@ -322,9 +300,8 @@ function ContenidoHistorial() {
 
               const { item } = entrada;
               const abierta = Boolean(abiertas[item.id]);
-              const tieneDetalle =
-                item.valorAnterior !== null || item.valorNuevo !== null;
               const colorNuevo = extraerColorNuevo(item.valorNuevo);
+              const detalle = construirDetalleHumano(item.accion, item.valorAnterior, item.valorNuevo);
 
               return (
                 <li key={item.id} className="relative">
@@ -348,7 +325,7 @@ function ContenidoHistorial() {
                             {item.actor ? item.actor.nombreCompleto : 'Sistema automático'}
                           </span>
                           <span className="text-[var(--tf-texto-tenue)]">
-                            {describirAccion(item.accion)}
+                            {describirAccionHistorial(item.accion)}
                           </span>
                           <span className="rounded bg-[var(--tf-superficie-solida)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--tf-texto-tenue)]">
                             {etiquetaEntidad(item.tipoEntidad)}
@@ -390,35 +367,53 @@ function ContenidoHistorial() {
 
                     {abierta && (
                       <div className="border-t border-[var(--tf-borde)] bg-[var(--tf-superficie-solida)] px-4 py-3 text-xs">
-                        <p className="mb-2 text-[11px] text-[var(--tf-texto-suave)]">
-                          Registro de <strong className="font-medium text-[var(--tf-texto)]">{etiquetaEntidad(item.tipoEntidad)}</strong>{' '}
-                          <span className="font-mono text-[10px] opacity-70">({item.entidadId.slice(0, 8)}…)</span>
+                        <p className="mb-2.5 text-[12px] font-medium text-[var(--tf-texto)]">
+                          {detalle.resumen}
                         </p>
-                        {tieneDetalle ? (
-                          <div className="grid gap-3 md:grid-cols-2">
-                            {item.valorAnterior !== null && (
-                              <div>
-                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-rose-400">
-                                  Valor anterior
-                                </p>
-                                <pre className="overflow-x-auto rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] p-2.5 font-mono text-[11px] text-[var(--tf-texto)]">
-                                  {JSON.stringify(item.valorAnterior, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                            {item.valorNuevo !== null && (
-                              <div>
-                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
-                                  Valor nuevo
-                                </p>
-                                <pre className="overflow-x-auto rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-input)] p-2.5 font-mono text-[11px] text-[var(--tf-texto)]">
-                                  {JSON.stringify(item.valorNuevo, null, 2)}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
+                        {detalle.cambios.length > 0 ? (
+                          <ul className="space-y-1.5">
+                            {detalle.cambios.map((c, idx) => (
+                              <li
+                                key={`${c.etiqueta}-${idx}`}
+                                className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--tf-borde)] bg-[var(--tf-superficie-2)] px-3 py-2 text-xs"
+                              >
+                                <span className="font-semibold text-[var(--tf-texto-tenue)]">
+                                  {c.etiqueta}:
+                                </span>
+                                {c.antes !== undefined && (
+                                  <>
+                                    <span className="inline-flex items-center gap-1.5 text-[var(--tf-texto-suave)] line-through">
+                                      {c.colorAntes && (
+                                        <span
+                                          aria-hidden
+                                          className="h-2.5 w-2.5 rounded-full border border-black/15"
+                                          style={{ backgroundColor: c.colorAntes }}
+                                        />
+                                      )}
+                                      {c.antes}
+                                    </span>
+                                    <span aria-hidden className="text-[var(--tf-texto-suave)]">
+                                      →
+                                    </span>
+                                  </>
+                                )}
+                                <span className="inline-flex items-center gap-1.5 font-medium text-[var(--tf-texto)]">
+                                  {c.colorDespues && (
+                                    <span
+                                      aria-hidden
+                                      className="h-2.5 w-2.5 rounded-full border border-black/15"
+                                      style={{ backgroundColor: c.colorDespues }}
+                                    />
+                                  )}
+                                  {c.despues}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
                         ) : (
-                          <p className="text-[var(--tf-texto-suave)]">Sin payload adicional registrado.</p>
+                          <p className="text-[11px] text-[var(--tf-texto-suave)]">
+                            No se registraron cambios de campos adicionales en este evento.
+                          </p>
                         )}
                       </div>
                     )}

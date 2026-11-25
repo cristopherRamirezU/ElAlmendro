@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { CalendarDays, X } from 'lucide-react';
 
 /**
  * Panel lateral deslizante.
@@ -36,7 +37,7 @@ export default function Drawer({
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-black/55 backdrop-blur-[3px]"
         onClick={onCerrar}
         aria-hidden
       />
@@ -45,19 +46,37 @@ export default function Drawer({
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className="relative z-10 flex h-full w-full max-w-[480px] flex-col border-l border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-xl"
+        className="relative z-10 flex h-full w-full max-w-[500px] flex-col border-l border-[var(--tf-borde-fuerte)] bg-[var(--tf-superficie-solida)] text-[var(--tf-texto)] shadow-2xl"
       >
-        <header className="flex items-start gap-3 border-b border-[var(--tf-borde)] px-5 py-4">
-          <div className="min-w-0">
-            <h2 className="truncate font-bold text-[var(--tf-texto)] first-letter:uppercase">{titulo}</h2>
+        <header
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(var(--tf-primario-rgb, 56, 189, 248), 0.12), transparent 68%)',
+          }}
+          className="flex items-center gap-3 border-b border-[var(--tf-borde)] px-5 py-4"
+        >
+          <span
+            style={{
+              backgroundColor: 'rgba(var(--tf-primario-rgb, 56, 189, 248), 0.15)',
+              color: 'var(--color-primario, #38bdf8)',
+            }}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--tf-borde)]"
+          >
+            <CalendarDays size={17} aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="tf-display truncate text-base font-bold tracking-tight text-[var(--tf-texto)] first-letter:uppercase">
+              {titulo}
+            </h2>
             {subtitulo && <p className="text-xs text-[var(--tf-texto-tenue)]">{subtitulo}</p>}
           </div>
           <button
+            type="button"
             onClick={onCerrar}
             aria-label="Cerrar el detalle"
-            className="ml-auto rounded-lg border border-[var(--tf-borde)] px-2 py-0.5 text-[var(--tf-texto-tenue)] transition hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-[var(--tf-borde)] text-[var(--tf-texto-tenue)] transition hover:border-[var(--tf-borde-fuerte)] hover:bg-[var(--tf-hover)] hover:text-[var(--tf-texto)]"
           >
-            ×
+            <X size={16} aria-hidden />
           </button>
         </header>
 
