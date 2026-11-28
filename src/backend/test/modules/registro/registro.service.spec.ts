@@ -5,6 +5,7 @@ import { LimiteIntentosService } from '../../../src/common/seguridad/limite-inte
 function armar() {
   const prisma = {
     organizacion: { findUnique: jest.fn().mockResolvedValue(null) },
+    usuario: { update: jest.fn().mockResolvedValue({}) },
     registroAuditoria: { create: jest.fn().mockResolvedValue({}) },
   };
   const organizaciones = {

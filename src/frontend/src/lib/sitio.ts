@@ -6,12 +6,11 @@ export const DATOS_LEGALES = {
   /** Nombre comercial del servicio. */
   servicio: 'TimeFlow',
   /** Razon social de quien presta el servicio. */
-  // TODO: valores de ejemplo provisorios; reemplazar por los datos reales.
-  razonSocial: 'Servicios TimeFlow SpA',
-  rut: '77.123.456-7',
-  domicilio: 'Av. Providencia 1234, Providencia, Santiago, Chile',
+  razonSocial: 'El Almendro Inversiones',
+  rut: '76.407.543-9',
+  domicilio: 'Siete Poniente 700, Buin, Chile',
   /** Correo para contacto comercial, soporte y solicitudes de privacidad. */
-  correo: 'contacto@timeflows.site',
+  correo: 'a.cordero@elalmendro.cl',
   sitio: 'https://timeflows.site',
   /** Fecha desde la que rigen los textos legales vigentes. */
   vigencia: '20 de noviembre de 2026',

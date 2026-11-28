@@ -4,6 +4,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
 import { PrismaService } from '../infra/prisma/prisma.service';
+import { politicasPendientes, VERSION_POLITICAS } from './politicas';
 import { permisosEfectivos } from './rbac';
 import { UsuarioActual } from './usuario-actual.decorator';
 import {
@@ -89,6 +90,7 @@ export async function cargarUsuarioVigente(
       fondoMapa: true,
       zonaHoraria: true,
       fotoPerfil: true,
+      politicasVersion: true,
       permisosExtra: true,
       versionSesion: true,
       organizacionId: true,
@@ -129,6 +131,8 @@ export async function cargarUsuarioVigente(
     fondoMapa: usuario.fondoMapa ?? null,
     zonaHoraria: usuario.zonaHoraria,
     fotoPerfil: usuario.fotoPerfil ?? null,
+    politicasPendientes: politicasPendientes(usuario.politicasVersion),
+    versionPoliticas: VERSION_POLITICAS,
   };
 
   if (usarCache) {

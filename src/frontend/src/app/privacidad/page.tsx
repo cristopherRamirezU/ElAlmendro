@@ -60,6 +60,10 @@ const SECCIONES: SeccionLegal[] = [
           <strong>Datos técnicos y de seguridad:</strong> dirección IP en inicios de sesión y en el registro de empresas,
           intentos de acceso fallidos y un registro de auditoría de las acciones relevantes (quién hizo qué y cuándo).
         </li>
+        <li>
+          <strong>Aceptación de estos textos:</strong> qué versión de los términos y de esta política aceptaste o
+          rechazaste, cuándo y desde qué dirección IP, como constancia de tu decisión.
+        </li>
       </ul>
     ),
   },

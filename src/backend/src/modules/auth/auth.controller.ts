@@ -21,6 +21,7 @@ import { LoginDto } from './dto/login.dto';
 import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
 import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
 import { ActualizarZonaHorariaDto } from './dto/actualizar-zona-horaria.dto';
+import { AceptarPoliticasDto } from './dto/aceptar-politicas.dto';
 import { ErroresFotoFilter, FotoPerfilService, OPCIONES_SUBIDA_FOTO } from './foto-perfil.service';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { Usuario, UsuarioActual } from '../../common/usuario-actual.decorator';
@@ -102,6 +103,28 @@ export class AuthController {
   @Delete('yo/foto')
   quitarFoto(@Usuario() usuario: UsuarioActual) {
     return this.fotos.quitar(usuario);
+  }
+
+  /** Acepta la version vigente de los terminos de uso y la politica de privacidad. */
+  @UseGuards(JwtAuthGuard)
+  @Post('yo/politicas')
+  @HttpCode(200)
+  aceptarPoliticas(@Usuario() usuario: UsuarioActual, @Body() dto: AceptarPoliticasDto, @Req() req: Request) {
+    return this.auth.aceptarPoliticas(usuario, dto.version, req.ip);
+  }
+
+  /** Rechaza los terminos: queda registrado y se cierra la sesion de este navegador. */
+  @UseGuards(JwtAuthGuard)
+  @Post('yo/politicas/rechazo')
+  @HttpCode(200)
+  async rechazarPoliticas(
+    @Usuario() usuario: UsuarioActual,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.auth.rechazarPoliticas(usuario, req.ip);
+    borrarCookieSesion(res);
+    return { ok: true };
   }
 
   /**

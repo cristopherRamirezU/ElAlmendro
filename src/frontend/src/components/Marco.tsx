@@ -33,6 +33,7 @@ import ConfirmarSalida from './ConfirmarSalida';
 import InterruptorJornada from './ui/InterruptorJornada';
 import { ProveedorChat } from '@/lib/chat';
 import { cerrarSocketChat } from '@/lib/socket';
+import ConsentimientoPoliticas from '@/components/ConsentimientoPoliticas';
 import { cerrarSocketNotificaciones } from '@/lib/notificaciones';
 import ChatFlotante from '@/components/chat/ChatFlotante';
 import InsigniaChat from '@/components/chat/InsigniaChat';
@@ -887,6 +888,8 @@ export default function Marco({
       </div>
       {usuario && conChatFlotante && <ChatFlotante yoId={usuario.id} />}
       <AtajosTeclado activo={activo} />
+      {/* Sin aceptar los terminos vigentes no se puede usar la app. */}
+      {usuario?.politicasPendientes && <ConsentimientoPoliticas usuario={usuario} onRechazada={cerrarSesion} />}
       </ContextoControlesMarco.Provider>
     </ContextoSesion.Provider>
   );

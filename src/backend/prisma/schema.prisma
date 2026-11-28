@@ -132,6 +132,10 @@ model Usuario {
   /// El archivo vive en el almacenamiento S3 bajo fotos-perfil/<id>/<version>;
   /// cambia en cada subida, asi la URL nueva nunca choca con la cache.
   fotoPerfil     String?
+  /// Version de los terminos y la politica de privacidad que acepto (null =
+  /// nunca). Si no coincide con la vigente, la app le pide aceptarlas.
+  politicasVersion     String?
+  politicasAceptadasEn DateTime? @db.Timestamptz(3)
   /// Permisos que el administrador dio a este trabajador ademas de los de su
   /// rol (codigos de PERMISOS_EXTRA en common/rbac.ts).
   permisosExtra  String[] @default([])

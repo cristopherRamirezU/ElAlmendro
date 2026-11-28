@@ -15,6 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { ActualizarPreferenciasDto } from './dto/actualizar-preferencias.dto';
 import { CambiarContrasenaDto } from './dto/cambiar-contrasena.dto';
 import { exigirZonaHoraria } from '../../common/zona-horaria';
+import { politicasPendientes, VERSION_POLITICAS } from '../../common/politicas';
 
 /**
  * Hash de una clave al azar que nadie conoce. Cuando el correo no existe se
@@ -70,6 +71,56 @@ export class AuthService {
     });
     invalidarCacheUsuario(usuarioId);
     return actualizado;
+  }
+
+  /**
+   * Acepta los terminos de uso y la politica de privacidad. Se exige la
+   * version vigente: aceptar una pantalla vieja (abierta antes de un cambio)
+   * no cuenta como aceptar los textos nuevos.
+   */
+  async aceptarPoliticas(u: UsuarioActual, version: string, ip?: string) {
+    if (version !== VERSION_POLITICAS) {
+      throw new BadRequestException('Los términos cambiaron. Recarga la página para leer la versión vigente.');
+    }
+    const ahora = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.usuario.update({
+        where: { id: u.id },
+        data: { politicasVersion: VERSION_POLITICAS, politicasAceptadasEn: ahora },
+      });
+      await tx.registroAuditoria.create({
+        data: {
+          actorId: u.id,
+          organizacionId: u.organizacionId ?? undefined,
+          accion: 'POLITICAS_ACEPTADAS',
+          tipoEntidad: 'Usuario',
+          entidadId: u.id,
+          valorNuevo: { version: VERSION_POLITICAS },
+          direccionIp: ip ?? null,
+        },
+      });
+    });
+    invalidarCacheUsuario(u.id);
+    return { politicasPendientes: false, versionPoliticas: VERSION_POLITICAS, aceptadasEn: ahora };
+  }
+
+  /**
+   * Deja constancia de que la persona rechazo los terminos. No borra nada: la
+   * app cierra su sesion y se las volvera a pedir si entra otra vez.
+   */
+  async rechazarPoliticas(u: UsuarioActual, ip?: string) {
+    await this.prisma.registroAuditoria.create({
+      data: {
+        actorId: u.id,
+        organizacionId: u.organizacionId ?? undefined,
+        accion: 'POLITICAS_RECHAZADAS',
+        tipoEntidad: 'Usuario',
+        entidadId: u.id,
+        valorNuevo: { version: VERSION_POLITICAS },
+        direccionIp: ip ?? null,
+      },
+    });
+    return { ok: true };
   }
 
   /**
@@ -153,6 +204,8 @@ export class AuthService {
         organizacionId: usuario.organizacionId,
         zonaHoraria: usuario.zonaHoraria,
         fotoPerfil: usuario.fotoPerfil ?? null,
+        politicasPendientes: politicasPendientes(usuario.politicasVersion),
+        versionPoliticas: VERSION_POLITICAS,
         organizacion: usuario.organizacion ? {
           id: usuario.organizacion.id,
           nombre: usuario.organizacion.nombre,

@@ -19,6 +19,10 @@ export interface UsuarioActual {
   zonaHoraria: string;
   /** Version de la foto de perfil (null = sin foto, se muestran iniciales). */
   fotoPerfil?: string | null;
+  /** True si aun no acepta la version vigente de terminos y privacidad. */
+  politicasPendientes?: boolean;
+  /** Version vigente que debe aceptar (la que muestra la ventana). */
+  versionPoliticas?: string;
 }
 
 export const Usuario = createParamDecorator(

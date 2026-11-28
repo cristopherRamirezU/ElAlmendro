@@ -211,6 +211,10 @@ export interface Usuario {
   zonaHoraria?: string;
   /** Version de la foto de perfil (null = iniciales). */
   fotoPerfil?: string | null;
+  /** True si aun no acepta la version vigente de terminos y privacidad. */
+  politicasPendientes?: boolean;
+  /** Version vigente de los terminos (la que se acepta). */
+  versionPoliticas?: string;
 }
 
 export interface OrganizacionMia {

@@ -5,6 +5,7 @@ import { PrismaService } from '../../infra/prisma/prisma.service';
 import { LimiteIntentosService, REGLAS } from '../../common/seguridad/limite-intentos.service';
 import { problemaContrasena } from '../../common/seguridad/politica-contrasena';
 import { normalizarCorreo } from '../../common/organizacion';
+import { VERSION_POLITICAS } from '../../common/politicas';
 import { OrganizacionesService } from '../organizaciones/organizaciones.service';
 import { RegistroDto } from './dto/registro.dto';
 
@@ -64,6 +65,13 @@ export class RegistroService {
       adminPassword: dto.contrasena,
     });
 
+    // En el formulario acepto los terminos y la politica vigentes: queda
+    // registrado para que la app no se los vuelva a pedir al entrar.
+    await this.prisma.usuario.update({
+      where: { email: correo },
+      data: { politicasVersion: VERSION_POLITICAS, politicasAceptadasEn: new Date() },
+    });
+
     try {
       await this.prisma.registroAuditoria.create({
         data: {
@@ -71,7 +79,7 @@ export class RegistroService {
           accion: 'REGISTRO_PUBLICO',
           tipoEntidad: 'Organizacion',
           entidadId: org.id,
-          valorNuevo: { empresa: org.nombre, correo, plan: org.plan },
+          valorNuevo: { empresa: org.nombre, correo, plan: org.plan, politicasAceptadas: VERSION_POLITICAS },
           direccionIp: ip ?? null,
         },
       });
