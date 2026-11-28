@@ -14,4 +14,10 @@ export const DATOS_LEGALES = {
   sitio: 'https://timeflows.site',
   /** Fecha desde la que rigen los textos legales vigentes. */
   vigencia: '20 de noviembre de 2026',
+  /**
+   * Version de los terminos y la politica: debe ser igual a VERSION_POLITICAS
+   * del backend (common/politicas.ts). Al subirla, el aviso de la pagina web
+   * se vuelve a mostrar a todos.
+   */
+  versionPoliticas: '2026-11-20',
 };

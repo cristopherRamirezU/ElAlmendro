@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import LandingTimeFlow from '@/components/sitio/landing/LandingTimeFlow';
+import AvisoPoliticasSitio from '@/components/sitio/AvisoPoliticasSitio';
 
 export const metadata: Metadata = {
   title: 'TimeFlow · El tiempo de tu equipo, en un mapa',
@@ -9,5 +10,11 @@ export const metadata: Metadata = {
 
 /** Página pública de TimeFlow: puente hacia el acceso de clientes y el registro. */
 export default function Inicio() {
-  return <LandingTimeFlow />;
+  return (
+    <>
+      <LandingTimeFlow />
+      {/* Al entrar a la pagina se piden aceptar los terminos y la privacidad. */}
+      <AvisoPoliticasSitio />
+    </>
+  );
 }
